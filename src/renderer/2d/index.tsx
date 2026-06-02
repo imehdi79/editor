@@ -5,30 +5,24 @@ import { TOOL_REGISTRY } from '@/features/tool-registry'
 import ShapeRenderer from './ShapeRenderer'
 import GhostRenderer from './GhostRenderer'
 import HintsRenderer from './HintsRenderer'
+import { useStageSize } from './useStageSize'
+import { useStageEvents } from './useStageEvents'
 
 const C2D = () => {
   const tool    = useToolsStore(s => s.tool)
   const toolDef = tool ? TOOL_REGISTRY[tool] ?? null : null
+  const { width, height } = useStageSize()
 
   const { ghost, hints, onMouseDown, onMouseMove, onMouseUp } = useDrawingEngine(toolDef)
 
+  const events = useStageEvents({ onMouseDown, onMouseMove, onMouseUp })
+
   return (
     <Stage
-      width={window.innerWidth}
-      height={window.innerHeight}
-      style={{ cursor: tool ? 'crosshair' : 'default' }}
-      onMouseDown={e => {
-        const pos = e.target.getStage()?.getPointerPosition()
-        if (pos) onMouseDown(pos.x, pos.y)
-      }}
-      onMouseMove={e => {
-        const pos = e.target.getStage()?.getPointerPosition()
-        if (pos) onMouseMove(pos.x, pos.y)
-      }}
-      onMouseUp={e => {
-        const pos = e.target.getStage()?.getPointerPosition()
-        if (pos) onMouseUp(pos.x, pos.y)
-      }}
+      width={width}
+      height={height}
+      style={{ cursor: tool ? 'crosshair' : 'default', touchAction: 'none' }}
+      {...events}
     >
       <Layer>
         <ShapeRenderer />

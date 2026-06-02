@@ -13,7 +13,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   viewMode: "2d",
   snapGrid: 0.5,
   axisAngleThreshold: 3, // degrees
-  snapRadius: 15, // px
+  snapRadius: window.matchMedia('(pointer: coarse)').matches ? 28 : 12, // px
 
   setViewMode: (mode) => set({ viewMode: mode }),
 }));
