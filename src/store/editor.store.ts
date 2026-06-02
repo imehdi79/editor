@@ -2,7 +2,6 @@ import { create } from "zustand";
 
 interface EditorStore {
   viewMode: "2d" | "3d";
-  activeTool: "select" | "wall" | "door" | null;
   snapGrid: number;
   axisLockThreshold: number;
 
@@ -10,8 +9,7 @@ interface EditorStore {
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
-  viewMode: "3d",
-  activeTool: null,
+  viewMode: "2d",
   snapGrid: 0.5,
   axisLockThreshold: 25,
 
