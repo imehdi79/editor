@@ -6,7 +6,7 @@ interface Props {
 }
 
 const HintsRenderer = ({ hints }: Props) => {
-  const { guides, snapResult, axisLocked, axisLockAngle } = hints;
+  const { guides, snapResult, axisLocked, axisLockAngle, perpLocked } = hints;
 
   return (
     <>
@@ -73,6 +73,11 @@ const HintsRenderer = ({ hints }: Props) => {
           fill="#f59e0b"
           listening={false}
         />
+      )}
+
+      {/* Perpendicular lock indicator */}
+      {perpLocked && (
+        <Text x={12} y={axisLocked ? 28 : 12} text="⊾ Perpendicular" fontSize={11} fill="#a855f7" listening={false} />
       )}
     </>
   );

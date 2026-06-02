@@ -7,6 +7,7 @@ import GhostRenderer from './GhostRenderer'
 import HintsRenderer from './HintsRenderer'
 import { useStageSize } from './useStageSize'
 import { useStageEvents } from './useStageEvents'
+import DimensionRenderer from './DimensionRenderer'
 
 const C2D = () => {
   const tool    = useToolsStore(s => s.tool)
@@ -28,6 +29,7 @@ const C2D = () => {
         <ShapeRenderer />
         <GhostRenderer ghost={ghost} />
         <HintsRenderer hints={hints} />
+        <DimensionRenderer hints={hints} />
       </Layer>
     </Stage>
   )

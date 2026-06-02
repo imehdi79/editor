@@ -1,3 +1,5 @@
+import type { DimensionLabel } from "../dimensions/computeDimensions";
+
 export type ShapeId = string;
 
 export interface BaseShape {
@@ -68,4 +70,13 @@ export interface DrawingHints {
   guides: GuideLine[];
   axisLocked: boolean;
   axisLockAngle: "horizontal" | "vertical" | null;
+}
+
+export interface DrawingHints {
+  snapResult: SnapResult | null;
+  guides: GuideLine[];
+  axisLocked: boolean;
+  axisLockAngle: "horizontal" | "vertical" | null;
+  perpLocked: boolean; // ← جدید
+  dimension: DimensionLabel | null; // ← جدید
 }

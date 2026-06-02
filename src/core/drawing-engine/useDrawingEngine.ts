@@ -7,12 +7,17 @@ import { applyAxisLock } from "@/core/snapping/axisLock";
 import { computeAlignmentGuides } from "@/core/guides/alignmentGuides";
 import type { GhostShape, DrawingHints, SnapResult } from "./drawing.types";
 import type { ToolDefinition } from "./tool-definition.types";
+import { applyPerpendicularLock } from "../snapping/perpendicularLock";
+import { computeDimensionLabel } from "../dimensions/computeDimensions";
+import { formatDimension } from "../dimensions/dimensionUnits";
 
 const EMPTY_HINTS: DrawingHints = {
   snapResult: null,
   guides: [],
   axisLocked: false,
   axisLockAngle: null,
+  perpLocked: false, // ← جدید
+  dimension: null, // ← جدید
 };
 
 export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
@@ -21,6 +26,9 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
   const snapRadius = useEditorStore((s) => s.snapRadius);
   const shapes = useFloorPlanStore((s) => s.shapes);
   const addShape = useFloorPlanStore((s) => s.addShape);
+
+  const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
+  const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
 
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const [ghost, setGhost] = useState<GhostShape>(null);
@@ -36,11 +44,22 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
       const pointSnap: SnapResult = snapToPoints(gridSnapped.x, gridSnapped.y, shapes, 1, snapRadius);
       let { x, y } = pointSnap;
 
-      // 3. axis lock — فقط در حین drag (وقتی start داریم)
+      // 3. perpendicular lock — فقط اگه axis lock نشده بودیم
+      let perpLocked = false;
+      if (startX !== undefined && startY !== undefined && !pointSnap.snapped) {
+        const perp = applyPerpendicularLock(startX, startY, x, y, shapes);
+        if (perp.locked) {
+          x = perp.x;
+          y = perp.y;
+          perpLocked = true;
+        }
+      }
+
+      // 3.5. axis lock — فقط در حین drag (وقتی start داریم)
       let axisLocked = false;
       let axisLockAngle: DrawingHints["axisLockAngle"] = null;
 
-      if (startX !== undefined && startY !== undefined && !pointSnap.snapped) {
+      if (startX !== undefined && startY !== undefined && !perpLocked && !pointSnap.snapped) {
         // اگه به نقطه snap نشدیم، axis lock چک کن
         const locked = applyAxisLock(startX, startY, x, y, axisAngleThreshold);
         if (locked.locked) {
@@ -48,6 +67,21 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
           y = locked.y;
           axisLocked = true;
           axisLockAngle = locked.axis;
+        }
+      }
+
+      // آخر resolve — dimension محاسبه کن اگه start داریم
+      let dimension: DrawingHints["dimension"] = null;
+      if (startX !== undefined && startY !== undefined) {
+        const lengthPx = Math.hypot(x - startX, y - startY);
+        if (lengthPx > 4) {
+          dimension = computeDimensionLabel(
+            startX,
+            startY,
+            x,
+            y,
+            formatDimension(lengthPx, dimensionUnit, pixelsPerMeter),
+          );
         }
       }
 
@@ -60,7 +94,7 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
         if (snappedY !== null) y = snappedY;
       }
 
-      return { x, y, pointSnap, guides, axisLocked, axisLockAngle };
+      return { x, y, pointSnap, guides, axisLocked, axisLockAngle, perpLocked, dimension };
     },
     [snapGrid, shapes, snapRadius, axisAngleThreshold],
   );
@@ -81,7 +115,12 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
       if (!toolDef) return;
       const start = startRef.current;
 
-      const { x, y, pointSnap, guides, axisLocked, axisLockAngle } = resolve(rawX, rawY, start?.x, start?.y);
+      const { x, y, pointSnap, guides, axisLocked, axisLockAngle, perpLocked, dimension } = resolve(
+        rawX,
+        rawY,
+        start?.x,
+        start?.y,
+      );
 
       if (start) {
         setGhost(toolDef.buildGhost(start.x, start.y, x, y));
@@ -92,6 +131,8 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
         guides,
         axisLocked,
         axisLockAngle,
+        perpLocked,
+        dimension,
       });
     },
     [toolDef, resolve],
