@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { nanoid } from 'nanoid'
 import type { Shape, ShapeId } from '@/core/drawing-engine/drawing.types'
+import { generateId } from '@/lib/generateId'
 
 type ShapesMap = Record<ShapeId, Shape>
 
@@ -15,7 +15,7 @@ export const useFloorPlanStore = create<FloorPlanStore>((set) => ({
   shapes: {},
 
   addShape: (shape) => {
-    const id = nanoid()
+    const id = generateId(shape.type)
     const full = { ...shape, id } as Shape
     set(s => ({ shapes: { ...s.shapes, [id]: full } }))
   },

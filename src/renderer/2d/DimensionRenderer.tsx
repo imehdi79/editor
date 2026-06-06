@@ -1,11 +1,9 @@
-import { Line, Text, Group } from "react-konva";
+import { Text, Group } from "react-konva";
 import type { DrawingHints } from "@/core/drawing-engine/drawing.types";
 
 interface Props {
   hints: DrawingHints;
 }
-
-const TICK_SIZE = 5;
 
 const DimensionRenderer = ({ hints }: Props) => {
   const { dimension, perpLocked } = hints;
@@ -16,19 +14,6 @@ const DimensionRenderer = ({ hints }: Props) => {
 
   return (
     <Group listening={false}>
-      {/* tick کوچک ابتدا و انتها */}
-      <Line
-        points={[
-          dimension.midX - Math.cos(((dimension.angleDeg + 90) * Math.PI) / 180) * TICK_SIZE,
-          dimension.midY - Math.sin(((dimension.angleDeg + 90) * Math.PI) / 180) * TICK_SIZE,
-          dimension.midX + Math.cos(((dimension.angleDeg + 90) * Math.PI) / 180) * TICK_SIZE,
-          dimension.midY + Math.sin(((dimension.angleDeg + 90) * Math.PI) / 180) * TICK_SIZE,
-        ]}
-        stroke={perpLocked ? "#a855f7" : "#3b82f6"}
-        strokeWidth={1}
-        opacity={0.7}
-      />
-
       {/* label پس‌زمینه */}
       <Text
         x={lx}

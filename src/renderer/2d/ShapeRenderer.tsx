@@ -45,6 +45,7 @@ const renderShape = (shape: Shape) => {
 
 const ShapeRenderer = () => {
   const shapes = useFloorPlanStore((s) => s.shapes);
+  console.log({shapes})
   return <>{Object.values(shapes).map(renderShape)}</>;
 };
 
