@@ -1,7 +1,10 @@
 import { useToolsStore } from "@/store/tools.store";
-import { useTemporalStore } from "@/store/floor-plan.store";
-import type { SideBarToolsListItem, Tools } from "./tools.types";
+import { useTemporalStore, useFloorPlanStore } from "@/store/floor-plan.store";
+import { useSelectionStore } from "@/store/selection.store";
+import type { SideBarToolsListItem, Tools, NoOneClickTools } from "./tools.types";
 import { Button } from "@/components/ui/button";
+
+const ONE_CLICK_TOOLS = new Set<Tools>(["undo", "redo", "delete"]);
 
 const SidebarToolButton = ({ icon, label, tool }: { tool: Tools } & SideBarToolsListItem) => {
   const activeTool = useToolsStore((s) => s.tool);
@@ -12,22 +15,30 @@ const SidebarToolButton = ({ icon, label, tool }: { tool: Tools } & SideBarTools
   const canUndo = useTemporalStore((s) => s.pastStates.length > 0);
   const canRedo = useTemporalStore((s) => s.futureStates.length > 0);
 
+  const selectedId = useSelectionStore((s) => s.selectedId);
+  const clearSelection = useSelectionStore((s) => s.clearSelection);
+  const removeShape = useFloorPlanStore((s) => s.removeShape);
+
   const onClick = () => {
     if (tool === "undo") undo();
     else if (tool === "redo") redo();
-    else setTool(tool);
+    else if (tool === "delete") {
+      if (selectedId) {
+        removeShape(selectedId);
+        clearSelection();
+      }
+    } else {
+      setTool(tool as NoOneClickTools);
+    }
   };
 
-  const isDisabled = (tool === "undo" && !canUndo) || (tool === "redo" && !canRedo);
+  const isDisabled =
+    (tool === "undo" && !canUndo) || (tool === "redo" && !canRedo) || (tool === "delete" && !selectedId);
+
+  const isActive = !ONE_CLICK_TOOLS.has(tool) && activeTool === (tool as NoOneClickTools);
 
   return (
-    <Button
-      onClick={onClick}
-      title={label}
-      variant={activeTool === tool ? "default" : "ghost"}
-      size="icon"
-      disabled={isDisabled}
-    >
+    <Button onClick={onClick} title={label} variant={isActive ? "default" : "ghost"} size="icon" disabled={isDisabled}>
       {icon}
     </Button>
   );

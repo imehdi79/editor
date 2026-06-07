@@ -1,62 +1,60 @@
 /**
- * SelectionRenderer — draws a visual highlight around the selected shape.
+ * SelectionRenderer — selection highlight + interactive handles for move,
+ * resize (endpoints), and rotate.
  *
- * Currently renders a bounding rect (for segment shapes) or a circle
- * (for text anchors). Designed to be the mounting point for future
- * resize handles, rotation handles, and move indicators.
+ * Handles are rendered with listening={false} because pointer events are
+ * handled by the Stage via useTransformEngine / useStageEvents — the engine
+ * does its own hit-testing to avoid Konva event bubbling complications.
  */
 
-import { Rect, Circle, Group } from "react-konva";
+import { Circle, Group, Line } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
-import type { Shape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, GhostShape } from "@/core/drawing-engine/drawing.types";
+import { rotationHandlePos } from "@/features/select-tool/useTransformEngine";
 
-// ---------------------------------------------------------------------------
-// Geometry helpers
-// ---------------------------------------------------------------------------
-
-const PADDING = 6;
-const HANDLE_RADIUS = 5;
 const SELECTION_COLOR = "#3b82f6";
-
-interface BBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-const segmentBBox = (shape: Exclude<Shape, { type: "text" }>): BBox => {
-  const minX = Math.min(shape.x1, shape.x2) - PADDING;
-  const minY = Math.min(shape.y1, shape.y2) - PADDING;
-  const maxX = Math.max(shape.x1, shape.x2) + PADDING;
-  const maxY = Math.max(shape.y1, shape.y2) + PADDING;
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-};
+const HANDLE_RADIUS = 5;
+const ROTATE_HANDLE_RADIUS = 5;
 
 // ---------------------------------------------------------------------------
-// Per-shape renderers
+// Shape overlay (shown during live drag preview)
 // ---------------------------------------------------------------------------
 
-const SegmentSelection = ({ shape }: { shape: Exclude<Shape, { type: "text" }> }) => {
-  const bbox = segmentBBox(shape);
+const PreviewLine = ({ shape }: { shape: Exclude<GhostShape, null | { type: "text" }> }) => (
+  <Line
+    points={[shape.x1, shape.y1, shape.x2, shape.y2]}
+    stroke={SELECTION_COLOR}
+    strokeWidth={shape.type === "wall" ? shape.thickness : 2}
+    opacity={0.45}
+    lineCap="round"
+    dash={shape.type === "dashed-line" ? [10, 6] : undefined}
+    listening={false}
+  />
+);
+
+// ---------------------------------------------------------------------------
+// Selection handles for a segment shape
+// ---------------------------------------------------------------------------
+
+const SegmentHandles = ({ shape }: { shape: Exclude<Shape, { type: "text" }> }) => {
+  const rh = rotationHandlePos(shape);
+  const mx = (shape.x1 + shape.x2) / 2;
+  const my = (shape.y1 + shape.y2) / 2;
 
   return (
     <Group listening={false}>
-      {/* Selection bounding box */}
-      <Rect
-        x={bbox.x}
-        y={bbox.y}
-        width={bbox.width}
-        height={bbox.height}
+      {/* Dashed outline along the shape */}
+      <Line
+        points={[shape.x1, shape.y1, shape.x2, shape.y2]}
         stroke={SELECTION_COLOR}
         strokeWidth={1}
         dash={[4, 3]}
-        fill={`${SELECTION_COLOR}10`}
-        cornerRadius={2}
+        opacity={0.6}
         listening={false}
       />
-      {/* Endpoint handles — will become resize handles */}
+
+      {/* Endpoint handles (resize) */}
       <Circle
         x={shape.x1}
         y={shape.y1}
@@ -75,20 +73,26 @@ const SegmentSelection = ({ shape }: { shape: Exclude<Shape, { type: "text" }> }
         strokeWidth={1.5}
         listening={false}
       />
-      {/* Midpoint handle — will become move handle */}
+
+      {/* Midpoint / move indicator */}
+      <Circle x={mx} y={my} radius={HANDLE_RADIUS - 1} fill={SELECTION_COLOR} opacity={0.75} listening={false} />
+
+      {/* Rotation arm + handle */}
+      <Line points={[mx, my, rh.x, rh.y]} stroke={SELECTION_COLOR} strokeWidth={1} opacity={0.5} listening={false} />
       <Circle
-        x={(shape.x1 + shape.x2) / 2}
-        y={(shape.y1 + shape.y2) / 2}
-        radius={HANDLE_RADIUS - 1}
-        fill={SELECTION_COLOR}
-        opacity={0.7}
+        x={rh.x}
+        y={rh.y}
+        radius={ROTATE_HANDLE_RADIUS}
+        fill="white"
+        stroke="#f59e0b"
+        strokeWidth={1.5}
         listening={false}
       />
     </Group>
   );
 };
 
-const TextSelection = ({ shape }: { shape: Extract<Shape, { type: "text" }> }) => (
+const TextHandles = ({ shape }: { shape: Extract<Shape, { type: "text" }> }) => (
   <Group listening={false}>
     <Circle
       x={shape.x}
@@ -106,17 +110,38 @@ const TextSelection = ({ shape }: { shape: Extract<Shape, { type: "text" }> }) =
 // Root component
 // ---------------------------------------------------------------------------
 
-const SelectionRenderer = () => {
+interface Props {
+  previewShape: GhostShape;
+}
+
+const SelectionRenderer = ({ previewShape }: Props) => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const selectedId = useSelectionStore((s) => s.selectedId);
 
   if (!selectedId) return null;
 
-  const shape = shapes[selectedId];
-  if (!shape) return null;
+  const committedShape = shapes[selectedId];
+  if (!committedShape) return null;
 
-  if (shape.type === "text") return <TextSelection shape={shape} />;
-  return <SegmentSelection shape={shape} />;
+  // During a drag: show preview overlay + handles on preview shape
+  // Otherwise: show handles on the committed shape
+  const displayShape = previewShape ?? committedShape;
+
+  return (
+    <>
+      {/* Live drag preview */}
+      {previewShape && previewShape.type !== "text" && (
+        <PreviewLine shape={previewShape as Exclude<GhostShape, null | { type: "text" }>} />
+      )}
+
+      {/* Handles on the current position */}
+      {displayShape.type === "text" ? (
+        <TextHandles shape={displayShape as Extract<Shape, { type: "text" }>} />
+      ) : (
+        <SegmentHandles shape={displayShape as Exclude<Shape, { type: "text" }>} />
+      )}
+    </>
+  );
 };
 
 export default SelectionRenderer;

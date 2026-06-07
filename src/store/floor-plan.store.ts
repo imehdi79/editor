@@ -6,14 +6,6 @@ import { generateId } from "@/lib/generateId";
 
 type ShapesMap = Record<ShapeId, Shape>;
 
-// ---------------------------------------------------------------------------
-// Floor-plan store — shapes only, wrapped with temporal for undo/redo
-//
-// `selectedId` intentionally lives in a separate store (selection.store.ts)
-// so that selection changes never touch this store's `set` and never create
-// spurious undo/redo entries.
-// ---------------------------------------------------------------------------
-
 interface FloorPlanState {
   shapes: ShapesMap;
 }
@@ -21,6 +13,8 @@ interface FloorPlanState {
 interface FloorPlanActions {
   addShape: (shape: Omit<Shape, "id">) => void;
   removeShape: (id: ShapeId) => void;
+  /** Commit a transform (move / resize / rotate) — recorded in undo history. */
+  updateShape: (id: ShapeId, patch: Partial<Omit<Shape, "id" | "type">>) => void;
   reset: () => void;
 }
 
@@ -43,15 +37,18 @@ export const useFloorPlanStore = create<FloorPlanStore>()(
           return { shapes: rest };
         }),
 
+      updateShape: (id, patch) =>
+        set((s) => {
+          const shape = s.shapes[id];
+          if (!shape) return s;
+          return { shapes: { ...s.shapes, [id]: { ...shape, ...patch } as Shape } };
+        }),
+
       reset: () => set({ shapes: {} }),
     }),
     { limit: 100 },
   ),
 );
-
-// ---------------------------------------------------------------------------
-// Reactive hook for undo/redo consumers
-// ---------------------------------------------------------------------------
 
 export const useTemporalStore = <T>(
   selector: (state: TemporalState<FloorPlanState>) => T,
