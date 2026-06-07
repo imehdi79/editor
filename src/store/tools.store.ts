@@ -1,4 +1,4 @@
-import type { NoOneClickTools, Tools } from "@/renderer/layout/sidebar/tools.types";
+import type { NoOneClickTools } from "@/renderer/layout/sidebar/tools.types";
 import { create } from "zustand";
 
 export const TOOL_CURSORS: Record<NoOneClickTools, string> = {

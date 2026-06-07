@@ -15,16 +15,6 @@ interface PerpResult {
 // زاویه یه segment به رادیان
 const segmentAngle = (x1: number, y1: number, x2: number, y2: number) => Math.atan2(y2 - y1, x2 - x1);
 
-// نزدیک‌ترین نقطه روی segment به یه نقطه خارجی
-const closestPointOnSegment = (px: number, py: number, ax: number, ay: number, bx: number, by: number) => {
-  const dx = bx - ax,
-    dy = by - ay;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return { x: ax, y: ay };
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
-  return { x: ax + t * dx, y: ay + t * dy };
-};
-
 export const applyPerpendicularLock = (
   startX: number,
   startY: number,
