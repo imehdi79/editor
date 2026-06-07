@@ -7,13 +7,13 @@ export const textToolDefinition: ToolDefinition = {
     type: "text",
     x: x1,
     y: y1,
-    content: "متن...",
+    content: "Text...",
   }),
 
   buildShape: (x1, y1) => ({
     type: "text",
     x: x1,
     y: y1,
-    content: "متن...",
+    content: "Text..."
   }),
 };

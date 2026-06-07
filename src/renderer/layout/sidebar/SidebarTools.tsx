@@ -1,12 +1,36 @@
-import { Pen, Minus, StretchHorizontal, Type } from "lucide-react";
 import type { SideBarToolsList, Tools } from "./tools.types";
 import SidebarToolButton from "./SidebarToolButton";
+import { Type, BrickWallIcon, Ellipsis, Minus, SplinePointer, Redo, Undo } from "lucide-react";
 
 export const tools: SideBarToolsList<NonNullable<Tools>> = {
-  wall: { icon: <StretchHorizontal size={16} />, label: "دیوار" },
-  line: { icon: <Minus size={16} />, label: "خط" },
-  "dashed-line": { icon: <Pen size={16} />, label: "نقطه‌چین" },
-  text: { icon: <Type size={16} />, label: "متن" },
+  select: {
+    icon: <SplinePointer size={16} />,
+    label: "Select",
+  },
+  wall: {
+    icon: <BrickWallIcon size={16} />,
+    label: "Wall",
+  },
+  line: {
+    icon: <Minus size={16} />,
+    label: "Line",
+  },
+  "dashed-line": {
+    icon: <Ellipsis size={16} />,
+    label: "Dashed Line",
+  },
+  text: {
+    icon: <Type size={16} />,
+    label: "Text",
+  },
+  redo: {
+    icon: <Redo size={16} />,
+    label: "Redo",
+  },
+  undo: {
+    icon: <Undo size={16} />,
+    label: "Undo",
+  },
 };
 
 const SidebarTools = () => {

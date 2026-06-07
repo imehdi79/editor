@@ -1,21 +1,28 @@
-import { useToolsStore } from '@/store/tools.store'
-import type { SideBarToolsListItem, Tools } from './tools.types'
-import { Button } from '@/components/ui/button'
+import { useToolsStore } from "@/store/tools.store";
+import type { OneClickTools, SideBarToolsListItem, Tools } from "./tools.types";
+import { Button } from "@/components/ui/button";
 
-const SidebarToolButton = ({ icon, label, tool }: { tool: Tools } & SideBarToolsListItem) => {
-  const activeTool = useToolsStore(s => s.tool)
-  const setTool    = useToolsStore(s => s.setTool)
-
-  return (
-    <Button
-      onClick={() => setTool(tool)}
-      title={label}
-      variant={activeTool === tool ? 'default' : 'ghost'}
-      size="icon"
-    >
-      {icon}
-    </Button>
-  )
+function isOneClickTool(tool: Tools): tool is OneClickTools {
+  return tool === "redo" || tool === "undo";
 }
 
-export default SidebarToolButton
+const SidebarToolButton = ({ icon, label, tool }: { tool: Tools } & SideBarToolsListItem) => {
+  const activeTool = useToolsStore((s) => s.tool);
+  const setTool = useToolsStore((s) => s.setTool);
+
+  const onClick = () => {
+    if (isOneClickTool(tool)) {
+      console.log("on click tools");
+    } else {
+      setTool(tool);
+    }
+  };
+
+  return (
+    <Button onClick={onClick} title={label} variant={activeTool === tool ? "default" : "ghost"} size="icon">
+      {icon}
+    </Button>
+  );
+};
+
+export default SidebarToolButton;

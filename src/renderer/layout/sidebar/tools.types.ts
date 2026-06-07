@@ -1,4 +1,6 @@
-export type Tools = "wall" | "line" | "dashed-line" | "text" | null;
+export type Tools = "wall" | "line" | "dashed-line" | "text" | "select" | "redo" | "undo" | null;
+export type OneClickTools = Extract<Tools, "redo" | "undo" | null>;
+export type NoOneClickTools = Exclude<Tools, OneClickTools | null>;
 
 export type SideBarToolsListItem = {
   icon: React.ReactNode;

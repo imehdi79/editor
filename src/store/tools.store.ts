@@ -1,16 +1,16 @@
-import type { Tools } from "@/renderer/layout/sidebar/tools.types";
+import type { NoOneClickTools, Tools } from "@/renderer/layout/sidebar/tools.types";
 import { create } from "zustand";
 
-export const TOOL_CURSORS: Record<NonNullable<Tools>, string> = {
+export const TOOL_CURSORS: Record<NoOneClickTools, string> = {
   wall: "crosshair",
   line: "crosshair",
   "dashed-line": "crosshair",
   text: "text",
+  select: "default",
 };
-
 interface ToolsStore {
-  tool: Tools;
-  setTool: (tool: Tools) => void;
+  tool: NoOneClickTools | null;
+  setTool: (tool: NoOneClickTools | null) => void;
 }
 
 export const useToolsStore = create<ToolsStore>((set, get) => ({
