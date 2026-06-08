@@ -191,11 +191,16 @@ export const useTransformEngine = () => {
         // Capture grab offset — for move, the shape moves so the grabbed
         // point tracks under the cursor
         if (shape.type === "text") {
-          modeRef.current = { kind: "move", shapeId: hit.shapeId, grabOffsetX: x - shape.x, grabOffsetY: y - shape.y };
+          modeRef.current = {
+            kind: "move",
+            shapeId: hit.shapeId,
+            grabOffsetX: rawX - shape.x,
+            grabOffsetY: rawY - shape.y,
+          };
         } else {
           const mx = (shape.x1 + shape.x2) / 2;
           const my = (shape.y1 + shape.y2) / 2;
-          modeRef.current = { kind: "move", shapeId: hit.shapeId, grabOffsetX: x - mx, grabOffsetY: y - my };
+          modeRef.current = { kind: "move", shapeId: hit.shapeId, grabOffsetX: rawX - mx, grabOffsetY: rawY - my };
         }
         setPreviewShape(shape.type === "text" ? { ...shape } : { ...shape });
       } else if (hit.zone === "p1" || hit.zone === "p2") {
@@ -226,8 +231,12 @@ export const useTransformEngine = () => {
         const config = makeConfigExcluding(mode.shapeId);
 
         if (shape.type === "text") {
-          const { x, y, guides, pointSnap, axisLocked, axisLockAngle } = resolvePoint(rawX, rawY, config);
-          setPreviewShape({ ...shape, x: x - mode.grabOffsetX, y: y - mode.grabOffsetY });
+          const { x, y, guides, pointSnap, axisLocked, axisLockAngle } = resolvePoint(
+            rawX - mode.grabOffsetX,
+            rawY - mode.grabOffsetY,
+            config,
+          );
+          setPreviewShape({ ...shape, x, y });
           setHints({
             snapResult: pointSnap.snapped ? pointSnap : null,
             guides,
@@ -237,12 +246,12 @@ export const useTransformEngine = () => {
             dimension: null,
           });
         } else {
-          // Resolve the cursor position with axis lock applied to the delta
-          const cursorX = rawX - mode.grabOffsetX;
-          const cursorY = rawY - mode.grabOffsetY;
           const mx0 = (shape.x1 + shape.x2) / 2;
           const my0 = (shape.y1 + shape.y2) / 2;
 
+          // Target midpoint = cursor minus the offset we grabbed at.
+          // Pass (mx0, my0) as the anchor so axis-lock works relative to
+          // the shape's original midpoint.
           const {
             x: mx,
             y: my,
@@ -250,7 +259,13 @@ export const useTransformEngine = () => {
             pointSnap,
             axisLocked,
             axisLockAngle,
-          } = resolvePoint(cursorX + mx0, cursorY + my0, config, mx0, my0);
+          } = resolvePoint(
+            rawX - mode.grabOffsetX, // ← just this, no + mx0
+            rawY - mode.grabOffsetY,
+            config,
+            mx0,
+            my0,
+          );
 
           const dx = mx - mx0;
           const dy = my - my0;
