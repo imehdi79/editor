@@ -113,8 +113,11 @@ const hitTestShape = (x: number, y: number, shape: Shape): "p1" | "p2" | "rotate
   const rh = rotationHandlePos(shape);
   if (distSq(x, y, rh.x, rh.y) < rSq) return "rotate";
 
-  // Body
-  const thick = shape.type === "wall" ? shape.thickness / 2 : 0;
+  // Body — window and door have thickness just like walls
+  const thick =
+    shape.type === "wall" || shape.type === "window" || shape.type === "door"
+      ? shape.thickness / 2
+      : 0;
   const effectiveRSq = Math.max(BODY_HIT_RADIUS ** 2, thick ** 2);
   if (pointToSegmentDistSq(x, y, shape.x1, shape.y1, shape.x2, shape.y2) <= effectiveRSq) return "body";
 

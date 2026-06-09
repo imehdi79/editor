@@ -7,6 +7,8 @@ export const TOOL_CURSORS: Record<NoOneClickTools, string> = {
   "dashed-line": "crosshair",
   text: "text",
   select: "default",
+  door: "crosshair",
+  window: "crosshair",
 };
 interface ToolsStore {
   tool: NoOneClickTools | null;

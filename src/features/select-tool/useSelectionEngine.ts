@@ -56,6 +56,15 @@ const hitTest = (x: number, y: number, shapes: Record<string, Shape>): string | 
       continue;
     }
 
+    // window and door share the same segment geometry contract as wall/line
+    if (shape.type === "window" || shape.type === "door") {
+      const effectiveRadiusSq = Math.max(radiusSq, (shape.thickness / 2) ** 2);
+      if (pointToSegmentDistSq(x, y, shape.x1, shape.y1, shape.x2, shape.y2) <= effectiveRadiusSq) {
+        return shape.id;
+      }
+      continue;
+    }
+
     const thickness = shape.type === "wall" ? shape.thickness / 2 : 0;
     const effectiveRadiusSq = Math.max(radiusSq, thickness ** 2);
 

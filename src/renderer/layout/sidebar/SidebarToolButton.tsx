@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 
 const ONE_CLICK_TOOLS = new Set<Tools>(["undo", "redo", "delete"]);
 
-const SidebarToolButton = ({ icon, label, tool }: { tool: Tools } & SideBarToolsListItem) => {
+const SidebarToolButton = ({ icon, label, tool, variant = "default" }: { tool: Tools } & SideBarToolsListItem) => {
   const activeTool = useToolsStore((s) => s.tool);
   const setTool = useToolsStore((s) => s.setTool);
+
 
   const undo = useTemporalStore((s) => s.undo);
   const redo = useTemporalStore((s) => s.redo);
@@ -35,10 +36,13 @@ const SidebarToolButton = ({ icon, label, tool }: { tool: Tools } & SideBarTools
   const isDisabled =
     (tool === "undo" && !canUndo) || (tool === "redo" && !canRedo) || (tool === "delete" && !selectedId);
 
-  const isActive = !ONE_CLICK_TOOLS.has(tool) && activeTool === (tool as NoOneClickTools);
+    const isActive = !ONE_CLICK_TOOLS.has(tool) && activeTool === (tool as NoOneClickTools);
+    const oneClickVariant = !isDisabled ? variant : "ghost"
+    const othersVariant = isActive ? variant : "ghost"
+    
 
   return (
-    <Button onClick={onClick} title={label} variant={isActive ? "default" : "ghost"} size="icon" disabled={isDisabled}>
+    <Button onClick={onClick} title={label} variant={ONE_CLICK_TOOLS.has(tool) ? oneClickVariant : othersVariant} size="icon" disabled={isDisabled}>
       {icon}
     </Button>
   );

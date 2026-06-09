@@ -7,10 +7,10 @@
  * does its own hit-testing to avoid Konva event bubbling complications.
  */
 
-import { Circle, Group, Line } from "react-konva";
+import { Circle, Group, Line, Shape as KonvaShape } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
-import type { Shape, GhostShape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, GhostShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { rotationHandlePos } from "@/features/select-tool/useTransformEngine";
 
 const SELECTION_COLOR = "#3b82f6";
@@ -25,7 +25,7 @@ const PreviewLine = ({ shape }: { shape: Exclude<GhostShape, null | { type: "tex
   <Line
     points={[shape.x1, shape.y1, shape.x2, shape.y2]}
     stroke={SELECTION_COLOR}
-    strokeWidth={shape.type === "wall" ? shape.thickness : 2}
+    strokeWidth={shape.type === "wall" ? shape.thickness : shape.type === "window" || shape.type === "door" ? shape.thickness : 2}
     opacity={0.45}
     lineCap="round"
     dash={shape.type === "dashed-line" ? [10, 6] : undefined}
@@ -88,6 +88,25 @@ const SegmentHandles = ({ shape }: { shape: Exclude<Shape, { type: "text" }> }) 
         strokeWidth={1.5}
         listening={false}
       />
+
+      {/* Extra side indicator for door — show which side the swing is on */}
+      {shape.type === "door" && (() => {
+        const dx = shape.x2 - shape.x1;
+        const dy = shape.y2 - shape.y1;
+        const len = Math.hypot(dx, dy) || 1;
+        const sideX = mx + ((-dy / len) * shape.side * 14);
+        const sideY = my + ((dx / len) * shape.side * 14);
+        return (
+          <Circle
+            x={sideX}
+            y={sideY}
+            radius={3}
+            fill="#92400e"
+            opacity={0.7}
+            listening={false}
+          />
+        );
+      })()}
     </Group>
   );
 };
@@ -145,3 +164,4 @@ const SelectionRenderer = ({ previewShape }: Props) => {
 };
 
 export default SelectionRenderer;
+

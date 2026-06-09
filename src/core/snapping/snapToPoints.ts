@@ -11,7 +11,7 @@ const extractSnapPoints = (shapes: Record<string, Shape>) => {
       continue;
     }
 
-    // endpoint‌ها
+    // endpoint‌ها — covers wall, line, dashed-line, window, door
     points.push({ x: shape.x1, y: shape.y1, type: "node" });
     points.push({ x: shape.x2, y: shape.y2, type: "node" });
 

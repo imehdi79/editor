@@ -71,8 +71,9 @@ const SelectionLayer = () => {
 
 const C2D = () => {
   const tool = useToolsStore((s) => s.tool);
-  if (tool === "select") return <SelectionLayer />;
-  return <DrawingLayer tool={tool ?? "wall"} />;
+  const Component = tool === "select" ? <SelectionLayer /> : <DrawingLayer tool={tool ?? "wall"} />;
+
+  return <div className="w-svw h-svh relative">{Component}</div>;
 };
 
 export default C2D;

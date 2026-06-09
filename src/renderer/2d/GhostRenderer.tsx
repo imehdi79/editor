@@ -1,9 +1,138 @@
-import { Line, Text, Circle } from "react-konva";
-import type { GhostShape } from "@/core/drawing-engine/drawing.types";
+import { Line, Text, Circle, Shape as KonvaShape, Group } from "react-konva";
+import type { GhostShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 
 interface Props {
   ghost: GhostShape;
 }
+
+// ---------------------------------------------------------------------------
+// Window ghost
+// ---------------------------------------------------------------------------
+
+const WindowGhost = ({ ghost }: { ghost: Omit<WindowShape, "id"> }) => {
+  const dx = ghost.x2 - ghost.x1;
+  const dy = ghost.y2 - ghost.y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const perpX = (-dy / len) * (ghost.thickness / 2);
+  const perpY = (dx / len) * (ghost.thickness / 2);
+
+  const jambPoints1 = [ghost.x1 - perpX, ghost.y1 - perpY, ghost.x1 + perpX, ghost.y1 + perpY];
+  const jambPoints2 = [ghost.x2 - perpX, ghost.y2 - perpY, ghost.x2 + perpX, ghost.y2 + perpY];
+
+  const glaze = (ghost.thickness / 2) * 0.35;
+  const ux = perpX / (ghost.thickness / 2);
+  const uy = perpY / (ghost.thickness / 2);
+  const glazePoints1 = [
+    ghost.x1 + ux * glaze, ghost.y1 + uy * glaze,
+    ghost.x2 + ux * glaze, ghost.y2 + uy * glaze,
+  ];
+  const glazePoints2 = [
+    ghost.x1 - ux * glaze, ghost.y1 - uy * glaze,
+    ghost.x2 - ux * glaze, ghost.y2 - uy * glaze,
+  ];
+
+  return (
+    <Group listening={false}>
+      <Line
+        points={[ghost.x1, ghost.y1, ghost.x2, ghost.y2]}
+        stroke="white"
+        strokeWidth={ghost.thickness}
+        opacity={0.8}
+        lineCap="butt"
+        listening={false}
+      />
+      <Line points={jambPoints1} stroke="#3b82f6" strokeWidth={2} lineCap="butt" opacity={0.7} listening={false} />
+      <Line points={jambPoints2} stroke="#3b82f6" strokeWidth={2} lineCap="butt" opacity={0.7} listening={false} />
+      <Line points={glazePoints1} stroke="#60a5fa" strokeWidth={1.5} opacity={0.6} lineCap="butt" listening={false} />
+      <Line points={glazePoints2} stroke="#60a5fa" strokeWidth={1.5} opacity={0.6} lineCap="butt" listening={false} />
+    </Group>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Door ghost
+// ---------------------------------------------------------------------------
+
+const DoorGhost = ({ ghost }: { ghost: Omit<DoorShape, "id"> }) => {
+  const dx = ghost.x2 - ghost.x1;
+  const dy = ghost.y2 - ghost.y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const perpX = (-dy / len);
+  const perpY = (dx / len);
+  const halfThick = ghost.thickness / 2;
+
+  const jambPoints1 = [
+    ghost.x1 - perpX * halfThick, ghost.y1 - perpY * halfThick,
+    ghost.x1 + perpX * halfThick, ghost.y1 + perpY * halfThick,
+  ];
+  const jambPoints2 = [
+    ghost.x2 - perpX * halfThick, ghost.y2 - perpY * halfThick,
+    ghost.x2 + perpX * halfThick, ghost.y2 + perpY * halfThick,
+  ];
+
+  const swingRadius = len;
+  const doorAngleRad = Math.atan2(dy, dx);
+  const swingStartAngleDeg = (doorAngleRad * 180) / Math.PI;
+  const swingEndAngleDeg = swingStartAngleDeg + (ghost.side === 1 ? -90 : 90);
+
+  const hx = ghost.x1;
+  const hy = ghost.y1;
+  const openAngleRad = doorAngleRad + (ghost.side === 1 ? -Math.PI / 2 : Math.PI / 2);
+  const openX = hx + Math.cos(openAngleRad) * swingRadius;
+  const openY = hy + Math.sin(openAngleRad) * swingRadius;
+
+  return (
+    <Group listening={false}>
+      <Line
+        points={[ghost.x1, ghost.y1, ghost.x2, ghost.y2]}
+        stroke="white"
+        strokeWidth={ghost.thickness}
+        opacity={0.8}
+        lineCap="butt"
+        listening={false}
+      />
+      <Line points={jambPoints1} stroke="#3b82f6" strokeWidth={2} lineCap="butt" opacity={0.7} listening={false} />
+      <Line points={jambPoints2} stroke="#3b82f6" strokeWidth={2} lineCap="butt" opacity={0.7} listening={false} />
+      <Line
+        points={[hx, hy, ghost.x2, ghost.y2]}
+        stroke="#3b82f6"
+        strokeWidth={2}
+        opacity={0.6}
+        lineCap="round"
+        listening={false}
+      />
+      <KonvaShape
+        sceneFunc={(ctx) => {
+          ctx.beginPath();
+          const startRad = (swingStartAngleDeg * Math.PI) / 180;
+          const endRad = (swingEndAngleDeg * Math.PI) / 180;
+          ctx.arc(hx, hy, swingRadius, startRad, endRad, ghost.side === 1);
+          ctx.strokeStyle = "#3b82f6";
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.4;
+          ctx.setLineDash([5, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+        }}
+        listening={false}
+      />
+      <Line
+        points={[hx, hy, openX, openY]}
+        stroke="#3b82f6"
+        strokeWidth={1}
+        opacity={0.3}
+        dash={[4, 3]}
+        lineCap="round"
+        listening={false}
+      />
+    </Group>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Root ghost renderer
+// ---------------------------------------------------------------------------
 
 const GhostRenderer = ({ ghost }: Props) => {
   if (!ghost) return null;
@@ -59,7 +188,14 @@ const GhostRenderer = ({ ghost }: Props) => {
           <Circle x={ghost.x} y={ghost.y} radius={4} fill="#3b82f6" listening={false} />
         </>
       );
+
+    case "window":
+      return <WindowGhost ghost={ghost} />;
+
+    case "door":
+      return <DoorGhost ghost={ghost} />;
   }
 };
 
 export default GhostRenderer;
+
