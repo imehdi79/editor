@@ -18,7 +18,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   viewMode: "2d",
   snapGrid: 0.5,
   axisAngleThreshold: 3,
-  snapRadius: window.matchMedia("(pointer: coarse)").matches ? 28 : 12,
+  snapRadius: window.matchMedia("(pointer: coarse)").matches ? 16 : 6,
   dimensionUnit: "cm",
   pixelsPerMeter: 100,
 

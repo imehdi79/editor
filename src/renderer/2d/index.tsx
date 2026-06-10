@@ -67,6 +67,7 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
   // Selection / transform engine — only meaningful when tool === "select".
   const {
     previewShape,
+    connectedPreviews,
     hints: selectHints,
     onMouseDown: selectDown,
     onMouseMove: selectMove,
@@ -130,7 +131,7 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
         {isDrawingTool && <GhostRenderer ghost={ghost} />}
 
         {/* Selection handles — visible only in select mode */}
-        {tool === "select" && <SelectionRenderer previewShape={previewShape} />}
+        {tool === "select" && <SelectionRenderer previewShape={previewShape} connectedPreviews={connectedPreviews} />}
 
         {/* Hints and live dimension — active for drawing + select tools */}
         {tool !== null && (

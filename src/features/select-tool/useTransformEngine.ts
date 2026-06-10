@@ -31,6 +31,7 @@ import { useSelectionStore } from "@/store/selection.store";
 import { useEditorStore } from "@/store/editor.store";
 import { resolvePoint, type ResolveConfig } from "@/core/drawing-engine/resolvePoint";
 import type { Shape, DrawingHints, GhostShape } from "@/core/drawing-engine/drawing.types";
+import { computeTopology, nodeKey, type TopologyMap } from "@/core/topology/computeTopology";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -91,7 +92,13 @@ const snapAngle = (angleDeg: number, threshold: number): number => {
 type TransformMode =
   | { kind: "idle" }
   | { kind: "move"; shapeId: string; grabOffsetX: number; grabOffsetY: number }
-  | { kind: "resize"; shapeId: string; handle: "p1" | "p2" }
+  | {
+      kind: "resize";
+      shapeId: string;
+      handle: "p1" | "p2";
+      /** Topology node key — all endpoints sharing this key move together */
+      nodeKey: string;
+    }
   | { kind: "rotate"; shapeId: string };
 
 // ---------------------------------------------------------------------------
@@ -114,10 +121,7 @@ const hitTestShape = (x: number, y: number, shape: Shape): "p1" | "p2" | "rotate
   if (distSq(x, y, rh.x, rh.y) < rSq) return "rotate";
 
   // Body — window and door have thickness just like walls
-  const thick =
-    shape.type === "wall" || shape.type === "window" || shape.type === "door"
-      ? shape.thickness / 2
-      : 0;
+  const thick = shape.type === "wall" || shape.type === "window" || shape.type === "door" ? shape.thickness / 2 : 0;
   const effectiveRSq = Math.max(BODY_HIT_RADIUS ** 2, thick ** 2);
   if (pointToSegmentDistSq(x, y, shape.x1, shape.y1, shape.x2, shape.y2) <= effectiveRSq) return "body";
 
@@ -154,6 +158,14 @@ export const useTransformEngine = () => {
 
   const modeRef = useRef<TransformMode>({ kind: "idle" });
   const [previewShape, setPreviewShape] = useState<GhostShape>(null);
+  /**
+   * During a shared-node resize, every shape that shares the dragged node
+   * needs to preview its updated position. This map holds those previews.
+   * Key = shapeId, value = partial coordinate patch.
+   */
+  const [connectedPreviews, setConnectedPreviews] = useState<
+    Record<string, { x1?: number; y1?: number; x2?: number; y2?: number }>
+  >({});
   const [hints, setHints] = useState<DrawingHints>(EMPTY_HINTS);
 
   const makeConfig = useCallback(
@@ -161,8 +173,6 @@ export const useTransformEngine = () => {
     [snapGrid, axisAngleThreshold, snapRadius, dimensionUnit, pixelsPerMeter, shapes],
   );
 
-  // Build a shapes map that excludes the shape being transformed so
-  // resolvePoint doesn't snap to the shape's own endpoints mid-drag.
   const makeConfigExcluding = useCallback(
     (excludeId: string): ResolveConfig => {
       const { [excludeId]: _, ...rest } = shapes;
@@ -181,7 +191,6 @@ export const useTransformEngine = () => {
       const hit = hitTestShapes(x, y, shapes);
 
       if (!hit) {
-        // Clicked empty canvas — deselect
         selectShape(null);
         modeRef.current = { kind: "idle" };
         return;
@@ -191,8 +200,6 @@ export const useTransformEngine = () => {
       const shape = shapes[hit.shapeId];
 
       if (hit.zone === "body") {
-        // Capture grab offset — for move, the shape moves so the grabbed
-        // point tracks under the cursor
         if (shape.type === "text") {
           modeRef.current = {
             kind: "move",
@@ -205,13 +212,30 @@ export const useTransformEngine = () => {
           const my = (shape.y1 + shape.y2) / 2;
           modeRef.current = { kind: "move", shapeId: hit.shapeId, grabOffsetX: rawX - mx, grabOffsetY: rawY - my };
         }
-        setPreviewShape(shape.type === "text" ? { ...shape } : { ...shape });
-      } else if (hit.zone === "p1" || hit.zone === "p2") {
-        modeRef.current = { kind: "resize", shapeId: hit.shapeId, handle: hit.zone };
         setPreviewShape({ ...shape } as GhostShape);
+        setConnectedPreviews({});
+      } else if (hit.zone === "p1" || hit.zone === "p2") {
+        // Compute the node key for this endpoint so onMouseMove can fan out
+        const epX =
+          hit.zone === "p1"
+            ? (shape as Exclude<Shape, { type: "text" }>).x1
+            : (shape as Exclude<Shape, { type: "text" }>).x2;
+        const epY =
+          hit.zone === "p1"
+            ? (shape as Exclude<Shape, { type: "text" }>).y1
+            : (shape as Exclude<Shape, { type: "text" }>).y2;
+        modeRef.current = {
+          kind: "resize",
+          shapeId: hit.shapeId,
+          handle: hit.zone,
+          nodeKey: nodeKey(epX, epY),
+        };
+        setPreviewShape({ ...shape } as GhostShape);
+        setConnectedPreviews({});
       } else if (hit.zone === "rotate") {
         modeRef.current = { kind: "rotate", shapeId: hit.shapeId };
         setPreviewShape({ ...shape } as GhostShape);
+        setConnectedPreviews({});
       }
     },
     [shapes, selectShape, makeConfig],
@@ -248,13 +272,10 @@ export const useTransformEngine = () => {
             perpLocked: false,
             dimension: null,
           });
+          setConnectedPreviews({});
         } else {
           const mx0 = (shape.x1 + shape.x2) / 2;
           const my0 = (shape.y1 + shape.y2) / 2;
-
-          // Target midpoint = cursor minus the offset we grabbed at.
-          // Pass (mx0, my0) as the anchor so axis-lock works relative to
-          // the shape's original midpoint.
           const {
             x: mx,
             y: my,
@@ -262,14 +283,7 @@ export const useTransformEngine = () => {
             pointSnap,
             axisLocked,
             axisLockAngle,
-          } = resolvePoint(
-            rawX - mode.grabOffsetX, // ← just this, no + mx0
-            rawY - mode.grabOffsetY,
-            config,
-            mx0,
-            my0,
-          );
-
+          } = resolvePoint(rawX - mode.grabOffsetX, rawY - mode.grabOffsetY, config, mx0, my0);
           const dx = mx - mx0;
           const dy = my - my0;
           setPreviewShape({
@@ -287,6 +301,27 @@ export const useTransformEngine = () => {
             perpLocked: false,
             dimension: null,
           });
+
+          // Fan out to all shapes connected at either endpoint of the moved shape.
+          // Each connected endpoint translates by the same (dx, dy) so walls stay joined.
+          const topology = computeTopology(shapes);
+          const previews: Record<string, { x1?: number; y1?: number; x2?: number; y2?: number }> = {};
+
+          for (const epKey of [nodeKey(shape.x1, shape.y1), nodeKey(shape.x2, shape.y2)]) {
+            const node = topology.get(epKey);
+            if (!node) continue;
+            for (const ref of node.refs) {
+              if (ref.shapeId === mode.shapeId) continue; // primary shape handled above
+              // Accumulate — a shape connected at BOTH endpoints (degenerate loop) gets both coords updated
+              const existing = previews[ref.shapeId] ?? {};
+              previews[ref.shapeId] =
+                ref.handle === "p1"
+                  ? { ...existing, x1: ref.x + dx, y1: ref.y + dy }
+                  : { ...existing, x2: ref.x + dx, y2: ref.y + dy };
+            }
+          }
+
+          setConnectedPreviews(previews);
         }
       }
 
@@ -304,9 +339,24 @@ export const useTransformEngine = () => {
           fixedY,
         );
 
+        // Update the primary selected shape preview
         const updated = mode.handle === "p1" ? { ...shape, x1: x, y1: y } : { ...shape, x2: x, y2: y };
-
         setPreviewShape(updated as GhostShape);
+
+        // Fan out to all shapes that share the dragged node
+        // Topology is recomputed from current shapes (cheap — O(n))
+        const topology = computeTopology(shapes);
+        const node = topology.get(mode.nodeKey);
+        const previews: Record<string, { x1?: number; y1?: number; x2?: number; y2?: number }> = {};
+
+        if (node) {
+          for (const ref of node.refs) {
+            if (ref.shapeId === mode.shapeId) continue; // primary shape handled above
+            previews[ref.shapeId] = ref.handle === "p1" ? { x1: x, y1: y } : { x2: x, y2: y };
+          }
+        }
+
+        setConnectedPreviews(previews);
         setHints({
           snapResult: pointSnap.snapped ? pointSnap : null,
           guides,
@@ -334,13 +384,14 @@ export const useTransformEngine = () => {
 
         setPreviewShape({ ...shape, x1, y1, x2, y2 } as GhostShape);
         setHints(EMPTY_HINTS);
+        setConnectedPreviews({});
       }
     },
     [shapes, makeConfigExcluding, axisAngleThreshold],
   );
 
   // -------------------------------------------------------------------------
-  // mouseup — commit to store (creates one undo entry)
+  // mouseup — commit to store (one undo entry covers all connected shapes)
   // -------------------------------------------------------------------------
 
   const onMouseUp = useCallback(
@@ -348,24 +399,29 @@ export const useTransformEngine = () => {
       const mode = modeRef.current;
       if (mode.kind === "idle") return;
 
+      // Commit the primary shape
       const shape = shapes[mode.shapeId];
       if (shape && previewShape) {
         const { id: _id, ...patch } = previewShape as Shape;
         updateShape(mode.shapeId, patch);
       }
 
+      // Commit all connected shapes that were co-dragged
+      for (const [shapeId, patch] of Object.entries(connectedPreviews)) {
+        updateShape(shapeId, patch as Partial<Omit<Shape, "id" | "type">>);
+      }
+
       modeRef.current = { kind: "idle" };
       setPreviewShape(null);
+      setConnectedPreviews({});
       setHints(EMPTY_HINTS);
     },
-    [shapes, previewShape, updateShape],
+    [shapes, previewShape, connectedPreviews, updateShape],
   );
 
-  // The currently-dragging shape id (so SelectionRenderer can hide the
-  // static shape and show the preview instead)
   const transformingId = modeRef.current.kind !== "idle" ? modeRef.current.shapeId : null;
 
-  return { previewShape, hints, onMouseDown, onMouseMove, onMouseUp, transformingId, selectedId };
+  return { previewShape, connectedPreviews, hints, onMouseDown, onMouseMove, onMouseUp, transformingId, selectedId };
 };
 
 // ---------------------------------------------------------------------------
