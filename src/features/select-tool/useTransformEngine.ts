@@ -30,16 +30,17 @@ import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import { useEditorStore } from "@/store/editor.store";
 import { resolvePoint, type ResolveConfig } from "@/core/drawing-engine/resolvePoint";
-import type { Shape, DrawingHints, GhostShape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, DrawingHints, GhostShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeTopology, nodeKey, type TopologyMap } from "@/core/topology/computeTopology";
+import { findWallById, slideOpening, resizeOpeningEndpoint, tOnWall, wallLength } from "@/core/wall-utils/wallGeometry";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const HANDLE_HIT_RADIUS = 12; // px — endpoint / rotation handle hit zone
-const ROTATE_HANDLE_OFFSET = 28; // px above midpoint for the rotation handle
-const BODY_HIT_RADIUS = 8; // px — shape body hit zone
+const HANDLE_HIT_RADIUS = 12;
+export const ROTATE_HANDLE_OFFSET = 28;
+const BODY_HIT_RADIUS = 8;
 
 const EMPTY_HINTS: DrawingHints = {
   snapResult: null,
@@ -105,7 +106,7 @@ type TransformMode =
 // Hit test — what did the pointer land on?
 // ---------------------------------------------------------------------------
 
-const hitTestShape = (x: number, y: number, shape: Shape): "p1" | "p2" | "rotate" | "body" | null => {
+const hitTestShape = (x: number, y: number, shape: Shape): "p1" | "p2" | "rotate" | "hinge" | "body" | null => {
   if (shape.type === "text") {
     return distSq(x, y, shape.x, shape.y) < (HANDLE_HIT_RADIUS * 2) ** 2 ? "body" : null;
   }
@@ -116,11 +117,23 @@ const hitTestShape = (x: number, y: number, shape: Shape): "p1" | "p2" | "rotate
   if (distSq(x, y, shape.x1, shape.y1) < rSq) return "p1";
   if (distSq(x, y, shape.x2, shape.y2) < rSq) return "p2";
 
-  // Rotation handle
+  // Rotation handle (above midpoint)
   const rh = rotationHandlePos(shape);
   if (distSq(x, y, rh.x, rh.y) < rSq) return "rotate";
 
-  // Body — window and door have thickness just like walls
+  // Door: second handle below midpoint for hingeSide toggle
+  if (shape.type === "door") {
+    const mx = (shape.x1 + shape.x2) / 2;
+    const my = (shape.y1 + shape.y2) / 2;
+    const dx = shape.x2 - shape.x1;
+    const dy = shape.y2 - shape.y1;
+    const len = Math.hypot(dx, dy) || 1;
+    const hx = mx - (-dy / len) * ROTATE_HANDLE_OFFSET;
+    const hy = my - (dx / len) * ROTATE_HANDLE_OFFSET;
+    if (distSq(x, y, hx, hy) < rSq) return "hinge";
+  }
+
+  // Body
   const thick = shape.type === "wall" || shape.type === "window" || shape.type === "door" ? shape.thickness / 2 : 0;
   const effectiveRSq = Math.max(BODY_HIT_RADIUS ** 2, thick ** 2);
   if (pointToSegmentDistSq(x, y, shape.x1, shape.y1, shape.x2, shape.y2) <= effectiveRSq) return "body";
@@ -132,7 +145,7 @@ const hitTestShapes = (
   x: number,
   y: number,
   shapes: Record<string, Shape>,
-): { shapeId: string; zone: "p1" | "p2" | "rotate" | "body" } | null => {
+): { shapeId: string; zone: "p1" | "p2" | "rotate" | "hinge" | "body" } | null => {
   for (const shape of Object.values(shapes).reverse()) {
     const zone = hitTestShape(x, y, shape);
     if (zone) return { shapeId: shape.id, zone };
@@ -233,9 +246,32 @@ export const useTransformEngine = () => {
         setPreviewShape({ ...shape } as GhostShape);
         setConnectedPreviews({});
       } else if (hit.zone === "rotate") {
-        modeRef.current = { kind: "rotate", shapeId: hit.shapeId };
-        setPreviewShape({ ...shape } as GhostShape);
-        setConnectedPreviews({});
+        if (shape.type === "door") {
+          // Toggle swingDirection: inward ↔ outward
+          const { id: _id, ...patch } = {
+            ...shape,
+            swingDirection: shape.swingDirection === "inward" ? "outward" : "inward",
+          } as DoorShape;
+          updateShape(hit.shapeId, patch);
+          modeRef.current = { kind: "idle" };
+        } else if (shape.type === "window") {
+          // Flip window direction (swap endpoints)
+          const { id: _id, ...patch } = { ...shape, x1: shape.x2, y1: shape.y2, x2: shape.x1, y2: shape.y1 };
+          updateShape(hit.shapeId, patch);
+          modeRef.current = { kind: "idle" };
+        } else {
+          modeRef.current = { kind: "rotate", shapeId: hit.shapeId };
+          setPreviewShape({ ...shape } as GhostShape);
+          setConnectedPreviews({});
+        }
+      } else if (hit.zone === "hinge" && shape.type === "door") {
+        // Toggle hingeSide: left ↔ right
+        const { id: _id, ...patch } = {
+          ...shape,
+          hingeSide: shape.hingeSide === "left" ? "right" : "left",
+        } as DoorShape;
+        updateShape(hit.shapeId, patch);
+        modeRef.current = { kind: "idle" };
       }
     },
     [shapes, selectShape, makeConfig],
@@ -273,6 +309,30 @@ export const useTransformEngine = () => {
             dimension: null,
           });
           setConnectedPreviews({});
+        } else if (shape.type === "door" || shape.type === "window") {
+          // Wall-constrained slide: project cursor onto host wall, preserve width
+          const wall = findWallById(shape.wallId, shapes);
+          if (wall) {
+            const halfW = Math.hypot(shape.x2 - shape.x1, shape.y2 - shape.y1) / 2;
+            const newCoords = slideOpening(wall, rawX, rawY, halfW);
+            const newWidth = Math.hypot(newCoords.x2 - newCoords.x1, newCoords.y2 - newCoords.y1);
+            setPreviewShape({ ...shape, ...newCoords, width: newWidth } as GhostShape);
+          } else {
+            // No host wall — fall back to free move (orphaned opening)
+            const mx0 = (shape.x1 + shape.x2) / 2;
+            const my0 = (shape.y1 + shape.y2) / 2;
+            const dx = rawX - mode.grabOffsetX - mx0;
+            const dy = rawY - mode.grabOffsetY - my0;
+            setPreviewShape({
+              ...shape,
+              x1: shape.x1 + dx,
+              y1: shape.y1 + dy,
+              x2: shape.x2 + dx,
+              y2: shape.y2 + dy,
+            } as GhostShape);
+          }
+          setHints(EMPTY_HINTS);
+          setConnectedPreviews({});
         } else {
           const mx0 = (shape.x1 + shape.x2) / 2;
           const my0 = (shape.y1 + shape.y2) / 2;
@@ -303,16 +363,13 @@ export const useTransformEngine = () => {
           });
 
           // Fan out to all shapes connected at either endpoint of the moved shape.
-          // Each connected endpoint translates by the same (dx, dy) so walls stay joined.
           const topology = computeTopology(shapes);
           const previews: Record<string, { x1?: number; y1?: number; x2?: number; y2?: number }> = {};
-
           for (const epKey of [nodeKey(shape.x1, shape.y1), nodeKey(shape.x2, shape.y2)]) {
             const node = topology.get(epKey);
             if (!node) continue;
             for (const ref of node.refs) {
-              if (ref.shapeId === mode.shapeId) continue; // primary shape handled above
-              // Accumulate — a shape connected at BOTH endpoints (degenerate loop) gets both coords updated
+              if (ref.shapeId === mode.shapeId) continue;
               const existing = previews[ref.shapeId] ?? {};
               previews[ref.shapeId] =
                 ref.handle === "p1"
@@ -320,69 +377,81 @@ export const useTransformEngine = () => {
                   : { ...existing, x2: ref.x + dx, y2: ref.y + dy };
             }
           }
-
           setConnectedPreviews(previews);
         }
       }
 
       // ---- RESIZE ----
       else if (mode.kind === "resize" && shape.type !== "text") {
-        const fixedX = mode.handle === "p1" ? shape.x2 : shape.x1;
-        const fixedY = mode.handle === "p1" ? shape.y2 : shape.y1;
-        const config = makeConfigExcluding(mode.shapeId);
-
-        const { x, y, guides, pointSnap, axisLocked, axisLockAngle, perpLocked, dimension } = resolvePoint(
-          rawX,
-          rawY,
-          config,
-          fixedX,
-          fixedY,
-        );
-
-        // Update the primary selected shape preview
-        const updated = mode.handle === "p1" ? { ...shape, x1: x, y1: y } : { ...shape, x2: x, y2: y };
-        setPreviewShape(updated as GhostShape);
-
-        // Fan out to all shapes that share the dragged node
-        // Topology is recomputed from current shapes (cheap — O(n))
-        const topology = computeTopology(shapes);
-        const node = topology.get(mode.nodeKey);
-        const previews: Record<string, { x1?: number; y1?: number; x2?: number; y2?: number }> = {};
-
-        if (node) {
-          for (const ref of node.refs) {
-            if (ref.shapeId === mode.shapeId) continue; // primary shape handled above
-            previews[ref.shapeId] = ref.handle === "p1" ? { x1: x, y1: y } : { x2: x, y2: y };
+        if (shape.type === "door" || shape.type === "window") {
+          // Wall-constrained resize: drag one endpoint along the wall
+          const wall = findWallById(shape.wallId, shapes);
+          if (wall) {
+            // Fixed endpoint's parametric t on the wall
+            const fixedX = mode.handle === "p1" ? shape.x2 : shape.x1;
+            const fixedY = mode.handle === "p1" ? shape.y2 : shape.y1;
+            const fixedT = tOnWall(fixedX, fixedY, wall);
+            const newCoords = resizeOpeningEndpoint(wall, fixedT, rawX, rawY);
+            const newWidth = Math.hypot(newCoords.x2 - newCoords.x1, newCoords.y2 - newCoords.y1);
+            setPreviewShape({ ...shape, ...newCoords, width: newWidth } as GhostShape);
           }
-        }
+          setHints(EMPTY_HINTS);
+          setConnectedPreviews({});
+        } else {
+          const fixedX = mode.handle === "p1" ? shape.x2 : shape.x1;
+          const fixedY = mode.handle === "p1" ? shape.y2 : shape.y1;
+          const config = makeConfigExcluding(mode.shapeId);
 
-        setConnectedPreviews(previews);
-        setHints({
-          snapResult: pointSnap.snapped ? pointSnap : null,
-          guides,
-          axisLocked,
-          axisLockAngle,
-          perpLocked,
-          dimension,
-        });
+          const { x, y, guides, pointSnap, axisLocked, axisLockAngle, perpLocked, dimension } = resolvePoint(
+            rawX,
+            rawY,
+            config,
+            fixedX,
+            fixedY,
+          );
+
+          const updated = mode.handle === "p1" ? { ...shape, x1: x, y1: y } : { ...shape, x2: x, y2: y };
+          setPreviewShape(updated as GhostShape);
+
+          const topology = computeTopology(shapes);
+          const node = topology.get(mode.nodeKey);
+          const previews: Record<string, { x1?: number; y1?: number; x2?: number; y2?: number }> = {};
+          if (node) {
+            for (const ref of node.refs) {
+              if (ref.shapeId === mode.shapeId) continue;
+              previews[ref.shapeId] = ref.handle === "p1" ? { x1: x, y1: y } : { x2: x, y2: y };
+            }
+          }
+          setConnectedPreviews(previews);
+          setHints({
+            snapResult: pointSnap.snapped ? pointSnap : null,
+            guides,
+            axisLocked,
+            axisLockAngle,
+            perpLocked,
+            dimension,
+          });
+        }
       }
 
       // ---- ROTATE ----
       else if (mode.kind === "rotate" && shape.type !== "text") {
+        // door/window rotate is instant-commit on mousedown — never reaches mousemove
+        if (shape.type === "door" || shape.type === "window") return;
+        // All other shapes: free rotate following cursor
         const mx = (shape.x1 + shape.x2) / 2;
         const my = (shape.y1 + shape.y2) / 2;
         const halfLen = Math.hypot(shape.x2 - shape.x1, shape.y2 - shape.y1) / 2;
-
         const rawAngleDeg = Math.atan2(rawY - my, rawX - mx) * (180 / Math.PI);
         const angleDeg = snapAngle(rawAngleDeg, axisAngleThreshold);
         const angleRad = angleDeg * (Math.PI / 180);
-
-        const x1 = mx - Math.cos(angleRad) * halfLen;
-        const y1 = my - Math.sin(angleRad) * halfLen;
-        const x2 = mx + Math.cos(angleRad) * halfLen;
-        const y2 = my + Math.sin(angleRad) * halfLen;
-
-        setPreviewShape({ ...shape, x1, y1, x2, y2 } as GhostShape);
+        setPreviewShape({
+          ...shape,
+          x1: mx - Math.cos(angleRad) * halfLen,
+          y1: my - Math.sin(angleRad) * halfLen,
+          x2: mx + Math.cos(angleRad) * halfLen,
+          y2: my + Math.sin(angleRad) * halfLen,
+        } as GhostShape);
         setHints(EMPTY_HINTS);
         setConnectedPreviews({});
       }

@@ -47,8 +47,7 @@ export interface OpeningGeometry {
 // ---------------------------------------------------------------------------
 
 /** Length of a wall segment in canvas pixels. */
-export const wallLength = (wall: WallShape): number =>
-  Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+export const wallLength = (wall: WallShape): number => Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
 
 /** Project a point onto a wall segment, returning the clamped t ∈ [0,1]. */
 export const projectOntoWall = (px: number, py: number, wall: WallShape): WallProjection => {
@@ -159,7 +158,67 @@ export const wallNormal = (wall: WallShape, side: 1 | -1): { nx: number; ny: num
   const dy = wall.y2 - wall.y1;
   const len = Math.hypot(dx, dy) || 1;
   // Left normal: (-dy, dx) / len  →  side=+1 is left, side=-1 is right
-  return { nx: ((-dy / len) * side), ny: ((dx / len) * side) };
+  return { nx: (-dy / len) * side, ny: (dx / len) * side };
+};
+
+/**
+ * Slide an opening (door or window) along its host wall so its centre lands
+ * at the projection of (cursorX, cursorY) onto the wall.
+ * The opening width (halfWidthPx) is preserved. Clamped to wall bounds.
+ *
+ * Returns new {x1,y1,x2,y2} in canvas space.
+ */
+export const slideOpening = (
+  wall: WallShape,
+  cursorX: number,
+  cursorY: number,
+  halfWidthPx: number,
+  minWidth: number = 20,
+): { x1: number; y1: number; x2: number; y2: number } => {
+  const proj = projectOntoWall(cursorX, cursorY, wall);
+  const geo = computeOpeningGeometry(wall, proj.t, halfWidthPx, minWidth);
+  return { x1: geo.x1, y1: geo.y1, x2: geo.x2, y2: geo.y2 };
+};
+
+/**
+ * Resize an opening by dragging one endpoint along the wall.
+ * fixedT is the parametric position of the endpoint that stays fixed.
+ * The dragged endpoint is projected onto the wall from the cursor position.
+ * Returns new {x1,y1,x2,y2} in canvas space.
+ */
+export const resizeOpeningEndpoint = (
+  wall: WallShape,
+  fixedT: number,
+  cursorX: number,
+  cursorY: number,
+  minWidth: number = 20,
+): { x1: number; y1: number; x2: number; y2: number } => {
+  const dragProj = projectOntoWall(cursorX, cursorY, wall);
+  const len = wallLength(wall);
+  const minT = minWidth / len;
+
+  // Ensure the dragged t stays at least minWidth away from fixed t
+  let dragT = dragProj.t;
+  if (Math.abs(dragT - fixedT) < minT) {
+    dragT = dragT > fixedT ? fixedT + minT : fixedT - minT;
+  }
+  dragT = Math.max(0, Math.min(1, dragT));
+
+  // t1 is always the smaller t (wall direction preserved)
+  const t1 = Math.min(fixedT, dragT);
+  const t2 = Math.max(fixedT, dragT);
+  const p1 = wallPointAtT(wall, t1);
+  const p2 = wallPointAtT(wall, t2);
+  return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+};
+
+/**
+ * Parametric position (t) of a canvas point along the wall.
+ * Assumes the point is already on the wall (e.g. a stored x1/y1).
+ */
+export const tOnWall = (px: number, py: number, wall: WallShape): number => {
+  const proj = projectOntoWall(px, py, wall);
+  return proj.t;
 };
 
 /**

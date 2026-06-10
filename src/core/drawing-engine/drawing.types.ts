@@ -69,9 +69,18 @@ export interface WindowShape extends BaseShape {
 /**
  * DoorShape — a door opening cut into a wall with a swing arc.
  *
- * Same coordinate contract as WindowShape.
- * side = 1 means the swing arc opens to the left of the wall direction;
- * side = -1 means it opens to the right.
+ * Two independent properties define all four valid door configurations:
+ *
+ *   hingeSide      — which end of the opening is hinged.
+ *                    "left"  → hinge at x1/y1 (wall start direction)
+ *                    "right" → hinge at x2/y2 (wall end direction)
+ *
+ *   swingDirection — which side of the wall the door opens toward,
+ *                    relative to the wall's left-hand normal.
+ *                    "inward"  → toward wall normal
+ *                    "outward" → away from wall normal
+ *
+ * Use computeDoorSwing() to derive all rendering geometry from these fields.
  */
 export interface DoorShape extends BaseShape {
   type: "door";
@@ -82,8 +91,8 @@ export interface DoorShape extends BaseShape {
   width: number;
   thickness: number;
   wallId: ShapeId | null;
-  /** Which side of the wall the door swings toward (+1 left / -1 right) */
-  side: 1 | -1;
+  hingeSide: "left" | "right";
+  swingDirection: "inward" | "outward";
 }
 
 export type Shape = WallShape | LineShape | DashedLineShape | TextShape | WindowShape | DoorShape;

@@ -24,7 +24,7 @@ import { Circle, Group, Line } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import type { Shape, GhostShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
-import { rotationHandlePos } from "@/features/select-tool/useTransformEngine";
+import { rotationHandlePos, ROTATE_HANDLE_OFFSET } from "@/features/select-tool/useTransformEngine";
 import { computeTopology, nodeKey } from "@/core/topology/computeTopology";
 
 const SELECTION_COLOR = "#3b82f6";
@@ -72,29 +72,36 @@ const SegmentHandles = ({ shape }: { shape: Exclude<Shape, { type: "text" }> }) 
       <Circle x={mx} y={my} radius={HANDLE_RADIUS - 1} fill={SELECTION_COLOR} opacity={0.75} listening={false} />
       {/* Rotation arm */}
       <Line points={[mx, my, rh.x, rh.y]} stroke={SELECTION_COLOR} strokeWidth={1} opacity={0.5} listening={false} />
-      {/* Rotation handle */}
+      {/* Rotation/flip handle — amber for walls/lines, blue for door swing toggle */}
       <Circle
         x={rh.x}
         y={rh.y}
         radius={ROTATE_HANDLE_RADIUS}
         fill="white"
-        stroke="#f59e0b"
+        stroke={shape.type === "door" || shape.type === "window" ? "#3b82f6" : "#f59e0b"}
         strokeWidth={1.5}
         listening={false}
       />
-      {/* Door swing-side indicator */}
+      {/* Door: second handle at midpoint for hingeSide toggle */}
       {shape.type === "door" &&
         (() => {
+          const mx = (shape.x1 + shape.x2) / 2;
+          const my = (shape.y1 + shape.y2) / 2;
           const dx = shape.x2 - shape.x1;
           const dy = shape.y2 - shape.y1;
           const len = Math.hypot(dx, dy) || 1;
+          // Place hinge toggle handle on the opposite side of the body handle
+          const hingeHandleX = mx - (-dy / len) * ROTATE_HANDLE_OFFSET;
+          const hingeHandleY = my - (dx / len) * ROTATE_HANDLE_OFFSET;
           return (
             <Circle
-              x={mx + (-dy / len) * shape.side * 14}
-              y={my + (dx / len) * shape.side * 14}
-              radius={3}
-              fill="#92400e"
-              opacity={0.7}
+              key="hinge-handle"
+              x={hingeHandleX}
+              y={hingeHandleY}
+              radius={ROTATE_HANDLE_RADIUS}
+              fill="white"
+              stroke="#10b981"
+              strokeWidth={1.5}
               listening={false}
             />
           );

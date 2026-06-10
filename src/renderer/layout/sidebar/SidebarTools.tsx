@@ -1,5 +1,6 @@
 import type { SideBarToolsList } from "./tools.types";
 import SidebarToolGroup from "./SidebarToolGroup";
+import SidebarToolMenu from "./SidebarToolMenu";
 import {
   Type,
   BrickWallIcon,
@@ -11,10 +12,15 @@ import {
   Trash2,
   DoorOpen,
   AppWindowMac,
+  Hand,
+  Layers,
+  PenLine,
 } from "lucide-react";
 
-const selectionTools: SideBarToolsList<"select"> = {
+// Select and Pan are always-visible bare buttons
+const navigationTools: SideBarToolsList<"select" | "pan"> = {
   select: { icon: <SplinePointer size={16} />, label: "Select" },
+  pan: { icon: <Hand size={16} />, label: "Pan" },
 };
 
 const structureTools: SideBarToolsList<"wall" | "window" | "door"> = {
@@ -37,9 +43,20 @@ const actionTools: SideBarToolsList<"undo" | "redo" | "delete"> = {
 
 const SidebarTools = () => (
   <div className="flex flex-col gap-2">
-    <SidebarToolGroup tools={selectionTools} />
-    <SidebarToolGroup tools={structureTools} />
-    <SidebarToolGroup tools={drawingTools} />
+    {/* Select + Pan — always visible */}
+    <SidebarToolGroup tools={navigationTools} />
+
+    {/* Structure tools — collapsed to icon menu */}
+    <div className="flex flex-col gap-0.5 bg-popover p-1 rounded-lg border shadow-2xl">
+      <SidebarToolMenu groupIcon={<Layers size={16} />} tools={structureTools} tooltip="Structure" />
+    </div>
+
+    {/* Drawing tools — collapsed to icon menu */}
+    <div className="flex flex-col gap-0.5 bg-popover p-1 rounded-lg border shadow-2xl">
+      <SidebarToolMenu groupIcon={<PenLine size={16} />} tools={drawingTools} tooltip="Drawing" />
+    </div>
+
+    {/* Action tools */}
     <SidebarToolGroup tools={actionTools} />
   </div>
 );

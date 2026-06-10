@@ -7,6 +7,7 @@ export const TOOL_CURSORS: Record<NoOneClickTools, string> = {
   "dashed-line": "crosshair",
   text: "text",
   select: "default",
+  pan: "grab",
   door: "crosshair",
   window: "crosshair",
 };
