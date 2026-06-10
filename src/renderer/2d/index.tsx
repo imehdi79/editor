@@ -11,7 +11,7 @@ import GridRenderer from "./GridRenderer";
 import { useStageSize } from "./useStageSize";
 import { useStageEvents } from "./useStageEvents";
 import DimensionRenderer from "./DimensionRenderer";
-import ShapeDimensionsRenderer from "./ShapeDimensionsRenderer";
+import DimensionLayerRenderer from "./DimensionLayerRenderer";
 
 // ---------------------------------------------------------------------------
 // Drawing layer — active for all shape-drawing tools
@@ -32,9 +32,11 @@ const DrawingLayer = ({
       <Layer>
         <GridRenderer />
         <ShapeRenderer />
-        <ShapeDimensionsRenderer />
+        {/* CAD-grade committed-shape dimension annotations */}
+        <DimensionLayerRenderer />
         <GhostRenderer ghost={ghost} />
         <HintsRenderer hints={hints} />
+        {/* Live drag dimension — shown only while drawing */}
         <DimensionRenderer hints={hints} />
       </Layer>
     </Stage>
@@ -43,7 +45,6 @@ const DrawingLayer = ({
 
 // ---------------------------------------------------------------------------
 // Selection layer — active for the select tool
-// Handles move, resize, rotate via useTransformEngine.
 // ---------------------------------------------------------------------------
 
 const SelectionLayer = () => {
@@ -56,9 +57,11 @@ const SelectionLayer = () => {
       <Layer>
         <GridRenderer />
         <ShapeRenderer />
-        <ShapeDimensionsRenderer />
+        {/* CAD-grade committed-shape dimension annotations */}
+        <DimensionLayerRenderer />
         <SelectionRenderer previewShape={previewShape} />
         <HintsRenderer hints={hints} />
+        {/* Live dimension during select-tool resize / move */}
         <DimensionRenderer hints={hints} />
       </Layer>
     </Stage>

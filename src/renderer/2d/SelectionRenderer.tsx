@@ -7,10 +7,10 @@
  * does its own hit-testing to avoid Konva event bubbling complications.
  */
 
-import { Circle, Group, Line, Shape as KonvaShape } from "react-konva";
+import { Circle, Group, Line } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
-import type { Shape, GhostShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, GhostShape } from "@/core/drawing-engine/drawing.types";
 import { rotationHandlePos } from "@/features/select-tool/useTransformEngine";
 
 const SELECTION_COLOR = "#3b82f6";
