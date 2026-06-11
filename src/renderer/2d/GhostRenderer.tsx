@@ -140,7 +140,7 @@ const GhostRenderer = ({ ghost }: Props) => {
           stroke="#3b82f6"
           strokeWidth={ghost.thickness}
           opacity={0.5}
-          lineCap="round"
+          lineCap="butt"
           listening={false}
         />
       );

@@ -14,6 +14,9 @@ export interface WallShape extends BaseShape {
   x2: number;
   y2: number;
   thickness: number;
+  /** Wall height in real units. Not drawn in 2D; used for future
+   *  surface/volume (area) calculations. Optional for back-compat. */
+  height?: number;
 }
 
 export interface LineShape extends BaseShape {

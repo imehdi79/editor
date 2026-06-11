@@ -131,7 +131,7 @@ const renderShape = (shape: Shape) => {
           points={[shape.x1, shape.y1, shape.x2, shape.y2]}
           stroke="#1e293b"
           strokeWidth={shape.thickness}
-          lineCap="round"
+          lineCap="butt"
         />
       );
 
@@ -171,7 +171,6 @@ const renderShape = (shape: Shape) => {
 
 const ShapeRenderer = () => {
   const shapes = useFloorPlanStore((s) => s.shapes);
-  console.log({ shapes });
 
   // Render walls first, then openings (so white infill cuts through wall lines)
   const sorted = Object.values(shapes).sort((a, b) => {
