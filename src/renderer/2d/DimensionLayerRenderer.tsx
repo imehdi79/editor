@@ -89,7 +89,7 @@ const TickMark = ({
   conflicted: boolean;
 }) => {
   // Tick is drawn at 45° relative to the dimension line direction
-  const tickAngleRad = ((angleDeg + 45) * Math.PI) / 180;
+  const tickAngleRad = ((angleDeg + 90) * Math.PI) / 180;
   const tx = Math.cos(tickAngleRad) * TICK_HALF;
   const ty = Math.sin(tickAngleRad) * TICK_HALF;
 
