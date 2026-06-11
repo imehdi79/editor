@@ -160,6 +160,7 @@ const GridRenderer = () => {
           // We temporarily undo the transform, draw, then restore.
           ctx.save();
           // ctx.resetTransform?.();
+          ctx.setTransform(1,0,0,1,0,0)
 
           // Fallback for environments without resetTransform (older browsers)
           // In that case we scale and translate manually below.
