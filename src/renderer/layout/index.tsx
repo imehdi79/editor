@@ -1,5 +1,6 @@
 import Sidebar from "./sidebar";
 import GlobalCursor from "./sidebar/GlobalCursor";
+import WallActions from "./WallActions";
 
 const Layout = () => {
   return (
@@ -7,6 +8,8 @@ const Layout = () => {
       <GlobalCursor />
 
       <Sidebar />
+
+      <WallActions />
     </>
   );
 };
