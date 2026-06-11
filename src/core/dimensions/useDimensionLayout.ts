@@ -21,9 +21,10 @@ export const useDimensionLayout = (): DimensionCandidate[] => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
+  const measurementReference = useEditorStore((s) => s.measurementReference);
 
   return useMemo(() => {
-    const candidates = buildCandidates(shapes, dimensionUnit, pixelsPerMeter);
+    const candidates = buildCandidates(shapes, dimensionUnit, pixelsPerMeter, measurementReference);
     return resolveCollisions(candidates);
-  }, [shapes, dimensionUnit, pixelsPerMeter]);
+  }, [shapes, dimensionUnit, pixelsPerMeter, measurementReference]);
 };

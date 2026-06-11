@@ -39,8 +39,8 @@ import { metricsFromGeometry } from "./dimensionLayout";
 // Constants
 // ---------------------------------------------------------------------------
 
-const SLIDE_GAP = 4;         // px extra clearance when sliding
-const MAX_PUSH_STEPS = 4;    // how many offset increments to try before giving up
+const SLIDE_GAP = 4; // px extra clearance when sliding
+const MAX_PUSH_STEPS = 4; // how many offset increments to try before giving up
 const PUSH_STEP = DIM_OFFSET * 0.75; // px per push step
 
 // ---------------------------------------------------------------------------
@@ -60,9 +60,7 @@ const projectOBB = (obb: OBB, axis: { x: number; y: number }): [number, number] 
   const centerProj = obb.cx * axis.x + obb.cy * axis.y;
 
   // Half-extent along axis
-  const r =
-    obb.hw * Math.abs(ux * axis.x + uy * axis.y) +
-    obb.hh * Math.abs(vx * axis.x + vy * axis.y);
+  const r = obb.hw * Math.abs(ux * axis.x + uy * axis.y) + obb.hh * Math.abs(vx * axis.x + vy * axis.y);
 
   return [centerProj - r, centerProj + r];
 };
@@ -81,10 +79,10 @@ export const obbsCollide = (a: OBB, b: OBB): boolean => {
   const bRad = (b.angleDeg * Math.PI) / 180;
 
   const axes = [
-    { x: Math.cos(aRad), y: Math.sin(aRad) },   // a local x
-    { x: -Math.sin(aRad), y: Math.cos(aRad) },  // a local y
-    { x: Math.cos(bRad), y: Math.sin(bRad) },   // b local x
-    { x: -Math.sin(bRad), y: Math.cos(bRad) },  // b local y
+    { x: Math.cos(aRad), y: Math.sin(aRad) }, // a local x
+    { x: -Math.sin(aRad), y: Math.cos(aRad) }, // a local y
+    { x: Math.cos(bRad), y: Math.sin(bRad) }, // b local x
+    { x: -Math.sin(bRad), y: Math.cos(bRad) }, // b local y
   ];
 
   for (const axis of axes) {
@@ -132,9 +130,7 @@ export interface DimensionCandidate {
  * Processes pairs in order of increasing segment length so shorter (more
  * constrained) segments keep their preferred position and longer segments adapt.
  */
-export const resolveCollisions = (
-  candidates: DimensionCandidate[],
-): DimensionCandidate[] => {
+export const resolveCollisions = (candidates: DimensionCandidate[]): DimensionCandidate[] => {
   if (candidates.length < 2) return candidates;
 
   // Sort by segment length ascending (short segments are highest priority)
@@ -177,9 +173,7 @@ export const resolveCollisions = (
           cx: b.metrics.obb.cx + dx,
           cy: b.metrics.obb.cy + dy,
         };
-        const clearsAll = sorted.slice(0, i).every(
-          (prev) => !obbsCollide(prev.metrics.obb, slidOBB),
-        );
+        const clearsAll = sorted.slice(0, i).every((prev) => !obbsCollide(prev.metrics.obb, slidOBB));
         if (clearsAll) {
           // Apply slide by updating the geometry anchor and metrics
           const slidGeom: DimensionGeometry = {
@@ -203,9 +197,7 @@ export const resolveCollisions = (
         const newOffset = DIM_OFFSET + PUSH_STEP * step;
         const pushedGeom = pushDimensionOffset(b.geom, b.x1, b.y1, b.x2, b.y2, newOffset);
         const pushedMetrics = metricsFromGeometry(pushedGeom, b.text);
-        const clearsAll = sorted.slice(0, i).every(
-          (prev) => !obbsCollide(prev.metrics.obb, pushedMetrics.obb),
-        );
+        const clearsAll = sorted.slice(0, i).every((prev) => !obbsCollide(prev.metrics.obb, pushedMetrics.obb));
         if (clearsAll) {
           b.geom = pushedGeom;
           b.metrics = pushedMetrics;
@@ -230,26 +222,40 @@ export const resolveCollisions = (
 // ---------------------------------------------------------------------------
 
 import type { Shape } from "@/core/drawing-engine/drawing.types";
-import type { DimensionUnit } from "@/store/editor.store";
+import type { DimensionUnit, MeasurementReference } from "@/store/editor.store";
 import { formatDimension } from "./dimensionUnits";
+import { measuredWallSegment } from "./measurementReference";
 
 const MIN_LENGTH_PX = 10;
 
 /**
  * Build the initial array of DimensionCandidates from the floor-plan shapes.
  * Skips text shapes and shapes too short to annotate.
+ *
+ * Walls are measured according to `reference` (centerline / inner / outer):
+ * the measured endpoints come from `measuredWallSegment`, so the per-segment
+ * dimension reflects the true referenced length, not always the centerline.
  */
 export const buildCandidates = (
   shapes: Record<string, Shape>,
   dimensionUnit: DimensionUnit,
   pixelsPerMeter: number,
+  reference: MeasurementReference = "centerline",
 ): DimensionCandidate[] => {
   const candidates: DimensionCandidate[] = [];
 
   for (const shape of Object.values(shapes)) {
     if (shape.type === "text") continue;
 
-    const { x1, y1, x2, y2 } = shape;
+    let { x1, y1, x2, y2 } = shape;
+    if (shape.type === "wall") {
+      const m = measuredWallSegment(shape, shapes, reference);
+      x1 = m.x1;
+      y1 = m.y1;
+      x2 = m.x2;
+      y2 = m.y2;
+    }
+
     const lengthPx = Math.hypot(x2 - x1, y2 - y1);
     if (lengthPx < MIN_LENGTH_PX) continue;
 

@@ -16,6 +16,7 @@ import { useStageEvents } from "./useStageEvents";
 import { useStageViewport } from "./useStageViewport";
 import DimensionRenderer from "./DimensionRenderer";
 import DimensionLayerRenderer from "./DimensionLayerRenderer";
+import DimensionChainsRenderer from "./DimensionChainsRenderer";
 import DrawingInfoRenderer from "./DrawingInfoRenderer";
 
 type StageRef = RefObject<Konva.Stage>;
@@ -110,6 +111,7 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
         <GridRenderer />
         <ShapeRenderer />
         <DimensionLayerRenderer />
+        <DimensionChainsRenderer />
         <DrawingInfoRenderer />
         {isDrawingTool && <GhostRenderer ghost={ghost} />}
         {tool === "select" && <SelectionRenderer previewShape={previewShape} connectedPreviews={connectedPreviews} />}

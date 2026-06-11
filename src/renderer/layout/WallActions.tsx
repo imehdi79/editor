@@ -45,11 +45,21 @@ const WallActions = () => {
   ) as (DoorShape | Extract<Shape, { type: "window" }>)[];
   const doors = openings.filter((s): s is DoorShape => s.type === "door");
 
-  // Wall midpoint → screen space
+  // Wall midpoint, pushed off the wall along its normal so the button
+  // doesn't sit on top of the wall line. Offset scales a little with zoom
+  // but is clamped so it stays close at any scale.
   const midWorldX = (wall.x1 + wall.x2) / 2;
   const midWorldY = (wall.y1 + wall.y2) / 2;
-  const screenX = midWorldX * scale + vx;
-  const screenY = midWorldY * scale + vy;
+  const dx = wall.x2 - wall.x1;
+  const dy = wall.y2 - wall.y1;
+  const len = Math.hypot(dx, dy) || 1;
+  // Left-hand normal (canvas y-down)
+  const nx = -dy / len;
+  const ny = dx / len;
+  // Clear the wall half-thickness plus a fixed gap, in world units
+  const offsetWorld = wall.thickness / 2 + 22 / scale;
+  const screenX = (midWorldX + nx * offsetWorld) * scale + vx;
+  const screenY = (midWorldY + ny * offsetWorld) * scale + vy;
 
   const setThickness = (thickness: number) => {
     updateShape(wall.id, { thickness });
@@ -68,10 +78,7 @@ const WallActions = () => {
   return (
     <>
       {/* Floating button at the wall midpoint */}
-      <div
-        className="absolute z-40 -translate-x-1/2 -translate-y-1/2"
-        style={{ left: screenX, top: screenY }}
-      >
+      <div className="absolute z-40 -translate-x-1/2 -translate-y-1/2" style={{ left: screenX, top: screenY }}>
         <Button
           size="icon-sm"
           variant="default"
@@ -122,9 +129,7 @@ const WallActions = () => {
             {/* Opening alignment — only meaningful when doors exist */}
             {doors.length > 0 ? (
               <div className="flex flex-col gap-2 border-t pt-3">
-                <span className="text-xs text-muted-foreground">
-                  Align doors ({doors.length})
-                </span>
+                <span className="text-xs text-muted-foreground">Align doors ({doors.length})</span>
 
                 <div className="flex flex-col gap-1.5">
                   <span className="text-[11px] text-muted-foreground">Swing side</span>
@@ -151,9 +156,7 @@ const WallActions = () => {
                 </div>
               </div>
             ) : (
-              <p className="border-t pt-3 text-[11px] text-muted-foreground">
-                No doors on this wall to align.
-              </p>
+              <p className="border-t pt-3 text-[11px] text-muted-foreground">No doors on this wall to align.</p>
             )}
           </div>
         </div>

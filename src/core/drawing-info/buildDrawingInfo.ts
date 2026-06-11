@@ -5,8 +5,9 @@
  */
 
 import type { Shape } from "@/core/drawing-engine/drawing.types";
-import type { DimensionUnit } from "@/store/editor.store";
+import type { DimensionUnit, MeasurementReference } from "@/store/editor.store";
 import { formatDimension } from "@/core/dimensions/dimensionUnits";
+import { measuredWallLength } from "@/core/dimensions/measurementReference";
 
 export interface DrawingRow {
   type: string;
@@ -30,6 +31,7 @@ export const buildDrawingInfo = (
   shapes: Record<string, Shape>,
   unit: DimensionUnit,
   pixelsPerMeter: number,
+  reference: MeasurementReference = "centerline",
 ): DrawingInfoTable => {
   type Acc = { count: number; rep: Shape };
   const buckets = new Map<string, Acc>();
@@ -46,9 +48,10 @@ export const buildDrawingInfo = (
     }
 
     let key: string;
-    if (shape.type === "wall")
-      key = `wall|${Math.round(segLen(shape.x1, shape.y1, shape.x2, shape.y2))}|${shape.thickness}`;
-    else if (shape.type === "window") key = `window|${Math.round(shape.width)}`;
+    if (shape.type === "wall") {
+      const l = measuredWallLength(shape, shapes, reference);
+      key = `wall|${Math.round(l)}|${shape.thickness}`;
+    } else if (shape.type === "window") key = `window|${Math.round(shape.width)}`;
     else if (shape.type === "door") key = `door|${Math.round(shape.width)}|${shape.swingDirection}|${shape.hingeSide}`;
     else if (shape.type === "line") key = `line|${Math.round(segLen(shape.x1, shape.y1, shape.x2, shape.y2))}`;
     else if (shape.type === "dashed-line") key = `dashed|${Math.round(segLen(shape.x1, shape.y1, shape.x2, shape.y2))}`;
@@ -62,7 +65,7 @@ export const buildDrawingInfo = (
   const rows: DrawingRow[] = [];
   for (const { count, rep } of buckets.values()) {
     if (rep.type === "wall") {
-      const l = segLen(rep.x1, rep.y1, rep.x2, rep.y2);
+      const l = measuredWallLength(rep, shapes, reference);
       rows.push({
         type: "Wall",
         label: `Wall ${fmt(l, unit, pixelsPerMeter)}`,
