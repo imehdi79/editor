@@ -143,7 +143,26 @@ export const resolveCollisions = (candidates: DimensionCandidate[]): DimensionCa
 
       if (!obbsCollide(a.metrics.obb, b.metrics.obb)) continue;
 
-      // --- Pass 1: flip to the other side of b's segment ---
+      let resolved = false;
+
+      // --- Pass 1: push offset outward (preferred) ---
+      // Keeps the label centered and on its outward side, stacking parallel
+      // dimensions into consistent lanes — the CAD-standard look.
+      for (let step = 1; step <= MAX_PUSH_STEPS; step++) {
+        const newOffset = DIM_OFFSET + PUSH_STEP * step;
+        const pushedGeom = pushDimensionOffset(b.geom, b.x1, b.y1, b.x2, b.y2, newOffset);
+        const pushedMetrics = metricsFromGeometry(pushedGeom, b.text);
+        const clearsAll = sorted.slice(0, i).every((prev) => !obbsCollide(prev.metrics.obb, pushedMetrics.obb));
+        if (clearsAll) {
+          b.geom = pushedGeom;
+          b.metrics = pushedMetrics;
+          resolved = true;
+          break;
+        }
+      }
+      if (resolved) continue;
+
+      // --- Pass 2: flip to the other side of b's segment ---
       const flippedGeom = flipDimensionSide(b.geom, b.x1, b.y1, b.x2, b.y2);
       const flippedMetrics = metricsFromGeometry(flippedGeom, b.text);
       if (!obbsCollide(a.metrics.obb, flippedMetrics.obb)) {
@@ -158,13 +177,12 @@ export const resolveCollisions = (candidates: DimensionCandidate[]): DimensionCa
         }
       }
 
-      // --- Pass 2: slide along the dimension line axis ---
+      // --- Pass 3: slide along the dimension line axis ---
       const slideAxisRad = (b.geom.angleDeg * Math.PI) / 180;
       const slideX = Math.cos(slideAxisRad);
       const slideY = Math.sin(slideAxisRad);
       const slideStep = b.metrics.boxWidth / 2 + SLIDE_GAP;
 
-      let resolved = false;
       for (const dir of [1, -1]) {
         const dx = slideX * slideStep * dir;
         const dy = slideY * slideStep * dir;
@@ -186,21 +204,6 @@ export const resolveCollisions = (candidates: DimensionCandidate[]): DimensionCa
           const slidMetrics = metricsFromGeometry(slidGeom, b.text);
           b.geom = slidGeom;
           b.metrics = slidMetrics;
-          resolved = true;
-          break;
-        }
-      }
-      if (resolved) continue;
-
-      // --- Pass 3: push offset outward ---
-      for (let step = 1; step <= MAX_PUSH_STEPS; step++) {
-        const newOffset = DIM_OFFSET + PUSH_STEP * step;
-        const pushedGeom = pushDimensionOffset(b.geom, b.x1, b.y1, b.x2, b.y2, newOffset);
-        const pushedMetrics = metricsFromGeometry(pushedGeom, b.text);
-        const clearsAll = sorted.slice(0, i).every((prev) => !obbsCollide(prev.metrics.obb, pushedMetrics.obb));
-        if (clearsAll) {
-          b.geom = pushedGeom;
-          b.metrics = pushedMetrics;
           resolved = true;
           break;
         }
@@ -236,17 +239,44 @@ const MIN_LENGTH_PX = 10;
  * the measured endpoints come from `measuredWallSegment`, so the per-segment
  * dimension reflects the true referenced length, not always the centerline.
  */
+/**
+ * Choose the side (+1 / -1) that places the dimension line OUTSIDE the plan,
+ * i.e. on the far side of the segment from the drawing's centroid. This is the
+ * professional default: annotations sit outside the building, not in the rooms.
+ *
+ * side = +1 uses the left-hand perpendicular leftPerp(dir) = (-dy, dx).
+ * Pick the side whose perpendicular points away from the centroid.
+ */
+const outwardSide = (
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  centroid: { x: number; y: number },
+): 1 | -1 => {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  // left-hand perpendicular of the unit direction
+  const px = -dy / len;
+  const py = dx / len;
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  const outward = px * (mx - centroid.x) + py * (my - centroid.y);
+  return outward >= 0 ? 1 : -1;
+};
+
 export const buildCandidates = (
   shapes: Record<string, Shape>,
   dimensionUnit: DimensionUnit,
   pixelsPerMeter: number,
   reference: MeasurementReference = "centerline",
 ): DimensionCandidate[] => {
-  const candidates: DimensionCandidate[] = [];
-
+  // Resolve measured segments first so we can derive a centroid for side-choice.
+  type Seg = { id: string; x1: number; y1: number; x2: number; y2: number };
+  const segs: Seg[] = [];
   for (const shape of Object.values(shapes)) {
     if (shape.type === "text") continue;
-
     let { x1, y1, x2, y2 } = shape;
     if (shape.type === "wall") {
       const m = measuredWallSegment(shape, shapes, reference);
@@ -255,15 +285,29 @@ export const buildCandidates = (
       x2 = m.x2;
       y2 = m.y2;
     }
+    if (Math.hypot(x2 - x1, y2 - y1) < MIN_LENGTH_PX) continue;
+    segs.push({ id: shape.id, x1, y1, x2, y2 });
+  }
 
-    const lengthPx = Math.hypot(x2 - x1, y2 - y1);
-    if (lengthPx < MIN_LENGTH_PX) continue;
+  // Centroid of all segment midpoints → "inside" of the plan.
+  const centroid = { x: 0, y: 0 };
+  if (segs.length > 0) {
+    for (const s of segs) {
+      centroid.x += (s.x1 + s.x2) / 2;
+      centroid.y += (s.y1 + s.y2) / 2;
+    }
+    centroid.x /= segs.length;
+    centroid.y /= segs.length;
+  }
 
+  const candidates: DimensionCandidate[] = [];
+  for (const s of segs) {
+    const lengthPx = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
     const text = formatDimension(lengthPx, dimensionUnit, pixelsPerMeter);
-    const geom = computeSegmentDimension(x1, y1, x2, y2);
+    const side = outwardSide(s.x1, s.y1, s.x2, s.y2, centroid);
+    const geom = computeSegmentDimension(s.x1, s.y1, s.x2, s.y2, side);
     const metrics = metricsFromGeometry(geom, text);
-
-    candidates.push({ id: shape.id, x1, y1, x2, y2, text, geom, metrics, conflicted: false });
+    candidates.push({ id: s.id, x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, text, geom, metrics, conflicted: false });
   }
 
   return candidates;

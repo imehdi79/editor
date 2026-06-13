@@ -1,123 +1,126 @@
 /**
  * buildDrawingInfo — pure data layer for the drawing information table.
- * Derives a structured summary from floor-plan shapes + dimension units.
+ *
+ * One row per shape (no bucketing) so every editable cell maps to exactly one
+ * shape. Adds Height (walls) and Area columns: walls report surface area
+ * (length × height), and enclosed wall loops are reported as separate Room
+ * rows with floor area. Each cell exposes its raw value + the shape field it
+ * edits, so the DOM panel can write changes straight back to a single shape.
+ *
  * No React, no Konva, no side effects.
  */
 
 import type { Shape } from "@/core/drawing-engine/drawing.types";
-import type { DimensionUnit, MeasurementReference } from "@/store/editor.store";
-import { formatDimension } from "@/core/dimensions/dimensionUnits";
-import { measuredWallLength } from "@/core/dimensions/measurementReference";
+import type { DimensionUnit } from "@/store/editor.store";
+import { formatDimension, formatArea, toUnit } from "@/core/dimensions/dimensionUnits";
+import { computeRoomAreas } from "./computeRoomAreas";
+
+/** Which shape field a given cell edits. `height` is in cm; the rest in px. */
+export type EditField = "length" | "thickness" | "width" | "height";
+
+export interface DrawingCell {
+  display: string;
+  /** Raw value shown in the input (display unit for px-fields, cm for height). */
+  value?: number;
+  /** Field this cell writes to; absent = read-only (derived) cell. */
+  field?: EditField;
+}
 
 export interface DrawingRow {
+  /** Shape id, or room cycle id for room rows */
+  id: string;
+  kind: "wall" | "window" | "door" | "line" | "dashed-line" | "text" | "room";
   type: string;
-  label: string;
-  length: string;
-  width: string;
-  quantity: number;
-  meta: Record<string, string>;
+  length: DrawingCell;
+  width: DrawingCell;
+  height: DrawingCell;
+  area: DrawingCell;
 }
 
-export interface DrawingInfoTable {
-  rows: DrawingRow[];
-  rightmostX: number;
-  bottommostY: number;
-}
-
-const fmt = (px: number, unit: DimensionUnit, ppm: number) => formatDimension(px, unit, ppm);
+const EMPTY: DrawingCell = { display: "—" };
 const segLen = (x1: number, y1: number, x2: number, y2: number) => Math.hypot(x2 - x1, y2 - y1);
 
 export const buildDrawingInfo = (
   shapes: Record<string, Shape>,
   unit: DimensionUnit,
   pixelsPerMeter: number,
-  reference: MeasurementReference = "centerline",
-): DrawingInfoTable => {
-  type Acc = { count: number; rep: Shape };
-  const buckets = new Map<string, Acc>();
-  let rightmostX = 0;
-  let bottommostY = 0;
-
-  for (const shape of Object.values(shapes)) {
-    if (shape.type !== "text") {
-      rightmostX = Math.max(rightmostX, shape.x1, shape.x2);
-      bottommostY = Math.max(bottommostY, shape.y1, shape.y2);
-    } else {
-      rightmostX = Math.max(rightmostX, shape.x);
-      bottommostY = Math.max(bottommostY, shape.y);
-    }
-
-    let key: string;
-    if (shape.type === "wall") {
-      const l = measuredWallLength(shape, shapes, reference);
-      key = `wall|${Math.round(l)}|${shape.thickness}`;
-    } else if (shape.type === "window") key = `window|${Math.round(shape.width)}`;
-    else if (shape.type === "door") key = `door|${Math.round(shape.width)}|${shape.swingDirection}|${shape.hingeSide}`;
-    else if (shape.type === "line") key = `line|${Math.round(segLen(shape.x1, shape.y1, shape.x2, shape.y2))}`;
-    else if (shape.type === "dashed-line") key = `dashed|${Math.round(segLen(shape.x1, shape.y1, shape.x2, shape.y2))}`;
-    else key = "text";
-
-    const ex = buckets.get(key);
-    if (ex) ex.count++;
-    else buckets.set(key, { count: 1, rep: shape });
-  }
+  defaultWallHeight: number,
+): DrawingRow[] => {
+  const fmt = (px: number) => formatDimension(px, unit, pixelsPerMeter);
+  const lenCell = (px: number, field: EditField): DrawingCell => ({
+    display: fmt(px),
+    value: toUnit(px, unit, pixelsPerMeter),
+    field,
+  });
 
   const rows: DrawingRow[] = [];
-  for (const { count, rep } of buckets.values()) {
-    if (rep.type === "wall") {
-      const l = measuredWallLength(rep, shapes, reference);
+
+  for (const s of Object.values(shapes)) {
+    if (s.type === "wall") {
+      const l = segLen(s.x1, s.y1, s.x2, s.y2);
+      const h = s.height ?? defaultWallHeight;
+      const surfaceM2 = (l / pixelsPerMeter) * (h / 100);
       rows.push({
+        id: s.id,
+        kind: "wall",
         type: "Wall",
-        label: `Wall ${fmt(l, unit, pixelsPerMeter)}`,
-        length: fmt(l, unit, pixelsPerMeter),
-        width: fmt(rep.thickness, unit, pixelsPerMeter),
-        quantity: count,
-        meta: { Thickness: fmt(rep.thickness, unit, pixelsPerMeter) },
+        length: lenCell(l, "length"),
+        width: lenCell(s.thickness, "thickness"),
+        height: { display: `${h}cm`, value: h, field: "height" },
+        area: { display: formatArea(surfaceM2) },
       });
-    } else if (rep.type === "window") {
+    } else if (s.type === "window" || s.type === "door") {
       rows.push({
-        type: "Window",
-        label: `Window ${fmt(rep.width, unit, pixelsPerMeter)}`,
-        length: fmt(rep.width, unit, pixelsPerMeter),
-        width: fmt(rep.thickness, unit, pixelsPerMeter),
-        quantity: count,
-        meta: {},
+        id: s.id,
+        kind: s.type,
+        type: s.type === "window" ? "Window" : "Door",
+        length: lenCell(s.width, "width"),
+        width: lenCell(s.thickness, "thickness"),
+        height: EMPTY,
+        area: EMPTY,
       });
-    } else if (rep.type === "door") {
+    } else if (s.type === "line" || s.type === "dashed-line") {
+      const l = segLen(s.x1, s.y1, s.x2, s.y2);
       rows.push({
-        type: "Door",
-        label: `Door ${fmt(rep.width, unit, pixelsPerMeter)}`,
-        length: fmt(rep.width, unit, pixelsPerMeter),
-        width: fmt(rep.thickness, unit, pixelsPerMeter),
-        quantity: count,
-        meta: { Swing: rep.swingDirection, Hinge: rep.hingeSide },
-      });
-    } else if (rep.type === "line") {
-      const l = segLen(rep.x1, rep.y1, rep.x2, rep.y2);
-      rows.push({
-        type: "Line",
-        label: `Line ${fmt(l, unit, pixelsPerMeter)}`,
-        length: fmt(l, unit, pixelsPerMeter),
-        width: "—",
-        quantity: count,
-        meta: {},
-      });
-    } else if (rep.type === "dashed-line") {
-      const l = segLen(rep.x1, rep.y1, rep.x2, rep.y2);
-      rows.push({
-        type: "Dashed Line",
-        label: `Dashed ${fmt(l, unit, pixelsPerMeter)}`,
-        length: fmt(l, unit, pixelsPerMeter),
-        width: "—",
-        quantity: count,
-        meta: {},
+        id: s.id,
+        kind: s.type,
+        type: s.type === "line" ? "Line" : "Dashed Line",
+        length: lenCell(l, "length"),
+        width: EMPTY,
+        height: EMPTY,
+        area: EMPTY,
       });
     } else {
-      rows.push({ type: "Text", label: "Text Label", length: "—", width: "—", quantity: count, meta: {} });
+      rows.push({ id: s.id, kind: "text", type: "Text", length: EMPTY, width: EMPTY, height: EMPTY, area: EMPTY });
     }
   }
 
-  const ORDER: Record<string, number> = { Wall: 0, Window: 1, Door: 2, Line: 3, "Dashed Line": 4, Text: 5 };
-  rows.sort((a, b) => (ORDER[a.type] ?? 9) - (ORDER[b.type] ?? 9));
-  return { rows, rightmostX, bottommostY };
+  const ORDER: Record<DrawingRow["kind"], number> = {
+    wall: 0,
+    window: 1,
+    door: 2,
+    line: 3,
+    "dashed-line": 4,
+    text: 5,
+    room: 6,
+  };
+  rows.sort((a, b) => ORDER[a.kind] - ORDER[b.kind]);
+
+  // Enclosed rooms — appended as a summary section with floor area.
+  const rooms = computeRoomAreas(shapes);
+  rooms
+    .sort((a, b) => b.areaPx - a.areaPx)
+    .forEach((room, i) => {
+      rows.push({
+        id: room.id,
+        kind: "room",
+        type: `Room ${i + 1}`,
+        length: EMPTY,
+        width: EMPTY,
+        height: EMPTY,
+        area: { display: formatArea(room.areaPx / (pixelsPerMeter * pixelsPerMeter)) },
+      });
+    });
+
+  return rows;
 };

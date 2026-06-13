@@ -1,6 +1,7 @@
 import Sidebar from "./sidebar";
 import GlobalCursor from "./sidebar/GlobalCursor";
 import WallActions from "./WallActions";
+import DrawingInfoPanel from "./DrawingInfoPanel";
 
 const Layout = () => {
   return (
@@ -10,6 +11,8 @@ const Layout = () => {
       <Sidebar />
 
       <WallActions />
+
+      <DrawingInfoPanel />
     </>
   );
 };
