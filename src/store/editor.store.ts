@@ -31,11 +31,19 @@ interface EditorStore {
    *  reserved for future area/volume (surface) calculations */
   defaultWallHeight: number;
 
+  /**
+   * When true (default), moving/resizing a shape drags every other shape that
+   * shares an endpoint node along with it (connected nodes stay welded). When
+   * false, the grabbed shape moves independently, detaching from its joints.
+   */
+  linkConnectedNodes: boolean;
+
   setViewMode: (mode: "2d" | "3d") => void;
   setDimensionUnit: (unit: DimensionUnit) => void;
   setMeasurementReference: (ref: MeasurementReference) => void;
   setDefaultWallThickness: (thickness: number) => void;
   setDefaultWallHeight: (height: number) => void;
+  setLinkConnectedNodes: (link: boolean) => void;
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -49,10 +57,12 @@ export const useEditorStore = create<EditorStore>((set) => ({
   measurementReference: "centerline",
   defaultWallThickness: 12,
   defaultWallHeight: 280,
+  linkConnectedNodes: true,
 
   setViewMode: (mode) => set({ viewMode: mode }),
   setDimensionUnit: (unit) => set({ dimensionUnit: unit }),
   setMeasurementReference: (ref) => set({ measurementReference: ref }),
   setDefaultWallThickness: (thickness) => set({ defaultWallThickness: thickness }),
   setDefaultWallHeight: (height) => set({ defaultWallHeight: height }),
+  setLinkConnectedNodes: (link) => set({ linkConnectedNodes: link }),
 }));

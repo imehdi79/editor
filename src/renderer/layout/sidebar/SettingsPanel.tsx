@@ -60,6 +60,8 @@ const SettingsPanel = () => {
   const setDefaultWallThickness = useEditorStore((s) => s.setDefaultWallThickness);
   const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
   const setDefaultWallHeight = useEditorStore((s) => s.setDefaultWallHeight);
+  const linkConnectedNodes = useEditorStore((s) => s.linkConnectedNodes);
+  const setLinkConnectedNodes = useEditorStore((s) => s.setLinkConnectedNodes);
 
   useEffect(() => {
     if (!open) return;
@@ -100,6 +102,29 @@ const SettingsPanel = () => {
                   {opt.label}
                 </Button>
               ))}
+            </div>
+          </div>
+
+          {/* Connected-node move behavior */}
+          <div className="flex flex-col gap-1.5 border-t pt-2">
+            <span className="text-xs text-muted-foreground">Move connected nodes</span>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={linkConnectedNodes ? "default" : "outline"}
+                className="flex-1 px-0"
+                onClick={() => setLinkConnectedNodes(true)}
+              >
+                Together
+              </Button>
+              <Button
+                size="sm"
+                variant={!linkConnectedNodes ? "default" : "outline"}
+                className="flex-1 px-0"
+                onClick={() => setLinkConnectedNodes(false)}
+              >
+                Separate
+              </Button>
             </div>
           </div>
 

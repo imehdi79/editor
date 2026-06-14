@@ -168,6 +168,7 @@ export const useTransformEngine = () => {
   const snapRadius = useEditorStore((s) => s.snapRadius);
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
+  const linkConnectedNodes = useEditorStore((s) => s.linkConnectedNodes);
 
   const modeRef = useRef<TransformMode>({ kind: "idle" });
   const [previewShape, setPreviewShape] = useState<GhostShape>(null);
@@ -362,19 +363,23 @@ export const useTransformEngine = () => {
             dimension: null,
           });
 
-          // Fan out to all shapes connected at either endpoint of the moved shape.
-          const topology = computeTopology(shapes);
+          // Fan out to all shapes connected at either endpoint of the moved
+          // shape — unless the "move connected" setting is off, in which case
+          // the shape detaches and moves on its own.
           const previews: Record<string, { x1?: number; y1?: number; x2?: number; y2?: number }> = {};
-          for (const epKey of [nodeKey(shape.x1, shape.y1), nodeKey(shape.x2, shape.y2)]) {
-            const node = topology.get(epKey);
-            if (!node) continue;
-            for (const ref of node.refs) {
-              if (ref.shapeId === mode.shapeId) continue;
-              const existing = previews[ref.shapeId] ?? {};
-              previews[ref.shapeId] =
-                ref.handle === "p1"
-                  ? { ...existing, x1: ref.x + dx, y1: ref.y + dy }
-                  : { ...existing, x2: ref.x + dx, y2: ref.y + dy };
+          if (linkConnectedNodes) {
+            const topology = computeTopology(shapes);
+            for (const epKey of [nodeKey(shape.x1, shape.y1), nodeKey(shape.x2, shape.y2)]) {
+              const node = topology.get(epKey);
+              if (!node) continue;
+              for (const ref of node.refs) {
+                if (ref.shapeId === mode.shapeId) continue;
+                const existing = previews[ref.shapeId] ?? {};
+                previews[ref.shapeId] =
+                  ref.handle === "p1"
+                    ? { ...existing, x1: ref.x + dx, y1: ref.y + dy }
+                    : { ...existing, x2: ref.x + dx, y2: ref.y + dy };
+              }
             }
           }
           setConnectedPreviews(previews);
@@ -413,13 +418,17 @@ export const useTransformEngine = () => {
           const updated = mode.handle === "p1" ? { ...shape, x1: x, y1: y } : { ...shape, x2: x, y2: y };
           setPreviewShape(updated as GhostShape);
 
-          const topology = computeTopology(shapes);
-          const node = topology.get(mode.nodeKey);
+          // Drag the shared node's other shapes along, unless the "move
+          // connected" setting is off — then only this endpoint moves.
           const previews: Record<string, { x1?: number; y1?: number; x2?: number; y2?: number }> = {};
-          if (node) {
-            for (const ref of node.refs) {
-              if (ref.shapeId === mode.shapeId) continue;
-              previews[ref.shapeId] = ref.handle === "p1" ? { x1: x, y1: y } : { x2: x, y2: y };
+          if (linkConnectedNodes) {
+            const topology = computeTopology(shapes);
+            const node = topology.get(mode.nodeKey);
+            if (node) {
+              for (const ref of node.refs) {
+                if (ref.shapeId === mode.shapeId) continue;
+                previews[ref.shapeId] = ref.handle === "p1" ? { x1: x, y1: y } : { x2: x, y2: y };
+              }
             }
           }
           setConnectedPreviews(previews);
@@ -456,7 +465,7 @@ export const useTransformEngine = () => {
         setConnectedPreviews({});
       }
     },
-    [shapes, makeConfigExcluding, axisAngleThreshold],
+    [shapes, makeConfigExcluding, axisAngleThreshold, linkConnectedNodes],
   );
 
   // -------------------------------------------------------------------------
