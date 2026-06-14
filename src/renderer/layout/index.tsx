@@ -1,7 +1,7 @@
 import Sidebar from "./sidebar";
 import GlobalCursor from "./sidebar/GlobalCursor";
 import WallActions from "./WallActions";
-import DrawingInfoPanel from "./DrawingInfoPanel";
+import DrawingInfoEditOverlay from "./DrawingInfoEditOverlay";
 
 const Layout = () => {
   return (
@@ -12,7 +12,7 @@ const Layout = () => {
 
       <WallActions />
 
-      <DrawingInfoPanel />
+      <DrawingInfoEditOverlay />
     </>
   );
 };
