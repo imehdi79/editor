@@ -7,6 +7,24 @@ export interface BaseShape {
   type: string;
 }
 
+/** The two faces of a wall. Geometry-agnostic labels — layers are never drawn,
+ *  so which face is which is purely a construction/takeoff bookkeeping concern. */
+export type WallSide = "inner" | "outer";
+
+/**
+ * WallLayer — a single construction layer on one face of a wall (e.g. brick,
+ * plaster). Purely a takeoff/specification concern: layers carry no canvas
+ * geometry and are never drawn or dimensioned in 2D. `thickness` is the layer's
+ * own build-up thickness in px, independent of the wall's structural thickness.
+ */
+export interface WallLayer {
+  id: string;
+  /** Construction material / name, e.g. "Brick", "Plaster". */
+  material: string;
+  /** Layer build-up thickness in px. */
+  thickness: number;
+}
+
 export interface WallShape extends BaseShape {
   type: "wall";
   x1: number;
@@ -17,6 +35,11 @@ export interface WallShape extends BaseShape {
   /** Wall height in real units. Not drawn in 2D; used for future
    *  surface/volume (area) calculations. Optional for back-compat. */
   height?: number;
+  /**
+   * Per-side construction layers (brick, plaster, ...). Each wall face carries
+   * an independent stack. Optional for back-compat; absent = no layers defined.
+   */
+  layers?: Record<WallSide, WallLayer[]>;
 }
 
 export interface LineShape extends BaseShape {

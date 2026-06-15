@@ -14,13 +14,17 @@
 import { useState, useEffect } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useSelectionStore } from "@/store/selection.store";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useToolsStore } from "@/store/tools.store";
 import { useEditorStore } from "@/store/editor.store";
 import type { Shape, WallShape, DoorShape } from "@/core/drawing-engine/drawing.types";
+import WallLayersPanel from "./WallLayersPanel";
 
 const isWall = (s: Shape | undefined): s is WallShape => !!s && s.type === "wall";
+
+type WallTab = "properties" | "layers";
 
 const NumberField = ({
   label,
@@ -64,6 +68,7 @@ const WallActions = () => {
   const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
 
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<WallTab>("properties");
 
   const selected = selectedId ? shapes[selectedId] : undefined;
   const wall = isWall(selected) ? selected : null;
@@ -72,6 +77,11 @@ const WallActions = () => {
   useEffect(() => {
     if (!wall) setOpen(false);
   }, [wall]);
+
+  // Reset to the first tab each time the panel is opened for a fresh selection
+  useEffect(() => {
+    if (open) setTab("properties");
+  }, [open]);
 
   if (tool !== "select" || !wall) return null;
 
@@ -120,7 +130,7 @@ const WallActions = () => {
           onClick={() => setOpen(false)}
         >
           <div
-            className="flex w-72 flex-col gap-4 rounded-xl border bg-popover p-4 shadow-2xl"
+            className="flex max-h-[85vh] w-[min(94vw,24rem)] flex-col gap-4 overflow-y-auto rounded-xl border bg-popover p-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -130,6 +140,28 @@ const WallActions = () => {
               </Button>
             </div>
 
+            {/* Tabs */}
+            <div className="flex gap-1 rounded-lg bg-muted p-0.5">
+              {(["properties", "layers"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={cn(
+                    "flex-1 rounded-md px-2 py-1 text-xs font-medium capitalize transition-colors",
+                    tab === t
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {tab === "layers" ? (
+              <WallLayersPanel wall={wall} />
+            ) : (
+              <>
             {/* Dimensions */}
             <div className="flex flex-col gap-2">
               <NumberField label="Thickness" value={wall.thickness} min={1} step={1} suffix="px" onChange={setThickness} />
@@ -174,6 +206,8 @@ const WallActions = () => {
               </div>
             ) : (
               <p className="border-t pt-3 text-[11px] text-muted-foreground">No doors on this wall to align.</p>
+            )}
+              </>
             )}
           </div>
         </div>
