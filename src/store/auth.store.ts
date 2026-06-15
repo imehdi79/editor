@@ -11,6 +11,7 @@
 import { create } from "zustand";
 import { authApi, type AuthUser } from "@/api/authApi";
 import { getToken, setToken, clearToken, subscribeToken } from "@/api/tokenStore";
+import { invalidateProjects, clearProjects } from "@/api/queryClient";
 import { useProjectsStore } from "./projects.store";
 
 type AuthStatus = "loading" | "authed" | "anon";
@@ -57,7 +58,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
       try {
         const me = await authApi.me();
         set({ user: { id: me.userId, email: me.email }, status: "authed", error: null });
-        await useProjectsStore.getState().refreshRecents();
+        invalidateProjects();
       } catch {
         // me() already cleared the token on 401; ensure we land on login.
         clearToken();
@@ -73,7 +74,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
       const { token, user } = await authApi.login(email, password);
       setToken(token);
       set({ user, status: "authed", busy: false });
-      void useProjectsStore.getState().refreshRecents();
+      invalidateProjects();
       return true;
     } catch (err) {
       set({ error: messageOf(err), busy: false });
@@ -87,7 +88,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
       const { token, user } = await authApi.register(email, password);
       setToken(token);
       set({ user, status: "authed", busy: false });
-      void useProjectsStore.getState().refreshRecents();
+      invalidateProjects();
       return true;
     } catch (err) {
       set({ error: messageOf(err), busy: false });
@@ -110,4 +111,5 @@ subscribeToken((token) => {
   if (status === "loading") return; // boot/validation handles its own transition
   useAuthStore.setState({ user: null, status: "anon" });
   useProjectsStore.getState().resetWorkspace();
+  clearProjects(); // drop the previous user's cached project lists
 });

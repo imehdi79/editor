@@ -21,7 +21,8 @@ import { useViewportStore } from "./viewport.store";
 import { useSelectionStore } from "./selection.store";
 import { uid } from "@/lib/uid";
 import { projectsApi } from "@/services/projectsApi";
-import type { Page, PageViewport, Project, ProjectSummary } from "./project.types";
+import { invalidateProjects } from "@/api/queryClient";
+import type { Page, PageViewport, Project } from "./project.types";
 
 export type { Page, PageViewport, Project, ProjectSummary } from "./project.types";
 
@@ -32,8 +33,6 @@ interface ProjectsState {
   currentProjectId: string;
   /** Project ids ordered most-recently-opened first (local working set). */
   recentIds: string[];
-  /** Project summaries known to the persistence layer (recents / load list). */
-  recentSummaries: ProjectSummary[];
   /** Persistence status for save/load feedback in the UI. */
   status: SaveStatus;
   /** Timestamp of the last successful save, for "Saved" feedback. */
@@ -44,7 +43,8 @@ interface ProjectsActions {
   createProject: (name?: string) => void;
   openProject: (id: string) => void;
   renameProject: (id: string, name: string) => void;
-  deleteProject: (id: string) => void;
+  /** Delete a project on the backend + drop it from the local working set. */
+  deleteProject: (id: string) => Promise<void>;
 
   addPage: (name?: string) => void;
   openPage: (pageId: string) => void;
@@ -54,13 +54,8 @@ interface ProjectsActions {
   saveCurrentProject: () => Promise<void>;
   /** Load a project by id (from cache if present, else the persistence layer). */
   loadProject: (id: string) => Promise<void>;
-  /** Refresh the recents/load list from the persistence layer. */
-  refreshRecents: () => Promise<void>;
   /** Reset to a fresh, empty workspace (used on logout / user switch). */
   resetWorkspace: () => void;
-
-  /** Project summaries ordered by recents, for the load menu (local working set). */
-  recents: () => ProjectSummary[];
 }
 
 export type ProjectsStore = ProjectsState & ProjectsActions;
@@ -109,7 +104,6 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
   projects: { [bootstrap.id]: bootstrap },
   currentProjectId: bootstrap.id,
   recentIds: [bootstrap.id],
-  recentSummaries: [],
   status: "idle",
   lastSavedAt: null,
 
@@ -154,16 +148,26 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
     });
   },
 
-  deleteProject: (id) => {
-    const { projects, currentProjectId } = get();
-    if (!projects[id] || Object.keys(projects).length <= 1) return; // keep at least one
+  deleteProject: async (id) => {
     console.log("[projects] delete", id);
+    try {
+      await projectsApi.remove(id);
+    } catch (err) {
+      console.error("[projects] delete failed", err);
+      return;
+    }
+    invalidateProjects(); // refresh the cached recents/all lists
+
+    // Local working-set cleanup (the project may not be loaded locally).
+    const { projects, currentProjectId } = get();
+    if (!projects[id]) return;
     const { [id]: _removed, ...rest } = projects;
     const recentIds = get().recentIds.filter((rid) => rid !== id);
     set({ projects: rest, recentIds });
     if (currentProjectId === id) {
-      const nextId = recentIds[0] ?? Object.keys(rest)[0];
-      get().openProject(nextId);
+      const nextId = recentIds.find((rid) => rest[rid]) ?? Object.keys(rest)[0];
+      if (nextId) get().openProject(nextId);
+      else get().resetWorkspace();
     }
   },
 
@@ -244,7 +248,7 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
       await projectsApi.save(project);
       console.log("[projects] saved", project.id, project.name);
       set({ status: "idle", lastSavedAt: Date.now() });
-      await get().refreshRecents();
+      invalidateProjects(); // bump it to the top of recents on next read
     } catch (err) {
       console.error("[projects] save failed", err);
       set({ status: "error" });
@@ -274,34 +278,16 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
     }
   },
 
-  refreshRecents: async () => {
-    try {
-      const summaries = await projectsApi.recent(10);
-      set({ recentSummaries: summaries });
-    } catch (err) {
-      console.error("[projects] refresh recents failed", err);
-    }
-  },
-
   resetWorkspace: () => {
     const project = newProject("Untitled project");
     set({
       projects: { [project.id]: project },
       currentProjectId: project.id,
       recentIds: [project.id],
-      recentSummaries: [],
       status: "idle",
       lastSavedAt: null,
     });
     loadLive(project.pages[0]);
-  },
-
-  recents: () => {
-    const { projects, recentIds } = get();
-    return recentIds
-      .map((id) => projects[id])
-      .filter((p): p is Project => Boolean(p))
-      .map((p) => ({ id: p.id, name: p.name, pageCount: p.pages.length, updatedAt: p.updatedAt }));
   },
 }));
 
