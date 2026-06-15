@@ -8,3 +8,8 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface Window {
+  /** Dismiss the init splash (defined by SplashScreen.tsx, called from App.tsx). */
+  __hideSplash?: () => void;
+}
