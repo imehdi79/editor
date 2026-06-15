@@ -15,6 +15,8 @@ interface FloorPlanActions {
   removeShape: (id: ShapeId) => void;
   /** Commit a transform (move / resize / rotate) — recorded in undo history. */
   updateShape: (id: ShapeId, patch: Partial<Omit<Shape, "id" | "type">>) => void;
+  /** Replace the entire shapes map — used when loading a page's document. */
+  loadShapes: (shapes: ShapesMap) => void;
   reset: () => void;
 }
 
@@ -43,6 +45,8 @@ export const useFloorPlanStore = create<FloorPlanStore>()(
           if (!shape) return s;
           return { shapes: { ...s.shapes, [id]: { ...shape, ...patch } as Shape } };
         }),
+
+      loadShapes: (shapes) => set({ shapes }),
 
       reset: () => set({ shapes: {} }),
     }),
