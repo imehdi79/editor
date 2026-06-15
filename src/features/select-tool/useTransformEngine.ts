@@ -497,9 +497,17 @@ export const useTransformEngine = () => {
     [shapes, previewShape, connectedPreviews, updateShape],
   );
 
+  /** Abort an in-progress move/resize/rotate without committing it. */
+  const cancel = useCallback(() => {
+    modeRef.current = { kind: "idle" };
+    setPreviewShape(null);
+    setConnectedPreviews({});
+    setHints(EMPTY_HINTS);
+  }, []);
+
   const transformingId = modeRef.current.kind !== "idle" ? modeRef.current.shapeId : null;
 
-  return { previewShape, connectedPreviews, hints, onMouseDown, onMouseMove, onMouseUp, transformingId, selectedId };
+  return { previewShape, connectedPreviews, hints, onMouseDown, onMouseMove, onMouseUp, cancel, transformingId, selectedId };
 };
 
 // ---------------------------------------------------------------------------

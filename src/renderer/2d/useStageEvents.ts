@@ -17,6 +17,8 @@ interface StageHandlers {
   onMouseDown: (x: number, y: number) => void;
   onMouseMove: (x: number, y: number) => void;
   onMouseUp: (x: number, y: number) => void;
+  /** Abort an in-progress tool gesture (e.g. a second finger began a pinch). */
+  onCancel: () => void;
   /** Converts Konva screen-space pointer coords to world space */
   screenToWorld: (sx: number, sy: number) => { x: number; y: number };
 }
@@ -26,8 +28,14 @@ const isSingleTouch = (e: Konva.KonvaEventObject<TouchEvent>) => e.evt.touches.l
 const getScreenPos = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) =>
   e.target.getStage()?.getPointerPosition() ?? null;
 
-export const useStageEvents = ({ onMouseDown, onMouseMove, onMouseUp, screenToWorld }: StageHandlers) => {
-  const isPinching = useRef(false);
+export const useStageEvents = ({ onMouseDown, onMouseMove, onMouseUp, onCancel, screenToWorld }: StageHandlers) => {
+  /**
+   * A second finger turns the gesture into a pinch/zoom. Once set, this stays
+   * true until ALL fingers lift (touches === 0) — not just when the count drops
+   * back to 1 — so the staggered touchend of a two-finger gesture can never be
+   * mistaken for a tool tap/commit.
+   */
+  const multiTouch = useRef(false);
 
   // ---------------------------------------------------------------------------
   // Mouse — convert to world space before forwarding
@@ -74,10 +82,13 @@ export const useStageEvents = ({ onMouseDown, onMouseMove, onMouseUp, screenToWo
   const handleTouchStart = useCallback(
     (e: Konva.KonvaEventObject<TouchEvent>) => {
       if (!isSingleTouch(e)) {
-        isPinching.current = true;
+        // A second finger arrived → this is a pinch. Cancel any tool gesture the
+        // first finger started so it never turns into an accidental shape.
+        if (!multiTouch.current) onCancel();
+        multiTouch.current = true;
         return;
       }
-      isPinching.current = false;
+      multiTouch.current = false;
       e.evt.preventDefault();
       const pos = getScreenPos(e);
       if (pos) {
@@ -85,12 +96,12 @@ export const useStageEvents = ({ onMouseDown, onMouseMove, onMouseUp, screenToWo
         onMouseDown(world.x, world.y);
       }
     },
-    [onMouseDown, screenToWorld],
+    [onMouseDown, onCancel, screenToWorld],
   );
 
   const handleTouchMove = useCallback(
     (e: Konva.KonvaEventObject<TouchEvent>) => {
-      if (isPinching.current || !isSingleTouch(e)) return;
+      if (multiTouch.current || !isSingleTouch(e)) return;
       e.evt.preventDefault();
       const pos = getScreenPos(e);
       if (pos) {
@@ -103,8 +114,10 @@ export const useStageEvents = ({ onMouseDown, onMouseMove, onMouseUp, screenToWo
 
   const handleTouchEnd = useCallback(
     (e: Konva.KonvaEventObject<TouchEvent>) => {
-      if (isPinching.current) {
-        isPinching.current = false;
+      if (multiTouch.current) {
+        // Stay suppressed until every finger is up; never commit a tool gesture
+        // as part of ending a pinch.
+        if (e.evt.touches.length === 0) multiTouch.current = false;
         return;
       }
       e.evt.preventDefault();

@@ -104,5 +104,12 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
     [toolDef, makeConfig, addShape],
   );
 
-  return { ghost, hints, onMouseDown, onMouseMove, onMouseUp };
+  /** Abort an in-progress draw without committing (e.g. a pinch-zoom began). */
+  const cancel = useCallback(() => {
+    startRef.current = null;
+    setGhost(null);
+    setHints(EMPTY_HINTS);
+  }, []);
+
+  return { ghost, hints, onMouseDown, onMouseMove, onMouseUp, cancel };
 };

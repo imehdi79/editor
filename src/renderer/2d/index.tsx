@@ -39,6 +39,7 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
     onMouseDown: drawDown,
     onMouseMove: drawMove,
     onMouseUp: drawUp,
+    cancel: drawCancel,
   } = useDrawingEngine(toolDef);
   const {
     previewShape,
@@ -47,17 +48,21 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
     onMouseDown: selectDown,
     onMouseMove: selectMove,
     onMouseUp: selectUp,
+    cancel: selectCancel,
   } = useTransformEngine();
 
-  const activeDown = tool === "select" ? selectDown : isDrawingTool ? drawDown : () => {};
-  const activeMove = tool === "select" ? selectMove : isDrawingTool ? drawMove : () => {};
-  const activeUp = tool === "select" ? selectUp : isDrawingTool ? drawUp : () => {};
+  const noop = () => {};
+  const activeDown = tool === "select" ? selectDown : isDrawingTool ? drawDown : noop;
+  const activeMove = tool === "select" ? selectMove : isDrawingTool ? drawMove : noop;
+  const activeUp = tool === "select" ? selectUp : isDrawingTool ? drawUp : noop;
+  const activeCancel = tool === "select" ? selectCancel : isDrawingTool ? drawCancel : noop;
   const activeHints = tool === "select" ? selectHints : drawHints;
 
   const toolEvents = useStageEvents({
     onMouseDown: activeDown,
     onMouseMove: activeMove,
     onMouseUp: activeUp,
+    onCancel: activeCancel,
     screenToWorld,
   });
 
