@@ -16,9 +16,10 @@
 
 import { Line, Text, Group, Rect } from "react-konva";
 import { useDimensionLayout } from "@/core/dimensions/useDimensionLayout";
+import { useViewportStore } from "@/store/viewport.store";
 import type { DimensionCandidate } from "@/core/dimensions/dimensionCollision";
 import { TICK_HALF } from "@/core/dimensions/dimensionGeometry";
-import { LABEL_FONT_SIZE, LABEL_FONT_FAMILY, LABEL_PADDING } from "@/core/dimensions/dimensionLayout";
+import { LABEL_FONT_FAMILY, dimensionPxScale } from "@/core/dimensions/dimensionLayout";
 
 // ---------------------------------------------------------------------------
 // Visual constants
@@ -46,9 +47,11 @@ const LABEL_BG_RADIUS = 2;            // rounded corners on label pill
 const ExtensionLines = ({
   geom,
   conflicted,
+  pxScale,
 }: {
   geom: DimensionCandidate["geom"];
   conflicted: boolean;
+  pxScale: number;
 }) => {
   const opacity = conflicted ? 0.4 : 0.8;
   const color = conflicted ? CONFLICT_COLOR : EXT_LINE_COLOR;
@@ -58,14 +61,14 @@ const ExtensionLines = ({
       <Line
         points={[geom.extLine1.x1, geom.extLine1.y1, geom.extLine1.x2, geom.extLine1.y2]}
         stroke={color}
-        strokeWidth={EXT_LINE_WIDTH}
+        strokeWidth={EXT_LINE_WIDTH * pxScale}
         opacity={opacity}
         listening={false}
       />
       <Line
         points={[geom.extLine2.x1, geom.extLine2.y1, geom.extLine2.x2, geom.extLine2.y2]}
         stroke={color}
-        strokeWidth={EXT_LINE_WIDTH}
+        strokeWidth={EXT_LINE_WIDTH * pxScale}
         opacity={opacity}
         listening={false}
       />
@@ -82,22 +85,24 @@ const TickMark = ({
   y,
   angleDeg,
   conflicted,
+  pxScale,
 }: {
   x: number;
   y: number;
   angleDeg: number;
   conflicted: boolean;
+  pxScale: number;
 }) => {
   // Tick is drawn at 45° relative to the dimension line direction
   const tickAngleRad = ((angleDeg + 90) * Math.PI) / 180;
-  const tx = Math.cos(tickAngleRad) * TICK_HALF;
-  const ty = Math.sin(tickAngleRad) * TICK_HALF;
+  const tx = Math.cos(tickAngleRad) * TICK_HALF * pxScale;
+  const ty = Math.sin(tickAngleRad) * TICK_HALF * pxScale;
 
   return (
     <Line
       points={[x - tx, y - ty, x + tx, y + ty]}
       stroke={conflicted ? CONFLICT_COLOR : DIM_LINE_COLOR}
-      strokeWidth={TICK_WIDTH}
+      strokeWidth={TICK_WIDTH * pxScale}
       opacity={conflicted ? 0.4 : 1}
       listening={false}
     />
@@ -113,10 +118,12 @@ const DimLine = ({
   geom,
   labelGapHalfWidth,
   conflicted,
+  pxScale,
 }: {
   geom: DimensionCandidate["geom"];
   labelGapHalfWidth: number;
   conflicted: boolean;
+  pxScale: number;
 }) => {
   const { dimLine, labelAnchor, angleDeg } = geom;
   const color = conflicted ? CONFLICT_COLOR : DIM_LINE_COLOR;
@@ -128,7 +135,7 @@ const DimLine = ({
   const dy = (dimLine.y2 - dimLine.y1) / lineLen;
 
   // Gap endpoints (gap = labelGapHalfWidth + a small clearance on each side)
-  const gapClearance = 3; // px extra clearance beyond label edge
+  const gapClearance = 3 * pxScale; // px extra clearance beyond label edge
   const halfGap = labelGapHalfWidth + gapClearance;
 
   const gapX1 = labelAnchor.x - dx * halfGap;
@@ -142,7 +149,7 @@ const DimLine = ({
       <Line
         points={[dimLine.x1, dimLine.y1, gapX1, gapY1]}
         stroke={color}
-        strokeWidth={DIM_LINE_WIDTH}
+        strokeWidth={DIM_LINE_WIDTH * pxScale}
         opacity={opacity}
         listening={false}
       />
@@ -150,13 +157,13 @@ const DimLine = ({
       <Line
         points={[gapX2, gapY2, dimLine.x2, dimLine.y2]}
         stroke={color}
-        strokeWidth={DIM_LINE_WIDTH}
+        strokeWidth={DIM_LINE_WIDTH * pxScale}
         opacity={opacity}
         listening={false}
       />
       {/* Tick marks at each end */}
-      <TickMark x={dimLine.x1} y={dimLine.y1} angleDeg={angleDeg} conflicted={conflicted} />
-      <TickMark x={dimLine.x2} y={dimLine.y2} angleDeg={angleDeg} conflicted={conflicted} />
+      <TickMark x={dimLine.x1} y={dimLine.y1} angleDeg={angleDeg} conflicted={conflicted} pxScale={pxScale} />
+      <TickMark x={dimLine.x2} y={dimLine.y2} angleDeg={angleDeg} conflicted={conflicted} pxScale={pxScale} />
     </>
   );
 };
@@ -174,12 +181,14 @@ const DimLine = ({
  */
 const DimLabel = ({
   candidate,
+  pxScale,
 }: {
   candidate: DimensionCandidate;
+  pxScale: number;
 }) => {
   const { geom, text, metrics, conflicted } = candidate;
   const { labelAnchor, angleDeg } = geom;
-  const { boxWidth, boxHeight, offsetX, offsetY } = metrics;
+  const { boxWidth, boxHeight, offsetX, offsetY, fontSize, padding } = metrics;
 
   const textColor = conflicted ? CONFLICT_COLOR : LABEL_TEXT_COLOR;
   const bgStroke = conflicted ? CONFLICT_COLOR : LABEL_BG_STROKE;
@@ -201,16 +210,16 @@ const DimLabel = ({
         height={boxHeight}
         fill={LABEL_BG_COLOR}
         stroke={bgStroke}
-        strokeWidth={0.5}
+        strokeWidth={0.5 * pxScale}
         cornerRadius={LABEL_BG_RADIUS}
         listening={false}
       />
-      {/* Text — centered within the box */}
+      {/* Text — centered within the box (font/padding already zoom-scaled) */}
       <Text
-        x={LABEL_PADDING}
-        y={LABEL_PADDING}
+        x={padding}
+        y={padding}
         text={text}
-        fontSize={LABEL_FONT_SIZE}
+        fontSize={fontSize}
         fontFamily={LABEL_FONT_FAMILY}
         fill={textColor}
         listening={false}
@@ -223,18 +232,19 @@ const DimLabel = ({
 // Single dimension annotation
 // ---------------------------------------------------------------------------
 
-const DimensionAnnotation = ({ candidate }: { candidate: DimensionCandidate }) => {
+const DimensionAnnotation = ({ candidate, pxScale }: { candidate: DimensionCandidate; pxScale: number }) => {
   const { geom, metrics, conflicted } = candidate;
 
   return (
     <Group listening={false}>
-      <ExtensionLines geom={geom} conflicted={conflicted} />
+      <ExtensionLines geom={geom} conflicted={conflicted} pxScale={pxScale} />
       <DimLine
         geom={geom}
         labelGapHalfWidth={metrics.boxWidth / 2}
         conflicted={conflicted}
+        pxScale={pxScale}
       />
-      <DimLabel candidate={candidate} />
+      <DimLabel candidate={candidate} pxScale={pxScale} />
     </Group>
   );
 };
@@ -245,13 +255,14 @@ const DimensionAnnotation = ({ candidate }: { candidate: DimensionCandidate }) =
 
 const DimensionLayerRenderer = () => {
   const candidates = useDimensionLayout();
+  const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
 
   if (candidates.length === 0) return null;
 
   return (
     <Group listening={false}>
       {candidates.map((c) => (
-        <DimensionAnnotation key={c.id} candidate={c} />
+        <DimensionAnnotation key={c.id} candidate={c} pxScale={pxScale} />
       ))}
     </Group>
   );

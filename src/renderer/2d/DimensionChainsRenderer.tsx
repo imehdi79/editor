@@ -12,9 +12,10 @@
 
 import { Group, Line, Text, Rect } from "react-konva";
 import { useDimensionChains } from "@/core/dimensions/useDimensionChains";
+import { useViewportStore } from "@/store/viewport.store";
 import type { ChainSegment } from "@/core/dimensions/dimensionChains";
 import { TICK_HALF } from "@/core/dimensions/dimensionGeometry";
-import { LABEL_FONT_SIZE, LABEL_FONT_FAMILY, LABEL_PADDING } from "@/core/dimensions/dimensionLayout";
+import { LABEL_FONT_FAMILY, dimensionPxScale } from "@/core/dimensions/dimensionLayout";
 
 // ---------------------------------------------------------------------------
 // Colors
@@ -48,36 +49,36 @@ const colors = (kind: "inner" | "outer") =>
 // Sub-renderers (mirrors DimensionLayerRenderer but uses chain colors)
 // ---------------------------------------------------------------------------
 
-const ChainExtLines = ({ seg }: { seg: ChainSegment }) => {
+const ChainExtLines = ({ seg, pxScale }: { seg: ChainSegment; pxScale: number }) => {
   const c = colors(seg.kind);
   const { extLine1, extLine2 } = seg.geom;
   return (
     <>
       <Line points={[extLine1.x1, extLine1.y1, extLine1.x2, extLine1.y2]}
-        stroke={c.ext} strokeWidth={EXT_LINE_WIDTH} opacity={0.8} listening={false} />
+        stroke={c.ext} strokeWidth={EXT_LINE_WIDTH * pxScale} opacity={0.8} listening={false} />
       <Line points={[extLine2.x1, extLine2.y1, extLine2.x2, extLine2.y2]}
-        stroke={c.ext} strokeWidth={EXT_LINE_WIDTH} opacity={0.8} listening={false} />
+        stroke={c.ext} strokeWidth={EXT_LINE_WIDTH * pxScale} opacity={0.8} listening={false} />
     </>
   );
 };
 
-const ChainTickMark = ({ x, y, angleDeg, kind }: { x: number; y: number; angleDeg: number; kind: "inner" | "outer" }) => {
+const ChainTickMark = ({ x, y, angleDeg, kind, pxScale }: { x: number; y: number; angleDeg: number; kind: "inner" | "outer"; pxScale: number }) => {
   const tickRad = ((angleDeg + 90) * Math.PI) / 180;
-  const tx = Math.cos(tickRad) * TICK_HALF;
-  const ty = Math.sin(tickRad) * TICK_HALF;
+  const tx = Math.cos(tickRad) * TICK_HALF * pxScale;
+  const ty = Math.sin(tickRad) * TICK_HALF * pxScale;
   return (
     <Line points={[x - tx, y - ty, x + tx, y + ty]}
-      stroke={colors(kind).dim} strokeWidth={TICK_WIDTH} listening={false} />
+      stroke={colors(kind).dim} strokeWidth={TICK_WIDTH * pxScale} listening={false} />
   );
 };
 
-const ChainDimLine = ({ seg }: { seg: ChainSegment }) => {
+const ChainDimLine = ({ seg, pxScale }: { seg: ChainSegment; pxScale: number }) => {
   const c = colors(seg.kind);
   const { dimLine, labelAnchor, angleDeg } = seg.geom;
   const lineLen = Math.hypot(dimLine.x2 - dimLine.x1, dimLine.y2 - dimLine.y1) || 1;
   const dx = (dimLine.x2 - dimLine.x1) / lineLen;
   const dy = (dimLine.y2 - dimLine.y1) / lineLen;
-  const halfGap = seg.metrics.boxWidth / 2 + 3;
+  const halfGap = seg.metrics.boxWidth / 2 + 3 * pxScale;
   const gx1 = labelAnchor.x - dx * halfGap;
   const gy1 = labelAnchor.y - dy * halfGap;
   const gx2 = labelAnchor.x + dx * halfGap;
@@ -86,37 +87,37 @@ const ChainDimLine = ({ seg }: { seg: ChainSegment }) => {
   return (
     <>
       <Line points={[dimLine.x1, dimLine.y1, gx1, gy1]}
-        stroke={c.dim} strokeWidth={DIM_LINE_WIDTH} listening={false} />
+        stroke={c.dim} strokeWidth={DIM_LINE_WIDTH * pxScale} listening={false} />
       <Line points={[gx2, gy2, dimLine.x2, dimLine.y2]}
-        stroke={c.dim} strokeWidth={DIM_LINE_WIDTH} listening={false} />
-      <ChainTickMark x={dimLine.x1} y={dimLine.y1} angleDeg={angleDeg} kind={seg.kind} />
-      <ChainTickMark x={dimLine.x2} y={dimLine.y2} angleDeg={angleDeg} kind={seg.kind} />
+        stroke={c.dim} strokeWidth={DIM_LINE_WIDTH * pxScale} listening={false} />
+      <ChainTickMark x={dimLine.x1} y={dimLine.y1} angleDeg={angleDeg} kind={seg.kind} pxScale={pxScale} />
+      <ChainTickMark x={dimLine.x2} y={dimLine.y2} angleDeg={angleDeg} kind={seg.kind} pxScale={pxScale} />
     </>
   );
 };
 
-const ChainLabel = ({ seg }: { seg: ChainSegment }) => {
+const ChainLabel = ({ seg, pxScale }: { seg: ChainSegment; pxScale: number }) => {
   const c = colors(seg.kind);
   const { labelAnchor, angleDeg } = seg.geom;
-  const { boxWidth, boxHeight, offsetX, offsetY } = seg.metrics;
+  const { boxWidth, boxHeight, offsetX, offsetY, fontSize, padding } = seg.metrics;
   return (
     <Group x={labelAnchor.x} y={labelAnchor.y}
       offsetX={offsetX} offsetY={offsetY} rotation={angleDeg} listening={false}>
       <Rect x={0} y={0} width={boxWidth} height={boxHeight}
-        fill={c.labelBg} stroke={c.dim} strokeWidth={0.5}
+        fill={c.labelBg} stroke={c.dim} strokeWidth={0.5 * pxScale}
         cornerRadius={LABEL_BG_RADIUS} listening={false} />
-      <Text x={LABEL_PADDING} y={LABEL_PADDING} text={seg.text}
-        fontSize={LABEL_FONT_SIZE} fontFamily={LABEL_FONT_FAMILY}
+      <Text x={padding} y={padding} text={seg.text}
+        fontSize={fontSize} fontFamily={LABEL_FONT_FAMILY}
         fill={c.labelFg} listening={false} />
     </Group>
   );
 };
 
-const ChainAnnotation = ({ seg }: { seg: ChainSegment }) => (
+const ChainAnnotation = ({ seg, pxScale }: { seg: ChainSegment; pxScale: number }) => (
   <Group listening={false}>
-    <ChainExtLines seg={seg} />
-    <ChainDimLine seg={seg} />
-    <ChainLabel seg={seg} />
+    <ChainExtLines seg={seg} pxScale={pxScale} />
+    <ChainDimLine seg={seg} pxScale={pxScale} />
+    <ChainLabel seg={seg} pxScale={pxScale} />
   </Group>
 );
 
@@ -126,12 +127,13 @@ const ChainAnnotation = ({ seg }: { seg: ChainSegment }) => (
 
 const DimensionChainsRenderer = () => {
   const chains = useDimensionChains();
+  const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
   if (chains.length === 0) return null;
 
   return (
     <Group listening={false}>
       {chains.map((seg) => (
-        <ChainAnnotation key={seg.id} seg={seg} />
+        <ChainAnnotation key={seg.id} seg={seg} pxScale={pxScale} />
       ))}
     </Group>
   );

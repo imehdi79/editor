@@ -22,7 +22,8 @@
 
 import { Group, Rect, Text } from "react-konva";
 import type { DrawingHints } from "@/core/drawing-engine/drawing.types";
-import { LABEL_FONT_SIZE, LABEL_FONT_FAMILY, LABEL_PADDING } from "@/core/dimensions/dimensionLayout";
+import { useViewportStore } from "@/store/viewport.store";
+import { LABEL_FONT_SIZE, LABEL_FONT_FAMILY, LABEL_PADDING, dimensionPxScale } from "@/core/dimensions/dimensionLayout";
 
 const LIVE_BG_COLOR = "#fffbeb"; // warm tint — distinguishes live from committed
 const LIVE_TEXT_COLOR = "#1e293b";
@@ -36,6 +37,7 @@ interface Props {
 }
 
 const DimensionRenderer = ({ hints }: Props) => {
+  const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
   const { dimension, perpLocked } = hints;
   if (!dimension || dimension.lengthPx < 8) return null;
 
@@ -46,8 +48,19 @@ const DimensionRenderer = ({ hints }: Props) => {
   const textColor = perpLocked ? LIVE_PERP_COLOR : LIVE_TEXT_COLOR;
   const strokeColor = perpLocked ? LIVE_BG_STROKE : LIVE_STROKE_NORMAL;
 
+  // Counter-scale on zoom-out so the live label stays readable. Scaling the
+  // group about its centered offset keeps it anchored on the segment midpoint.
   return (
-    <Group x={anchorX} y={anchorY} offsetX={halfBoxW} offsetY={halfBoxH} rotation={angleDeg} listening={false}>
+    <Group
+      x={anchorX}
+      y={anchorY}
+      offsetX={halfBoxW}
+      offsetY={halfBoxH}
+      rotation={angleDeg}
+      scaleX={pxScale}
+      scaleY={pxScale}
+      listening={false}
+    >
       <Rect
         x={0}
         y={0}

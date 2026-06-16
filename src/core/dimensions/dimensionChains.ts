@@ -237,9 +237,10 @@ const buildChainSegments = (
   dimensionUnit: DimensionUnit,
   pixelsPerMeter: number,
   runId: string,
+  pxScale: number,
 ): ChainSegment[] => {
   const side: 1 | -1 = kind === "inner" ? 1 : -1;
-  const offset = kind === "inner" ? INNER_CHAIN_OFFSET : OUTER_CHAIN_OFFSET;
+  const offset = (kind === "inner" ? INNER_CHAIN_OFFSET : OUTER_CHAIN_OFFSET) * pxScale;
 
   if (kind === "outer") {
     // One overall segment from first to last point
@@ -249,11 +250,11 @@ const buildChainSegments = (
     const len = Math.hypot(pN.x - p0.x, pN.y - p0.y);
     if (len < MIN_CHAIN_SEG_PX) return [];
     const text = formatDimension(len, dimensionUnit, pixelsPerMeter);
-    const geom = computeSegmentDimension(p0.x, p0.y, pN.x, pN.y, side, offset);
+    const geom = computeSegmentDimension(p0.x, p0.y, pN.x, pN.y, side, offset, pxScale);
     return [{
       id: `chain-outer-${runId}`,
       x1: p0.x, y1: p0.y, x2: pN.x, y2: pN.y,
-      text, geom, metrics: metricsFromGeometry(geom, text),
+      text, geom, metrics: metricsFromGeometry(geom, text, pxScale),
       kind, conflicted: false,
     }];
   }
@@ -266,11 +267,11 @@ const buildChainSegments = (
     const len = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     if (len < MIN_CHAIN_SEG_PX) continue;
     const text = formatDimension(len, dimensionUnit, pixelsPerMeter);
-    const geom = computeSegmentDimension(p0.x, p0.y, p1.x, p1.y, side, offset);
+    const geom = computeSegmentDimension(p0.x, p0.y, p1.x, p1.y, side, offset, pxScale);
     segs.push({
       id: `chain-inner-${runId}-${i}`,
       x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
-      text, geom, metrics: metricsFromGeometry(geom, text),
+      text, geom, metrics: metricsFromGeometry(geom, text, pxScale),
       kind, conflicted: false,
     });
   }
@@ -292,6 +293,7 @@ export const buildDimensionChains = (
   shapes: Record<string, Shape>,
   dimensionUnit: DimensionUnit,
   pixelsPerMeter: number,
+  pxScale: number = 1,
 ): ChainSegment[] => {
   const walls = Object.values(shapes).filter(isWall);
   if (walls.length === 0) return [];
@@ -308,8 +310,8 @@ export const buildDimensionChains = (
     if (points.length < 3) continue;
 
     const runId = `run-${ri}`;
-    result.push(...buildChainSegments(points, "inner", dimensionUnit, pixelsPerMeter, runId));
-    result.push(...buildChainSegments(points, "outer", dimensionUnit, pixelsPerMeter, runId));
+    result.push(...buildChainSegments(points, "inner", dimensionUnit, pixelsPerMeter, runId, pxScale));
+    result.push(...buildChainSegments(points, "outer", dimensionUnit, pixelsPerMeter, runId, pxScale));
   }
 
   return result;

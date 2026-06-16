@@ -13,18 +13,21 @@
 import { useMemo } from "react";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useEditorStore } from "@/store/editor.store";
+import { useViewportStore } from "@/store/viewport.store";
 import { buildCandidates } from "./dimensionCollision";
 import { resolveCollisions } from "./dimensionCollision";
 import type { DimensionCandidate } from "./dimensionCollision";
+import { dimensionPxScale } from "./dimensionLayout";
 
 export const useDimensionLayout = (): DimensionCandidate[] => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
   const measurementReference = useEditorStore((s) => s.measurementReference);
+  const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
 
   return useMemo(() => {
-    const candidates = buildCandidates(shapes, dimensionUnit, pixelsPerMeter, measurementReference);
-    return resolveCollisions(candidates);
-  }, [shapes, dimensionUnit, pixelsPerMeter, measurementReference]);
+    const candidates = buildCandidates(shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale);
+    return resolveCollisions(candidates, pxScale);
+  }, [shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale]);
 };

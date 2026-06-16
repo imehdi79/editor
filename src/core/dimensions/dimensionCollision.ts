@@ -130,7 +130,10 @@ export interface DimensionCandidate {
  * Processes pairs in order of increasing segment length so shorter (more
  * constrained) segments keep their preferred position and longer segments adapt.
  */
-export const resolveCollisions = (candidates: DimensionCandidate[]): DimensionCandidate[] => {
+export const resolveCollisions = (
+  candidates: DimensionCandidate[],
+  pxScale: number = 1,
+): DimensionCandidate[] => {
   if (candidates.length < 2) return candidates;
 
   // Sort by segment length ascending (short segments are highest priority)
@@ -149,9 +152,9 @@ export const resolveCollisions = (candidates: DimensionCandidate[]): DimensionCa
       // Keeps the label centered and on its outward side, stacking parallel
       // dimensions into consistent lanes — the CAD-standard look.
       for (let step = 1; step <= MAX_PUSH_STEPS; step++) {
-        const newOffset = DIM_OFFSET + PUSH_STEP * step;
-        const pushedGeom = pushDimensionOffset(b.geom, b.x1, b.y1, b.x2, b.y2, newOffset);
-        const pushedMetrics = metricsFromGeometry(pushedGeom, b.text);
+        const newOffset = (DIM_OFFSET + PUSH_STEP * step) * pxScale;
+        const pushedGeom = pushDimensionOffset(b.geom, b.x1, b.y1, b.x2, b.y2, newOffset, pxScale);
+        const pushedMetrics = metricsFromGeometry(pushedGeom, b.text, pxScale);
         const clearsAll = sorted.slice(0, i).every((prev) => !obbsCollide(prev.metrics.obb, pushedMetrics.obb));
         if (clearsAll) {
           b.geom = pushedGeom;
@@ -163,8 +166,8 @@ export const resolveCollisions = (candidates: DimensionCandidate[]): DimensionCa
       if (resolved) continue;
 
       // --- Pass 2: flip to the other side of b's segment ---
-      const flippedGeom = flipDimensionSide(b.geom, b.x1, b.y1, b.x2, b.y2);
-      const flippedMetrics = metricsFromGeometry(flippedGeom, b.text);
+      const flippedGeom = flipDimensionSide(b.geom, b.x1, b.y1, b.x2, b.y2, DIM_OFFSET * pxScale, pxScale);
+      const flippedMetrics = metricsFromGeometry(flippedGeom, b.text, pxScale);
       if (!obbsCollide(a.metrics.obb, flippedMetrics.obb)) {
         // Check flipped position doesn't collide with any already-resolved label
         const clearsAll = sorted
@@ -181,7 +184,7 @@ export const resolveCollisions = (candidates: DimensionCandidate[]): DimensionCa
       const slideAxisRad = (b.geom.angleDeg * Math.PI) / 180;
       const slideX = Math.cos(slideAxisRad);
       const slideY = Math.sin(slideAxisRad);
-      const slideStep = b.metrics.boxWidth / 2 + SLIDE_GAP;
+      const slideStep = b.metrics.boxWidth / 2 + SLIDE_GAP * pxScale;
 
       for (const dir of [1, -1]) {
         const dx = slideX * slideStep * dir;
@@ -201,7 +204,7 @@ export const resolveCollisions = (candidates: DimensionCandidate[]): DimensionCa
               y: b.geom.labelAnchor.y + dy,
             },
           };
-          const slidMetrics = metricsFromGeometry(slidGeom, b.text);
+          const slidMetrics = metricsFromGeometry(slidGeom, b.text, pxScale);
           b.geom = slidGeom;
           b.metrics = slidMetrics;
           resolved = true;
@@ -271,6 +274,7 @@ export const buildCandidates = (
   dimensionUnit: DimensionUnit,
   pixelsPerMeter: number,
   reference: MeasurementReference = "centerline",
+  pxScale: number = 1,
 ): DimensionCandidate[] => {
   // Resolve measured segments first so we can derive a centroid for side-choice.
   type Seg = { id: string; x1: number; y1: number; x2: number; y2: number };
@@ -305,8 +309,8 @@ export const buildCandidates = (
     const lengthPx = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
     const text = formatDimension(lengthPx, dimensionUnit, pixelsPerMeter);
     const side = outwardSide(s.x1, s.y1, s.x2, s.y2, centroid);
-    const geom = computeSegmentDimension(s.x1, s.y1, s.x2, s.y2, side);
-    const metrics = metricsFromGeometry(geom, text);
+    const geom = computeSegmentDimension(s.x1, s.y1, s.x2, s.y2, side, DIM_OFFSET * pxScale, pxScale);
+    const metrics = metricsFromGeometry(geom, text, pxScale);
     candidates.push({ id: s.id, x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, text, geom, metrics, conflicted: false });
   }
 

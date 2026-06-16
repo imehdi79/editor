@@ -91,6 +91,10 @@ export interface LabelMetrics {
   boxWidth: number;
   /** Total rendered height including padding on both sides */
   boxHeight: number;
+  /** Font size used (px, in canvas space) — already includes any zoom scaling */
+  fontSize: number;
+  /** Padding used inside the pill (px, in canvas space) — zoom-scaled */
+  padding: number;
   /**
    * X offset from anchor → Konva Text offsetX.
    * Centering: offsetX = boxWidth / 2 places the text center on the anchor.
@@ -110,26 +114,40 @@ export interface LabelMetrics {
 // ---------------------------------------------------------------------------
 
 /**
+ * Zoom compensation for dimension annotations.
+ *
+ * The whole dimension layer is drawn in canvas (world) pixels and scaled by the
+ * stage zoom, so on zoom-out everything — including the labels — shrinks and the
+ * numbers become unreadable. To keep annotations a constant on-screen size we
+ * multiply every sizing constant (font, padding, offsets, gaps, ticks) by this
+ * factor: world size × zoom then stays constant. We only compensate on zoom-OUT
+ * (factor ≥ 1); when zoomed in the annotations scale with the drawing as usual.
+ */
+export const dimensionPxScale = (zoom: number): number => (zoom > 0 ? Math.max(1, 1 / zoom) : 1);
+
+/**
  * Measure a label string and produce all metrics needed for precise rendering
  * and collision detection.
  *
  * @param text       The formatted dimension string (e.g. "250cm")
  * @param anchor     Canvas-space center point of the label
  * @param angleDeg   Rotation of the label (follows dimension line)
- * @param fontSize   Override font size (defaults to LABEL_FONT_SIZE)
+ * @param pxScale    Zoom-compensation factor (see dimensionPxScale); 1 = none
  */
 export const measureLabel = (
   text: string,
   anchor: { x: number; y: number },
   angleDeg: number,
-  fontSize: number = LABEL_FONT_SIZE,
+  pxScale: number = 1,
 ): LabelMetrics => {
+  const fontSize = LABEL_FONT_SIZE * pxScale;
+  const padding = LABEL_PADDING * pxScale;
   const charWidth = fontSize * CHAR_WIDTH_RATIO;
   const textWidth = text.length * charWidth;
   const textHeight = fontSize * LINE_HEIGHT_RATIO;
 
-  const boxWidth = textWidth + LABEL_PADDING * 2;
-  const boxHeight = textHeight + LABEL_PADDING * 2;
+  const boxWidth = textWidth + padding * 2;
+  const boxHeight = textHeight + padding * 2;
 
   // Half-extents for centering
   const offsetX = boxWidth / 2;
@@ -143,7 +161,7 @@ export const measureLabel = (
     angleDeg,
   };
 
-  return { textWidth, textHeight, boxWidth, boxHeight, offsetX, offsetY, obb };
+  return { textWidth, textHeight, boxWidth, boxHeight, fontSize, padding, offsetX, offsetY, obb };
 };
 
 // ---------------------------------------------------------------------------
@@ -157,5 +175,6 @@ export const measureLabel = (
 export const metricsFromGeometry = (
   geom: DimensionGeometry,
   text: string,
+  pxScale: number = 1,
 ): LabelMetrics =>
-  measureLabel(text, geom.labelAnchor, geom.angleDeg);
+  measureLabel(text, geom.labelAnchor, geom.angleDeg, pxScale);

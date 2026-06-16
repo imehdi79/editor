@@ -8,15 +8,18 @@
 import { useMemo } from "react";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useEditorStore } from "@/store/editor.store";
+import { useViewportStore } from "@/store/viewport.store";
 import { buildDimensionChains, type ChainSegment } from "./dimensionChains";
+import { dimensionPxScale } from "./dimensionLayout";
 
 export const useDimensionChains = (): ChainSegment[] => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
+  const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
 
   return useMemo(
-    () => buildDimensionChains(shapes, dimensionUnit, pixelsPerMeter),
-    [shapes, dimensionUnit, pixelsPerMeter],
+    () => buildDimensionChains(shapes, dimensionUnit, pixelsPerMeter, pxScale),
+    [shapes, dimensionUnit, pixelsPerMeter, pxScale],
   );
 };

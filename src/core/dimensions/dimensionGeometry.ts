@@ -112,6 +112,9 @@ const leftPerp = (d: Point2D): Point2D => ({ x: -d.y, y: d.x });
  * @param side     +1 = dimension line on the left/above the segment direction,
  *                 -1 = right/below. Default +1.
  * @param offset   Override the DIM_OFFSET constant (used by collision resolver).
+ *                 Callers pass an already zoom-scaled offset when applicable.
+ * @param pxScale  Zoom-compensation factor for the witness-line gap/overshoot
+ *                 (see dimensionPxScale); 1 = none.
  */
 export const computeSegmentDimension = (
   x1: number,
@@ -120,6 +123,7 @@ export const computeSegmentDimension = (
   y2: number,
   side: 1 | -1 = 1,
   offset: number = DIM_OFFSET,
+  pxScale: number = 1,
 ): DimensionGeometry => {
   const dir = segDir(x1, y1, x2, y2);
   const perp = leftPerp(dir); // unit perpendicular
@@ -128,24 +132,29 @@ export const computeSegmentDimension = (
   const ox = perp.x * side * offset;
   const oy = perp.y * side * offset;
 
+  // Zoom-scaled witness-line spacing so the annotation keeps its on-screen
+  // proportions when zoomed out.
+  const gap = EXT_LINE_GAP * pxScale;
+  const overshoot = EXT_LINE_OVERSHOOT * pxScale;
+
   // Extension line start points (gap from segment endpoint)
   const ext1Start: Point2D = {
-    x: x1 + perp.x * side * EXT_LINE_GAP,
-    y: y1 + perp.y * side * EXT_LINE_GAP,
+    x: x1 + perp.x * side * gap,
+    y: y1 + perp.y * side * gap,
   };
   const ext2Start: Point2D = {
-    x: x2 + perp.x * side * EXT_LINE_GAP,
-    y: y2 + perp.y * side * EXT_LINE_GAP,
+    x: x2 + perp.x * side * gap,
+    y: y2 + perp.y * side * gap,
   };
 
   // Extension line end points (overshoot past dimension line)
   const ext1End: Point2D = {
-    x: x1 + ox + perp.x * side * EXT_LINE_OVERSHOOT,
-    y: y1 + oy + perp.y * side * EXT_LINE_OVERSHOOT,
+    x: x1 + ox + perp.x * side * overshoot,
+    y: y1 + oy + perp.y * side * overshoot,
   };
   const ext2End: Point2D = {
-    x: x2 + ox + perp.x * side * EXT_LINE_OVERSHOOT,
-    y: y2 + oy + perp.y * side * EXT_LINE_OVERSHOOT,
+    x: x2 + ox + perp.x * side * overshoot,
+    y: y2 + oy + perp.y * side * overshoot,
   };
 
   // Dimension line endpoints (at offset distance from segment)
@@ -186,9 +195,10 @@ export const flipDimensionSide = (
   y1: number,
   x2: number,
   y2: number,
-  offset?: number,
+  offset: number = DIM_OFFSET,
+  pxScale: number = 1,
 ): DimensionGeometry =>
-  computeSegmentDimension(x1, y1, x2, y2, geom.side === 1 ? -1 : 1, offset);
+  computeSegmentDimension(x1, y1, x2, y2, geom.side === 1 ? -1 : 1, offset, pxScale);
 
 /**
  * Recompute geometry with an increased offset — used by the collision
@@ -201,5 +211,6 @@ export const pushDimensionOffset = (
   x2: number,
   y2: number,
   newOffset: number,
+  pxScale: number = 1,
 ): DimensionGeometry =>
-  computeSegmentDimension(x1, y1, x2, y2, geom.side, newOffset);
+  computeSegmentDimension(x1, y1, x2, y2, geom.side, newOffset, pxScale);
