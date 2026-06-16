@@ -44,13 +44,12 @@ import { metricsFromGeometry } from "./dimensionLayout";
 
 /** Cos of angle tolerance for collinearity (≤ ~10°). */
 const COLLINEAR_COS_TOLERANCE = 0.985;
-/** Cos of angle for perpendicularism at junctions (≤ ~75° from 90°). */
-const PERP_COS_TOLERANCE = 0.26;
 /** Extra offset multiplier so chains stack outside the per-segment dims. */
-const INNER_CHAIN_OFFSET = DIM_OFFSET * 2.2;
-const OUTER_CHAIN_OFFSET = DIM_OFFSET * 3.6;
+const CHAIN_OFFSET = DIM_OFFSET * 2.4;
 /** Minimum gap between two chain points (px) — avoid near-zero segments. */
 const MIN_CHAIN_SEG_PX = 6;
+/** Max perpendicular distance (px) for a wall endpoint to count as "on the run". */
+const ATTACH_EPS = SNAP_EPSILON * 2;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,9 +78,6 @@ const wallDir = (w: WallShape) => {
   const l = Math.hypot(dx, dy) || 1;
   return { ux: dx / l, uy: dy / l };
 };
-
-const samePoint = (ax: number, ay: number, bx: number, by: number) =>
-  Math.abs(ax - bx) <= SNAP_EPSILON * 2 && Math.abs(ay - by) <= SNAP_EPSILON * 2;
 
 const dotDir = (
   ax: number, ay: number,
@@ -166,113 +162,171 @@ const buildRuns = (walls: WallShape[]): WallRun[] => {
 // ---------------------------------------------------------------------------
 
 /**
- * For a run, find all T-junction points: positions where a perpendicular wall
- * meets any wall in the run (at one of its endpoints). The break-point is the
- * foot of the perpendicular wall on the run axis.
+ * A break-point junction where an abutting ("retaining") wall meets the run
+ * somewhere along its body — at any angle, at any point, NOT only the run's
+ * own nodes.
  *
- * Also includes the two outermost endpoints of the run itself.
- *
- * Returns sorted t-values (parameter along the run axis) and their world coords.
+ * Because the user wants face-to-face dimensioning, every junction contributes
+ * TWO break-points: where each face of the abutting wall crosses the run axis.
+ * The gap between tNear and tFar is therefore exactly that wall's thickness as
+ * seen along the run — it becomes its own dimension piece.
  */
-interface RunPoint {
-  t: number;
-  x: number;
-  y: number;
+interface Junction {
+  /** Parameter (along run axis) of the near face. */
+  tNear: number;
+  /** Parameter (along run axis) of the far face. */
+  tFar: number;
+  /** Which side of the run the abutting wall extends to (+1 = left perp). */
+  side: 1 | -1;
 }
 
-const collectRunPoints = (
+interface RunGeom {
+  /** Run origin + unit direction. */
+  ox: number; oy: number; ux: number; uy: number;
+  /** Run span along the axis (from the run's own endpoints). */
+  tMin: number; tMax: number;
+  junctions: Junction[];
+}
+
+/**
+ * For a run, collect every abutting-wall junction along its body.
+ *
+ * An abutting wall qualifies when one of its endpoints lies on the run line
+ * (within ATTACH_EPS perpendicular distance) and within the run span — and the
+ * wall is NOT collinear with the run (collinear neighbours are already part of
+ * the run). The abutting wall may meet the run at a node OR mid-body.
+ */
+const collectRunGeom = (
   run: WallRun,
   allShapes: Record<string, Shape>,
-): { origin: { x: number; y: number }; points: RunPoint[] } => {
+): RunGeom => {
   const { walls, ux, uy } = run;
-
-  // Determine run origin: the wall endpoint with smallest t=0 by convention
-  // We pick the first wall's p1 as the reference origin.
   const ox = walls[0].x1;
   const oy = walls[0].y1;
 
-  const ts = new Map<number, RunPoint>();
-
-  const addPoint = (px: number, py: number) => {
-    const t = Math.round(projectT(px, py, ox, oy, ux, uy) * 10) / 10;
-    if (!ts.has(t)) ts.set(t, { t, x: ox + ux * t, y: oy + uy * t });
-  };
-
-  // All run wall endpoints
+  // Run span from its own wall endpoints.
+  let tMin = Infinity;
+  let tMax = -Infinity;
   for (const w of walls) {
-    addPoint(w.x1, w.y1);
-    addPoint(w.x2, w.y2);
-  }
-
-  // Build a set of run wall ids for quick lookup
-  const runIds = new Set(walls.map((w) => w.id));
-
-  // T-junction perpendicular walls
-  for (const shape of Object.values(allShapes)) {
-    if (!isWall(shape) || runIds.has(shape.id)) continue;
-    const { ux: nx, uy: ny } = wallDir(shape);
-    if (dotDir(ux, uy, nx, ny) > PERP_COS_TOLERANCE) continue; // not perpendicular
-
-    // Check if this perpendicular wall meets any run wall
-    for (const [px, py] of [[shape.x1, shape.y1], [shape.x2, shape.y2]] as [number, number][]) {
-      for (const rw of walls) {
-        if (samePoint(px, py, rw.x1, rw.y1) || samePoint(px, py, rw.x2, rw.y2)) {
-          addPoint(px, py);
-        }
-      }
+    for (const [px, py] of [[w.x1, w.y1], [w.x2, w.y2]] as [number, number][]) {
+      const t = projectT(px, py, ox, oy, ux, uy);
+      if (t < tMin) tMin = t;
+      if (t > tMax) tMax = t;
     }
   }
 
-  const sorted = [...ts.values()].sort((a, b) => a.t - b.t);
-  return { origin: { x: ox, y: oy }, points: sorted };
+  // Left-hand perpendicular of the run direction (matches computeSegmentDimension
+  // side=+1 convention).
+  const lpx = -uy;
+  const lpy = ux;
+
+  const runIds = new Set(walls.map((w) => w.id));
+  const junctions: Junction[] = [];
+
+  for (const shape of Object.values(allShapes)) {
+    if (!isWall(shape) || runIds.has(shape.id)) continue;
+    const { ux: rx, uy: ry } = wallDir(shape);
+    // Collinear walls are continuations, not cross-junctions — skip.
+    if (dotDir(ux, uy, rx, ry) >= COLLINEAR_COS_TOLERANCE) continue;
+
+    // Each endpoint paired with its opposite end (which way the wall extends).
+    const ends: [number, number, number, number][] = [
+      [shape.x1, shape.y1, shape.x2, shape.y2],
+      [shape.x2, shape.y2, shape.x1, shape.y1],
+    ];
+    for (const [px, py, otherX, otherY] of ends) {
+      const tFoot = projectT(px, py, ox, oy, ux, uy);
+      // Must land within the run span.
+      if (tFoot < tMin - ATTACH_EPS || tFoot > tMax + ATTACH_EPS) continue;
+      // Perpendicular distance from the endpoint to the run line.
+      const footX = ox + ux * tFoot;
+      const footY = oy + uy * tFoot;
+      if (Math.hypot(px - footX, py - footY) > ATTACH_EPS) continue;
+
+      // This endpoint (px,py) sits on the run. The opposite end tells us which
+      // side of the run the abutting wall extends to.
+      const side: 1 | -1 = (otherX - px) * lpx + (otherY - py) * lpy >= 0 ? 1 : -1;
+
+      // Face-to-face: intersect each face of the abutting wall with the run axis.
+      // Faces are the abutting centerline offset by ±thickness/2 along its normal
+      // n = (-ry, rx). Solve t*U − s*R = (P ± off) − O for t (the run parameter).
+      // det = Rx*Uy − Ry*Ux is non-zero because the wall is not collinear.
+      const half = shape.thickness / 2;
+      const nx = -ry;
+      const ny = rx;
+      const det = rx * uy - ry * ux;
+      const faceT = (sign: 1 | -1): number => {
+        const bx = px + sign * half * nx - ox;
+        const by = py + sign * half * ny - oy;
+        return (rx * by - ry * bx) / det;
+      };
+      const ta = faceT(1);
+      const tb = faceT(-1);
+      junctions.push({ tNear: Math.min(ta, tb), tFar: Math.max(ta, tb), side });
+    }
+  }
+
+  return { ox, oy, ux, uy, tMin, tMax, junctions };
 };
 
 // ---------------------------------------------------------------------------
 // Step 3 — Emit chain segments
 // ---------------------------------------------------------------------------
 
-const buildChainSegments = (
-  points: RunPoint[],
-  kind: "inner" | "outer",
+/**
+ * Emit the SEGMENTED chain on ONE side of the run.
+ *
+ * Only the clear "room" spans are dimensioned — the gap occupied by each
+ * abutting wall (its thickness) is NOT labelled. So each piece runs from the
+ * far face of one abutting wall to the near face of the next (face-to-face),
+ * and the thickness itself is skipped entirely.
+ *
+ * The room spans are the complement of the junction thickness-intervals within
+ * the run span [tMin, tMax].
+ */
+const buildSideSegments = (
+  geom: RunGeom,
+  side: 1 | -1,
   dimensionUnit: DimensionUnit,
   pixelsPerMeter: number,
   runId: string,
   pxScale: number,
 ): ChainSegment[] => {
-  const side: 1 | -1 = kind === "inner" ? 1 : -1;
-  const offset = (kind === "inner" ? INNER_CHAIN_OFFSET : OUTER_CHAIN_OFFSET) * pxScale;
+  const { ox, oy, ux, uy, tMin, tMax } = geom;
+  const offset = CHAIN_OFFSET * pxScale;
+  const at = (t: number) => ({ x: ox + ux * t, y: oy + uy * t });
 
-  if (kind === "outer") {
-    // One overall segment from first to last point
-    const p0 = points[0];
-    const pN = points[points.length - 1];
-    if (points.length < 2) return [];
-    const len = Math.hypot(pN.x - p0.x, pN.y - p0.y);
-    if (len < MIN_CHAIN_SEG_PX) return [];
-    const text = formatDimension(len, dimensionUnit, pixelsPerMeter);
-    const geom = computeSegmentDimension(p0.x, p0.y, pN.x, pN.y, side, offset, pxScale);
-    return [{
-      id: `chain-outer-${runId}`,
-      x1: p0.x, y1: p0.y, x2: pN.x, y2: pN.y,
-      text, geom, metrics: metricsFromGeometry(geom, text, pxScale),
-      kind, conflicted: false,
-    }];
+  // Thickness intervals of the abutting walls on this side, clamped into the
+  // run span, sorted by start.
+  const intervals = geom.junctions
+    .filter((j) => j.side === side)
+    .map((j): [number, number] => [Math.max(tMin, j.tNear), Math.min(tMax, j.tFar)])
+    .filter(([a, b]) => b > a)
+    .sort((p, q) => p[0] - q[0]);
+
+  // Room spans = complement of those intervals within [tMin, tMax].
+  const roomSpans: [number, number][] = [];
+  let cursor = tMin;
+  for (const [a, b] of intervals) {
+    if (a > cursor) roomSpans.push([cursor, a]);
+    cursor = Math.max(cursor, b);
   }
+  if (cursor < tMax) roomSpans.push([cursor, tMax]);
 
-  // Inner: one segment per consecutive pair of points
   const segs: ChainSegment[] = [];
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i];
-    const p1 = points[i + 1];
+  let i = 0;
+  for (const [a, b] of roomSpans) {
+    const p0 = at(a);
+    const p1 = at(b);
     const len = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     if (len < MIN_CHAIN_SEG_PX) continue;
     const text = formatDimension(len, dimensionUnit, pixelsPerMeter);
-    const geom = computeSegmentDimension(p0.x, p0.y, p1.x, p1.y, side, offset, pxScale);
+    const g = computeSegmentDimension(p0.x, p0.y, p1.x, p1.y, side, offset, pxScale);
     segs.push({
-      id: `chain-inner-${runId}-${i}`,
+      id: `chain-${runId}-${side}-${i++}`,
       x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
-      text, geom, metrics: metricsFromGeometry(geom, text, pxScale),
-      kind, conflicted: false,
+      text, geom: g, metrics: metricsFromGeometry(g, text, pxScale),
+      kind: "inner", conflicted: false,
     });
   }
   return segs;
@@ -283,11 +337,15 @@ const buildChainSegments = (
 // ---------------------------------------------------------------------------
 
 /**
- * Build all inner + outer dimension chain segments for the floor plan.
- * Only runs with ≥ 1 perpendicular junction (i.e., the inner chain would have
- * ≥ 2 segments, meaning there IS something to show beyond the regular dim)
- * get a full inner+outer pair. Single-wall runs with no junctions get no chains
- * — the regular per-segment dimension already covers them.
+ * Build all dimension chain segments for the floor plan.
+ *
+ * For every collinear wall run, ONLY the side(s) that actually carry abutting
+ * ("retaining") walls get a SEGMENTED chain — each clear room span is its own
+ * face-to-face piece and the wall thicknesses are not labelled.
+ *
+ * A side with no break-points gets NO chain — the regular per-segment dimension
+ * already covers the wall there, so adding an overall chain would just duplicate
+ * it. Runs with no junctions at all get nothing.
  */
 export const buildDimensionChains = (
   shapes: Record<string, Shape>,
@@ -302,16 +360,20 @@ export const buildDimensionChains = (
   const result: ChainSegment[] = [];
 
   for (let ri = 0; ri < runs.length; ri++) {
-    const run = runs[ri];
-    const { points } = collectRunPoints(run, shapes);
-
-    // Only emit chains when there are interior break-points (T-junctions)
-    // i.e., more than 2 distinct points (the two run endpoints + ≥1 junction)
-    if (points.length < 3) continue;
+    const geom = collectRunGeom(runs[ri], shapes);
+    if (geom.junctions.length === 0) continue;
+    if (geom.tMax - geom.tMin < MIN_CHAIN_SEG_PX) continue;
 
     const runId = `run-${ri}`;
-    result.push(...buildChainSegments(points, "inner", dimensionUnit, pixelsPerMeter, runId, pxScale));
-    result.push(...buildChainSegments(points, "outer", dimensionUnit, pixelsPerMeter, runId, pxScale));
+
+    // Only sides that carry abutting walls get a segmented chain. The empty
+    // side is left to its default per-segment dimension (no duplicate).
+    for (const side of [1, -1] as const) {
+      if (!geom.junctions.some((j) => j.side === side)) continue;
+      result.push(
+        ...buildSideSegments(geom, side, dimensionUnit, pixelsPerMeter, runId, pxScale),
+      );
+    }
   }
 
   return result;

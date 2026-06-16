@@ -1,5 +1,6 @@
 import type { Shape } from "@/core/drawing-engine/drawing.types";
 import type { SnapResult } from "@/core/drawing-engine/drawing.types";
+import { projectOntoWall } from "@/core/wall-utils/wallGeometry";
 
 // استخراج همه نقاط قابل snap از شکل‌های موجود
 const extractSnapPoints = (shapes: Record<string, Shape>) => {
@@ -101,6 +102,28 @@ export const snapToPoints = (
       nearestDist = dist;
       nearest = { x: pt.x, y: pt.y };
       nearestType = "intersection";
+    }
+  }
+
+  // wall body (centerline) — lowest priority "break point" snap.
+  // Lets a wall endpoint attach to any point along another wall, not just its
+  // nodes. Only considered when nothing stronger (node/midpoint/intersection)
+  // is within range, so existing snapping behaviour is unchanged.
+  if (!nearest) {
+    // Interior margin so we don't shadow the endpoint (node) snap near the ends.
+    const END_MARGIN_PX = 0.5;
+    for (const shape of Object.values(shapes)) {
+      if (shape.type !== "wall") continue;
+      const proj = projectOntoWall(x, y, shape);
+      const len = Math.hypot(shape.x2 - shape.x1, shape.y2 - shape.y1) || 1;
+      const margin = END_MARGIN_PX / len;
+      // Skip the endpoints — those are already covered by node snapping.
+      if (proj.t <= margin || proj.t >= 1 - margin) continue;
+      if (proj.dist < radius && proj.dist < nearestDist) {
+        nearestDist = proj.dist;
+        nearest = { x: proj.x, y: proj.y };
+        nearestType = "edge";
+      }
     }
   }
 

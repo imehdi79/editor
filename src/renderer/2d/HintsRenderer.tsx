@@ -37,7 +37,9 @@ const HintsRenderer = ({ hints }: Props) => {
                   ? "#10b981"
                   : snapResult.snapType === "intersection"
                     ? "#f59e0b"
-                    : "#3b82f6"
+                    : snapResult.snapType === "edge"
+                      ? "#a855f7"
+                      : "#3b82f6"
             }
             strokeWidth={2}
             fill="transparent"
@@ -54,7 +56,9 @@ const HintsRenderer = ({ hints }: Props) => {
                   ? "midpoint"
                   : snapResult.snapType === "intersection"
                     ? "intersection"
-                    : ""
+                    : snapResult.snapType === "edge"
+                      ? "on wall"
+                      : ""
             }
             fontSize={10}
             fill="#64748b"

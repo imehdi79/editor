@@ -137,7 +137,7 @@ export interface SnapResult {
   x: number;
   y: number;
   snapped: boolean;
-  snapType: "grid" | "node" | "midpoint" | "intersection" | null;
+  snapType: "grid" | "node" | "midpoint" | "intersection" | "edge" | null;
   snappedTo: { x: number; y: number } | null; // نقطه‌ای که snap شدیم بهش
 }
 
