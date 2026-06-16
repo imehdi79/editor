@@ -5,16 +5,16 @@
  * Pure of any store import: `shapes` and `updateShape` are passed in, so this
  * stays a thin translation from "value in display unit" → shape patch.
  *
- * Edit semantics (value already in the current display unit; height in cm):
+ * Edit semantics (value already in the current display unit):
  *   length    — keep p1 fixed, move p2 along the segment to the new length
  *   thickness — set the wall/opening thickness
  *   width     — resize an opening symmetrically about its center along the wall
- *   height    — set the wall height (real units; no 2D effect)
+ *   height    — set the wall height (stored in cm; no 2D effect)
  */
 
 import type { Shape } from "@/core/drawing-engine/drawing.types";
 import type { DimensionUnit } from "@/store/editor.store";
-import { toPx } from "@/core/dimensions/dimensionUnits";
+import { toPx, pxToCm } from "@/core/dimensions/dimensionUnits";
 import type { EditField } from "./buildDrawingInfo";
 
 type ShapePatch = Partial<Omit<Shape, "id" | "type">>;
@@ -32,7 +32,9 @@ export const applyDrawingEdit = (
   if (!s || s.type === "text") return;
 
   if (field === "height") {
-    updateShape(s.id, { height: Math.max(1, valueInUnit) });
+    // Height is stored in cm; value arrives in the display unit → px → cm.
+    const cm = pxToCm(toPx(valueInUnit, unit, pixelsPerMeter), pixelsPerMeter);
+    updateShape(s.id, { height: Math.max(1, cm) });
     return;
   }
 

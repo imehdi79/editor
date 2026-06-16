@@ -1,6 +1,13 @@
 import { create } from "zustand";
 
-export type DimensionUnit = "px" | "cm" | "m";
+/**
+ * DimensionUnit — the real-world unit dimensions are displayed/entered in.
+ *
+ * Metre is the base unit (matching how a CAD app reports drawings); the smaller
+ * metric units are derived from it (1 m = 100 cm = 1000 mm). `px` is the raw
+ * canvas unit, kept for debugging — it is not offered as a CAD measurement.
+ */
+export type DimensionUnit = "mm" | "cm" | "m" | "px";
 
 /**
  * MeasurementReference — which face of a wall dimensions are measured from.
@@ -51,7 +58,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   snapGrid: 0.5,
   axisAngleThreshold: 3,
   snapRadius: window.matchMedia("(pointer: coarse)").matches ? 16 : 6,
-  dimensionUnit: "cm",
+  dimensionUnit: "m",
   pixelsPerMeter: 100,
 
   measurementReference: "centerline",

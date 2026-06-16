@@ -12,15 +12,15 @@
 
 import type { Shape } from "@/core/drawing-engine/drawing.types";
 import type { DimensionUnit } from "@/store/editor.store";
-import { formatDimension, formatArea, toUnit } from "@/core/dimensions/dimensionUnits";
+import { formatDimension, formatArea, toUnit, cmToPx } from "@/core/dimensions/dimensionUnits";
 import { computeRoomAreas } from "./computeRoomAreas";
 
-/** Which shape field a given cell edits. `height` is in cm; the rest in px. */
+/** Which shape field a given cell edits. */
 export type EditField = "length" | "thickness" | "width" | "height";
 
 export interface DrawingCell {
   display: string;
-  /** Raw value shown in the input (display unit for px-fields, cm for height). */
+  /** Raw value shown in the input, in the active display unit. */
   value?: number;
   /** Field this cell writes to; absent = read-only (derived) cell. */
   field?: EditField;
@@ -66,7 +66,8 @@ export const buildDrawingInfo = (
         type: "Wall",
         length: lenCell(l, "length"),
         width: lenCell(s.thickness, "thickness"),
-        height: { display: `${h}cm`, value: h, field: "height" },
+        // Height is stored in cm; bridge to px so it displays/edits in the active unit.
+        height: lenCell(cmToPx(h, pixelsPerMeter), "height"),
         area: { display: formatArea(surfaceM2) },
       });
     } else if (s.type === "window" || s.type === "door") {

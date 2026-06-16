@@ -13,7 +13,7 @@
 
 import type { WallShape, WallSide } from "@/core/drawing-engine/drawing.types";
 import type { DimensionUnit } from "@/store/editor.store";
-import { formatDimension, formatArea, toUnit } from "@/core/dimensions/dimensionUnits";
+import { formatDimension, formatArea, toUnit, cmToPx } from "@/core/dimensions/dimensionUnits";
 import { wallLength } from "@/core/wall-utils/wallGeometry";
 import { layersOf } from "./wallLayers";
 
@@ -41,7 +41,7 @@ export const buildWallLayerRows = (
   const h = wall.height ?? defaultWallHeight;
   const surfaceM2 = (len / pixelsPerMeter) * (h / 100);
   const lengthDisplay = formatDimension(len, unit, pixelsPerMeter);
-  const heightDisplay = `${h}cm`;
+  const heightDisplay = formatDimension(cmToPx(h, pixelsPerMeter), unit, pixelsPerMeter);
   const areaDisplay = formatArea(surfaceM2);
 
   return layersOf(wall, side).map((layer) => ({

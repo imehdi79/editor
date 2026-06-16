@@ -19,6 +19,7 @@ import { useSelectionStore } from "@/store/selection.store";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useToolsStore } from "@/store/tools.store";
 import { useEditorStore } from "@/store/editor.store";
+import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
 import type { Shape, WallShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import WallLayersPanel from "./WallLayersPanel";
 
@@ -66,6 +67,8 @@ const WallActions = () => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const updateShape = useFloorPlanStore((s) => s.updateShape);
   const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
+  const unit = useEditorStore((s) => s.dimensionUnit);
+  const ppm = useEditorStore((s) => s.pixelsPerMeter);
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<WallTab>("properties");
@@ -162,16 +165,23 @@ const WallActions = () => {
               <WallLayersPanel wall={wall} />
             ) : (
               <>
-            {/* Dimensions */}
+            {/* Dimensions — shown/entered in the active measurement unit */}
             <div className="flex flex-col gap-2">
-              <NumberField label="Thickness" value={wall.thickness} min={1} step={1} suffix="px" onChange={setThickness} />
+              <NumberField
+                label="Thickness"
+                value={toUnit(wall.thickness, unit, ppm)}
+                min={stepFor(unit)}
+                step={stepFor(unit)}
+                suffix={unit}
+                onChange={(v) => setThickness(toPx(v, unit, ppm))}
+              />
               <NumberField
                 label="Height"
-                value={wall.height ?? defaultWallHeight}
-                min={1}
-                step={1}
-                suffix="cm"
-                onChange={setHeight}
+                value={toUnit(cmToPx(wall.height ?? defaultWallHeight, ppm), unit, ppm)}
+                min={stepFor(unit)}
+                step={stepFor(unit)}
+                suffix={unit}
+                onChange={(v) => setHeight(pxToCm(toPx(v, unit, ppm), ppm))}
               />
             </div>
 

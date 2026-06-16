@@ -8,12 +8,20 @@
 import { useState, useRef, useEffect } from "react";
 import { Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEditorStore, type MeasurementReference } from "@/store/editor.store";
+import { useEditorStore, type DimensionUnit, type MeasurementReference } from "@/store/editor.store";
+import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
 
 const REFERENCE_OPTIONS: { value: MeasurementReference; label: string }[] = [
   { value: "centerline", label: "Center" },
   { value: "inner", label: "Inner" },
   { value: "outer", label: "Outer" },
+];
+
+/** CAD-style metric units, base unit (m) last so it reads small → large. */
+const UNIT_OPTIONS: { value: DimensionUnit; label: string }[] = [
+  { value: "mm", label: "mm" },
+  { value: "cm", label: "cm" },
+  { value: "m", label: "m" },
 ];
 
 const NumberField = ({
@@ -54,6 +62,9 @@ const SettingsPanel = () => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
+  const setDimensionUnit = useEditorStore((s) => s.setDimensionUnit);
+  const ppm = useEditorStore((s) => s.pixelsPerMeter);
   const measurementReference = useEditorStore((s) => s.measurementReference);
   const setMeasurementReference = useEditorStore((s) => s.setMeasurementReference);
   const defaultWallThickness = useEditorStore((s) => s.defaultWallThickness);
@@ -87,6 +98,24 @@ const SettingsPanel = () => {
 
       {open && (
         <div className="absolute left-full top-0 ml-2 z-50 flex w-56 flex-col gap-3 rounded-lg border bg-popover p-3 shadow-2xl">
+          {/* Unit of measurement — metre is the base unit; cm/mm derive from it */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">Units</span>
+            <div className="flex gap-1">
+              {UNIT_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.value}
+                  size="sm"
+                  variant={dimensionUnit === opt.value ? "default" : "outline"}
+                  className="flex-1 px-0"
+                  onClick={() => setDimensionUnit(opt.value)}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {/* Measurement reference */}
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted-foreground">Measurement reference</span>
@@ -128,23 +157,23 @@ const SettingsPanel = () => {
             </div>
           </div>
 
-          {/* Wall defaults */}
+          {/* Wall defaults — shown/entered in the active measurement unit */}
           <div className="flex flex-col gap-2 border-t pt-2">
             <NumberField
               label="Wall thickness"
-              value={defaultWallThickness}
-              min={1}
-              step={1}
-              suffix="px"
-              onChange={setDefaultWallThickness}
+              value={toUnit(defaultWallThickness, dimensionUnit, ppm)}
+              min={stepFor(dimensionUnit)}
+              step={stepFor(dimensionUnit)}
+              suffix={dimensionUnit}
+              onChange={(v) => setDefaultWallThickness(toPx(v, dimensionUnit, ppm))}
             />
             <NumberField
               label="Wall height"
-              value={defaultWallHeight}
-              min={1}
-              step={1}
-              suffix="cm"
-              onChange={setDefaultWallHeight}
+              value={toUnit(cmToPx(defaultWallHeight, ppm), dimensionUnit, ppm)}
+              min={stepFor(dimensionUnit)}
+              step={stepFor(dimensionUnit)}
+              suffix={dimensionUnit}
+              onChange={(v) => setDefaultWallHeight(pxToCm(toPx(v, dimensionUnit, ppm), ppm))}
             />
           </div>
         </div>

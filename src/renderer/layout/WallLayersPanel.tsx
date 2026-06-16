@@ -14,7 +14,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEditorStore } from "@/store/editor.store";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
-import { toPx } from "@/core/dimensions/dimensionUnits";
+import { toPx, stepFor } from "@/core/dimensions/dimensionUnits";
 import type { WallLayer, WallShape, WallSide } from "@/core/drawing-engine/drawing.types";
 import { buildWallLayerRows } from "@/core/wall-layers/buildWallLayerRows";
 import {
@@ -82,7 +82,7 @@ const SideTable = ({ wall, side }: { wall: WallShape; side: WallSide }) => {
               <input
                 type="number"
                 min={0}
-                step={1}
+                step={stepFor(unit)}
                 value={row.thicknessValue}
                 onChange={(e) => {
                   const v = Number(e.target.value);
