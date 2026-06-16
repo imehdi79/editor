@@ -15,6 +15,7 @@
  */
 
 import { LABEL_FONT_SIZE, LABEL_PADDING } from "./dimensionLayout";
+import type { CornerAngle } from "@/core/wall-utils/wallAngles";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -59,6 +60,11 @@ export interface DimensionLabel {
   angleDeg: number;
   /** Length of the segment in canvas pixels */
   lengthPx: number;
+  /** Absolute bearing of the segment (East = 0°, CCW, [0, 360)) — already
+   *  baked into `text`; kept here for non-text consumers. */
+  absAngleDeg: number;
+  /** Corner angle vs the previous connected wall, null when not chaining. */
+  corner: CornerAngle | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +84,8 @@ export const computeDimensionLabel = (
   x2: number,
   y2: number,
   formattedText: string,
+  absAngleDeg: number = 0,
+  corner: CornerAngle | null = null,
 ): DimensionLabel => {
   const dx = x2 - x1;
   const dy = y2 - y1;
@@ -110,5 +118,7 @@ export const computeDimensionLabel = (
     text: formattedText,
     angleDeg,
     lengthPx,
+    absAngleDeg,
+    corner,
   };
 };

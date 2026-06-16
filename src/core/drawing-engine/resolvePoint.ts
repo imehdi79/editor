@@ -22,6 +22,7 @@ import { applyPerpendicularLock } from "@/core/snapping/perpendicularLock";
 import { computeAlignmentGuides } from "@/core/guides/alignmentGuides";
 import { computeDimensionLabel } from "@/core/dimensions/computeDimensions";
 import { formatDimension } from "@/core/dimensions/dimensionUnits";
+import { absoluteAngleDeg, cornerAngleAtVertex, formatAngle } from "@/core/wall-utils/wallAngles";
 import type { Shape, SnapResult, GuideLine } from "./drawing.types";
 import type { DimensionLabel } from "@/core/dimensions/computeDimensions";
 import type { DimensionUnit } from "@/store/editor.store";
@@ -125,13 +126,12 @@ export const resolvePoint = (
   if (hasDragOrigin) {
     const lengthPx = Math.hypot(x - startX!, y - startY!);
     if (lengthPx > 4) {
-      dimension = computeDimensionLabel(
-        startX!,
-        startY!,
-        x,
-        y,
-        formatDimension(lengthPx, dimensionUnit, pixelsPerMeter),
-      );
+      const absDeg = absoluteAngleDeg(startX!, startY!, x, y);
+      const corner = cornerAngleAtVertex(startX!, startY!, x, y, shapes);
+      const lengthText = formatDimension(lengthPx, dimensionUnit, pixelsPerMeter);
+      // CAD-style polar readout: length and absolute bearing on one line.
+      const text = `${lengthText}  ${formatAngle(absDeg)}`;
+      dimension = computeDimensionLabel(startX!, startY!, x, y, text, absDeg, corner);
     }
   }
 

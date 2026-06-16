@@ -20,16 +20,24 @@
  * while the drag is in progress.
  */
 
-import { Circle, Group, Line } from "react-konva";
+import { Circle, Group, Line, Rect, Text } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
+import { useViewportStore } from "@/store/viewport.store";
 import type { Shape, GhostShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { rotationHandlePos, ROTATE_HANDLE_OFFSET } from "@/features/select-tool/useTransformEngine";
 import { computeTopology, nodeKey } from "@/core/topology/computeTopology";
+import { absoluteAngleDeg, formatAngle } from "@/core/wall-utils/wallAngles";
+import { LABEL_FONT_SIZE, LABEL_FONT_FAMILY, LABEL_PADDING, dimensionPxScale } from "@/core/dimensions/dimensionLayout";
 
 const SELECTION_COLOR = "#3b82f6";
 const HANDLE_RADIUS = 5;
 const ROTATE_HANDLE_RADIUS = 5;
+
+// Absolute-angle readout for the selected wall.
+const ANGLE_COLOR = "#0ea5e9";
+const ANGLE_OFFSET = 22; // screen px, perpendicular to the wall
+const ANGLE_CHAR_WIDTH = LABEL_FONT_SIZE * 0.6;
 
 // ---------------------------------------------------------------------------
 // Preview overlay (shown while dragging)
@@ -106,6 +114,53 @@ const SegmentHandles = ({ shape }: { shape: Exclude<Shape, { type: "text" }> }) 
             />
           );
         })()}
+    </Group>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Wall angle label — absolute bearing of the selected wall (East = 0°, CCW).
+// Placed on the opposite side of the wall from the committed dimension label
+// so the two readouts don't overlap. Kept upright and counter-scaled on zoom.
+// ---------------------------------------------------------------------------
+
+const WallAngleLabel = ({ shape }: { shape: { x1: number; y1: number; x2: number; y2: number } }) => {
+  const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
+
+  const dx = shape.x2 - shape.x1;
+  const dy = shape.y2 - shape.y1;
+  const len = Math.hypot(dx, dy) || 1;
+  // Right-hand perpendicular (committed dimension sits on the left/+ side).
+  const px = dy / len;
+  const py = -dx / len;
+
+  const mx = (shape.x1 + shape.x2) / 2 + px * ANGLE_OFFSET * pxScale;
+  const my = (shape.y1 + shape.y2) / 2 + py * ANGLE_OFFSET * pxScale;
+
+  const text = formatAngle(absoluteAngleDeg(shape.x1, shape.y1, shape.x2, shape.y2));
+  const boxW = text.length * ANGLE_CHAR_WIDTH + LABEL_PADDING * 2;
+  const boxH = LABEL_FONT_SIZE * 1.2 + LABEL_PADDING * 2;
+
+  return (
+    <Group x={mx} y={my} offsetX={boxW / 2} offsetY={boxH / 2} scaleX={pxScale} scaleY={pxScale} listening={false}>
+      <Rect
+        width={boxW}
+        height={boxH}
+        fill="#f0f9ff"
+        stroke={ANGLE_COLOR}
+        strokeWidth={0.75}
+        cornerRadius={2}
+        listening={false}
+      />
+      <Text
+        x={LABEL_PADDING}
+        y={LABEL_PADDING}
+        text={text}
+        fontSize={LABEL_FONT_SIZE}
+        fontFamily={LABEL_FONT_FAMILY}
+        fill={ANGLE_COLOR}
+        listening={false}
+      />
     </Group>
   );
 };
@@ -225,6 +280,8 @@ const SelectionRenderer = ({ previewShape, connectedPreviews }: Props) => {
           <SegmentHandles shape={displayShape as Exclude<Shape, { type: "text" }>} />
           {/* One endpoint handle circle per unique node position */}
           <NodeHandles selectedShape={displayShape as Exclude<Shape, { type: "text" }>} shapes={shapes} />
+          {/* Absolute bearing readout for walls */}
+          {displayShape.type === "wall" && <WallAngleLabel shape={displayShape} />}
         </>
       )}
     </>
