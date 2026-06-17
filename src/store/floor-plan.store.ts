@@ -3,6 +3,7 @@ import { temporal, type TemporalState } from "zundo";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import type { Shape, ShapeId, ShapePatch } from "@/core/drawing-engine/drawing.types";
 import { generateId } from "@/lib/generateId";
+import { categoryOf } from "@/core/layers/systemCategories";
 
 type ShapesMap = Record<ShapeId, Shape>;
 
@@ -29,7 +30,9 @@ export const useFloorPlanStore = create<FloorPlanStore>()(
 
       addShape: (shape) => {
         const id = generateId(shape.type);
-        const full = { ...shape, id } as Shape;
+        // Stamp the system category (explicit one wins, else default-for-type)
+        // so layer visibility works and the assignment persists with the doc.
+        const full = { ...shape, id, category: categoryOf(shape) } as Shape;
         set((s) => ({ shapes: { ...s.shapes, [id]: full } }));
       },
 

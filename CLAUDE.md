@@ -88,8 +88,10 @@ src/
 
 **System layers:** every shape has an optional `category` (`SystemCategory` in
 `core/layers/systemCategories.ts` — architectural/structural/electrical/plumbing/
-hvac/roof/furniture/annotation; absent = architectural via `categoryOf`). The
-Systems panel toggles visibility per category. To patch a shape use the
+hvac/roof/furniture/annotation). `categoryOf(shape)` resolves it, defaulting by
+type (text → annotation, else architectural); `addShape` stamps it on creation.
+The Systems panel toggles visibility per category — hidden categories are not
+drawn (ShapeRenderer) and not selectable (hit-test). To patch a shape use the
 `ShapePatch` type (a *distributive* `Partial<Omit<…>>`) — a plain
 `Partial<Omit<Shape, …>>` collapses to the union's common keys and rejects
 variant-specific fields.

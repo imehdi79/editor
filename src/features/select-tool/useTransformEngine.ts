@@ -33,6 +33,8 @@ import { resolvePoint, type ResolveConfig } from "@/core/drawing-engine/resolveP
 import type { Shape, DrawingHints, GhostShape, DoorShape, ShapePatch } from "@/core/drawing-engine/drawing.types";
 import { computeTopology, nodeKey, type TopologyMap } from "@/core/topology/computeTopology";
 import { findWallById, slideOpening, resizeOpeningEndpoint, tOnWall } from "@/core/wall-utils/wallGeometry";
+import { useLayersStore } from "@/store/layers.store";
+import { categoryOf } from "@/core/layers/systemCategories";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -145,8 +147,10 @@ const hitTestShapes = (
   x: number,
   y: number,
   shapes: Record<string, Shape>,
+  isSelectable: (shape: Shape) => boolean = () => true,
 ): { shapeId: string; zone: "p1" | "p2" | "rotate" | "hinge" | "body" } | null => {
   for (const shape of Object.values(shapes).reverse()) {
+    if (!isSelectable(shape)) continue; // shapes on hidden layers aren't pickable
     const zone = hitTestShape(x, y, shape);
     if (zone) return { shapeId: shape.id, zone };
   }
@@ -162,6 +166,8 @@ export const useTransformEngine = () => {
   const updateShape = useFloorPlanStore((s) => s.updateShape);
   const selectShape = useSelectionStore((s) => s.selectShape);
   const selectedId = useSelectionStore((s) => s.selectedId);
+
+  const categoryVisibility = useLayersStore((s) => s.visibility);
 
   const snapGrid = useEditorStore((s) => s.snapGrid);
   const axisAngleThreshold = useEditorStore((s) => s.axisAngleThreshold);
@@ -210,7 +216,7 @@ export const useTransformEngine = () => {
   const onMouseDown = useCallback(
     (rawX: number, rawY: number) => {
       const { x, y } = resolvePoint(rawX, rawY, makeConfig());
-      const hit = hitTestShapes(x, y, shapes);
+      const hit = hitTestShapes(x, y, shapes, (s) => categoryVisibility[categoryOf(s)]);
 
       if (!hit) {
         selectShape(null);
@@ -290,7 +296,7 @@ export const useTransformEngine = () => {
         modeRef.current = { kind: "idle" };
       }
     },
-    [shapes, selectShape, makeConfig, makeConfigExcluding, linkConnectedNodes],
+    [shapes, selectShape, updateShape, makeConfig, makeConfigExcluding, linkConnectedNodes, categoryVisibility],
   );
 
   // -------------------------------------------------------------------------

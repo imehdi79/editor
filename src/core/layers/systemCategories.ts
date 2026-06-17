@@ -40,9 +40,20 @@ export const SYSTEM_CATEGORIES: readonly SystemCategoryDef[] = [
   { id: "annotation", label: "Annotation", color: "#64748b" },
 ];
 
-/** Shapes without an explicit category are Architectural (back-compat). */
+/** Base category for shapes without an explicit one. */
 export const DEFAULT_CATEGORY: SystemCategory = "architectural";
 
-/** Resolve a shape's category, defaulting absent categories to Architectural. */
-export const categoryOf = (shape: { category?: SystemCategory }): SystemCategory =>
-  shape.category ?? DEFAULT_CATEGORY;
+/**
+ * Default category for a shape kind: text is Annotation, the structural /
+ * opening / line shapes are Architectural. Discipline tools (electrical, …)
+ * set their shape's category explicitly instead of relying on this.
+ */
+export const categoryForType = (type: string): SystemCategory =>
+  type === "text" ? "annotation" : DEFAULT_CATEGORY;
+
+/**
+ * Resolve a shape's category: its explicit `category`, else the default for its
+ * type. So existing (unstamped) text still resolves to Annotation, etc.
+ */
+export const categoryOf = (shape: { type: string; category?: SystemCategory }): SystemCategory =>
+  shape.category ?? categoryForType(shape.type);
