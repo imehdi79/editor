@@ -8,7 +8,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEditorStore, type DimensionUnit, type MeasurementReference } from "@/store/editor.store";
+import { useEditorStore, type DimensionUnit, type MeasurementReference, type DimensionDisplay } from "@/store/editor.store";
 import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
 
 const REFERENCE_OPTIONS: { value: MeasurementReference; label: string }[] = [
@@ -22,6 +22,12 @@ const UNIT_OPTIONS: { value: DimensionUnit; label: string }[] = [
   { value: "mm", label: "mm" },
   { value: "cm", label: "cm" },
   { value: "m", label: "m" },
+];
+
+const DIMENSION_OPTIONS: { value: DimensionDisplay; label: string }[] = [
+  { value: "selection", label: "Select" },
+  { value: "segments", label: "Segments" },
+  { value: "chains", label: "Chains" },
 ];
 
 const NumberField = ({
@@ -73,8 +79,8 @@ const SettingsPanel = () => {
   const setDefaultWallHeight = useEditorStore((s) => s.setDefaultWallHeight);
   const linkConnectedNodes = useEditorStore((s) => s.linkConnectedNodes);
   const setLinkConnectedNodes = useEditorStore((s) => s.setLinkConnectedNodes);
-  const showAllDimensions = useEditorStore((s) => s.showAllDimensions);
-  const setShowAllDimensions = useEditorStore((s) => s.setShowAllDimensions);
+  const dimensionDisplay = useEditorStore((s) => s.dimensionDisplay);
+  const setDimensionDisplay = useEditorStore((s) => s.setDimensionDisplay);
 
   useEffect(() => {
     if (!open) return;
@@ -136,26 +142,22 @@ const SettingsPanel = () => {
             </div>
           </div>
 
-          {/* Dimensions display — contextual (on selection) vs the full sheet */}
+          {/* Dimensions display — exactly one system (segments OR chains, or just
+              the selected shape). Never both, to avoid overlapping annotations. */}
           <div className="flex flex-col gap-1.5 border-t pt-2">
             <span className="text-xs text-muted-foreground">Dimensions</span>
             <div className="flex gap-1">
-              <Button
-                size="sm"
-                variant={!showAllDimensions ? "default" : "outline"}
-                className="flex-1 px-0"
-                onClick={() => setShowAllDimensions(false)}
-              >
-                On selection
-              </Button>
-              <Button
-                size="sm"
-                variant={showAllDimensions ? "default" : "outline"}
-                className="flex-1 px-0"
-                onClick={() => setShowAllDimensions(true)}
-              >
-                Show all
-              </Button>
+              {DIMENSION_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.value}
+                  size="sm"
+                  variant={dimensionDisplay === opt.value ? "default" : "outline"}
+                  className="flex-1 px-0"
+                  onClick={() => setDimensionDisplay(opt.value)}
+                >
+                  {opt.label}
+                </Button>
+              ))}
             </div>
           </div>
 

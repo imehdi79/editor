@@ -127,12 +127,12 @@ const ChainAnnotation = ({ seg, pxScale }: { seg: ChainSegment; pxScale: number 
 // ---------------------------------------------------------------------------
 
 const DimensionChainsRenderer = () => {
-  const showAll = useEditorStore((s) => s.showAllDimensions);
+  const mode = useEditorStore((s) => s.dimensionDisplay);
   const chains = useDimensionChains();
   const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
-  // Running chains are the densest annotation (the "spaghetti" on mobile); only
-  // draw them in the full "show all dimensions" sheet, never in contextual mode.
-  if (!showAll || chains.length === 0) return null;
+  // Running chains are the densest annotation; they own the "chains" mode
+  // exclusively and never draw alongside the per-segment layer.
+  if (mode !== "chains" || chains.length === 0) return null;
 
   return (
     <Group listening={false}>

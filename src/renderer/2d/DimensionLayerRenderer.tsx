@@ -258,13 +258,18 @@ const DimensionAnnotation = ({ candidate, pxScale }: { candidate: DimensionCandi
 const DimensionLayerRenderer = () => {
   const candidates = useDimensionLayout();
   const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
-  const showAll = useEditorStore((s) => s.showAllDimensions);
+  const mode = useEditorStore((s) => s.dimensionDisplay);
   const selectedId = useSelectionStore((s) => s.selectedId);
 
-  // Contextual by default: keep the canvas readable (mobile) by drawing only
-  // the selected shape's dimension. "Show all" restores the full annotation set.
+  // Per-segment dimensions own the "segments" and "selection" modes; in "chains"
+  // mode they yield entirely to DimensionChainsRenderer (never both at once).
   // Each candidate's id is its shape id, so selection filtering is a direct match.
-  const visible = showAll ? candidates : candidates.filter((c) => c.id === selectedId);
+  const visible =
+    mode === "segments"
+      ? candidates
+      : mode === "selection"
+        ? candidates.filter((c) => c.id === selectedId)
+        : [];
   if (visible.length === 0) return null;
 
   return (

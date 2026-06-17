@@ -22,6 +22,17 @@ export type DimensionUnit = "mm" | "cm" | "m" | "px";
  */
 export type MeasurementReference = "centerline" | "inner" | "outer";
 
+/**
+ * DimensionDisplay — which dimension system is drawn. Exclusive by design so
+ * the per-segment layer and the running chains never overlap into "spaghetti".
+ *
+ *   "selection" → only the selected shape's per-segment dimension (clean default
+ *                 for mobile; nothing shown until you tap a shape)
+ *   "segments"  → every shape's per-segment dimension (DimensionLayerRenderer)
+ *   "chains"    → inner/outer running chains only (DimensionChainsRenderer)
+ */
+export type DimensionDisplay = "selection" | "segments" | "chains";
+
 interface EditorStore {
   viewMode: "2d" | "3d";
   snapGrid: number;
@@ -46,13 +57,10 @@ interface EditorStore {
   linkConnectedNodes: boolean;
 
   /**
-   * Dimension display mode. When false (default), standing dimensions are
-   * contextual — hidden until a shape is selected (then only that shape's
-   * dimension shows), which keeps the canvas readable on mobile. When true,
-   * every wall's per-segment dimensions and the inner/outer running chains are
-   * drawn at once (the full CAD annotation sheet).
+   * Which dimension system to draw. Exclusive (segments vs chains never coexist)
+   * to avoid overlapping annotation "spaghetti". Defaults to "segments".
    */
-  showAllDimensions: boolean;
+  dimensionDisplay: DimensionDisplay;
 
   setViewMode: (mode: "2d" | "3d") => void;
   setDimensionUnit: (unit: DimensionUnit) => void;
@@ -60,7 +68,7 @@ interface EditorStore {
   setDefaultWallThickness: (thickness: number) => void;
   setDefaultWallHeight: (height: number) => void;
   setLinkConnectedNodes: (link: boolean) => void;
-  setShowAllDimensions: (show: boolean) => void;
+  setDimensionDisplay: (mode: DimensionDisplay) => void;
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -75,7 +83,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   defaultWallThickness: 12,
   defaultWallHeight: 280,
   linkConnectedNodes: true,
-  showAllDimensions: false,
+  dimensionDisplay: "segments",
 
   setViewMode: (mode) => set({ viewMode: mode }),
   setDimensionUnit: (unit) => set({ dimensionUnit: unit }),
@@ -83,5 +91,5 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setDefaultWallThickness: (thickness) => set({ defaultWallThickness: thickness }),
   setDefaultWallHeight: (height) => set({ defaultWallHeight: height }),
   setLinkConnectedNodes: (link) => set({ linkConnectedNodes: link }),
-  setShowAllDimensions: (show) => set({ showAllDimensions: show }),
+  setDimensionDisplay: (mode) => set({ dimensionDisplay: mode }),
 }));
