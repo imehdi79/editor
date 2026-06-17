@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { temporal, type TemporalState } from "zundo";
 import { useStoreWithEqualityFn } from "zustand/traditional";
-import type { Shape, ShapeId } from "@/core/drawing-engine/drawing.types";
+import type { Shape, ShapeId, ShapePatch } from "@/core/drawing-engine/drawing.types";
 import { generateId } from "@/lib/generateId";
 
 type ShapesMap = Record<ShapeId, Shape>;
@@ -14,7 +14,7 @@ interface FloorPlanActions {
   addShape: (shape: Omit<Shape, "id">) => void;
   removeShape: (id: ShapeId) => void;
   /** Commit a transform (move / resize / rotate) — recorded in undo history. */
-  updateShape: (id: ShapeId, patch: Partial<Omit<Shape, "id" | "type">>) => void;
+  updateShape: (id: ShapeId, patch: ShapePatch) => void;
   /** Replace the entire shapes map — used when loading a page's document. */
   loadShapes: (shapes: ShapesMap) => void;
   reset: () => void;

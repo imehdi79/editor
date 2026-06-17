@@ -1,10 +1,16 @@
 import type { DimensionLabel } from "../dimensions/computeDimensions";
+import type { SystemCategory } from "@/core/layers/systemCategories";
 
 export type ShapeId = string;
 
 export interface BaseShape {
   id: ShapeId;
   type: string;
+  /**
+   * System/discipline category, used for layer visibility. Optional for
+   * back-compat; absent = architectural (see categoryOf / DEFAULT_CATEGORY).
+   */
+  category?: SystemCategory;
 }
 
 /** The two faces of a wall. Geometry-agnostic labels — layers are never drawn,
@@ -122,6 +128,17 @@ export interface DoorShape extends BaseShape {
 }
 
 export type Shape = WallShape | LineShape | DashedLineShape | TextShape | WindowShape | DoorShape;
+
+/** Omit that distributes over a union, so each member keeps its own fields. */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
+/**
+ * A partial update to a shape: any subset of a single shape variant's mutable
+ * fields (everything except id/type). Distributive so wall-only fields like
+ * `thickness`/`layers` and door-only fields like `swingDirection` are accepted
+ * — a plain `Partial<Omit<Shape, …>>` collapses to the shapes' common keys only.
+ */
+export type ShapePatch = Partial<DistributiveOmit<Shape, "id" | "type">>;
 
 // Ghost — همون شکل در حین رسم، بدون id
 export type GhostShape =

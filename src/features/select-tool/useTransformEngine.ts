@@ -30,7 +30,7 @@ import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import { useEditorStore } from "@/store/editor.store";
 import { resolvePoint, type ResolveConfig } from "@/core/drawing-engine/resolvePoint";
-import type { Shape, DrawingHints, GhostShape, DoorShape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, DrawingHints, GhostShape, DoorShape, ShapePatch } from "@/core/drawing-engine/drawing.types";
 import { computeTopology, nodeKey, type TopologyMap } from "@/core/topology/computeTopology";
 import { findWallById, slideOpening, resizeOpeningEndpoint, tOnWall } from "@/core/wall-utils/wallGeometry";
 
@@ -501,7 +501,7 @@ export const useTransformEngine = () => {
 
       // Commit all connected shapes that were co-dragged
       for (const [shapeId, patch] of Object.entries(connectedPreviews)) {
-        updateShape(shapeId, patch as Partial<Omit<Shape, "id" | "type">>);
+        updateShape(shapeId, patch as ShapePatch);
       }
 
       modeRef.current = { kind: "idle" };

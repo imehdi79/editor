@@ -1,5 +1,7 @@
 import { Line, Text, Shape as KonvaShape, Group } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
+import { useLayersStore } from "@/store/layers.store";
+import { categoryOf } from "@/core/layers/systemCategories";
 import type { Shape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeDoorSwing } from "@/core/door/computeDoorSwing";
 import { buildWallLayerBands } from "@/core/wall-layers/wallLayers";
@@ -186,10 +188,11 @@ const RENDER_ORDER: Record<string, number> = { wall: 0, line: 1, "dashed-line": 
 
 const ShapeRenderer = () => {
   const shapes = useFloorPlanStore((s) => s.shapes);
+  const visibility = useLayersStore((s) => s.visibility);
 
-  const sorted = Object.values(shapes).sort(
-    (a, b) => (RENDER_ORDER[a.type] ?? 1) - (RENDER_ORDER[b.type] ?? 1),
-  );
+  const sorted = Object.values(shapes)
+    .filter((s) => visibility[categoryOf(s)]) // hide shapes in hidden categories
+    .sort((a, b) => (RENDER_ORDER[a.type] ?? 1) - (RENDER_ORDER[b.type] ?? 1));
 
   return <>{sorted.map(renderShape)}</>;
 };

@@ -11,6 +11,7 @@ import { Group, Line, Text } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useEditorStore } from "@/store/editor.store";
 import { useViewportStore } from "@/store/viewport.store";
+import { useLayersStore } from "@/store/layers.store";
 import { computeRoomAreas } from "@/core/drawing-info/computeRoomAreas";
 import { formatArea } from "@/core/dimensions/dimensionUnits";
 import { dimensionPxScale } from "@/core/dimensions/dimensionLayout";
@@ -25,9 +26,11 @@ const RoomRenderer = () => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
   const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
+  const archVisible = useLayersStore((s) => s.visibility.architectural);
 
   const rooms = computeRoomAreas(shapes); // already sorted largest-first
-  if (rooms.length === 0) return null;
+  // Rooms are derived from walls (architectural) — hide them with that layer.
+  if (!archVisible || rooms.length === 0) return null;
 
   return (
     <Group listening={false}>

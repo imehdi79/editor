@@ -2,6 +2,7 @@ import type { SideBarToolsList } from "./tools.types";
 import SidebarToolGroup from "./SidebarToolGroup";
 import SidebarToolMenu from "./SidebarToolMenu";
 import SettingsPanel from "./SettingsPanel";
+import SystemsPanel from "./SystemsPanel";
 import {
   Type,
   BrickWallIcon,
@@ -60,8 +61,9 @@ const SidebarTools = () => (
     {/* Action tools */}
     <SidebarToolGroup tools={actionTools} />
 
-    {/* Settings */}
+    {/* Systems / layers + Settings */}
     <div className="flex flex-col gap-0.5 bg-popover p-1 rounded-lg border shadow-2xl">
+      <SystemsPanel />
       <SettingsPanel />
     </div>
   </div>

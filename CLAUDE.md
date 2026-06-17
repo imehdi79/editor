@@ -80,10 +80,19 @@ src/
 - **viewport.store** — Stage `x`, `y`, `scale` (pan/zoom). Scale clamp 0.05–20.
 - **tools.store** — active `tool` + `TOOL_CURSORS`.
 - **selection.store** — `selectedId`.
+- **layers.store** — per-discipline visibility (`visibility: Record<SystemCategory, boolean>`). A hidden category's shapes are excluded by the renderer.
 - **auth.store** — `status` (`loading`/`authed`/anon), `initialize`.
 - **projects.store** / projectsApi — project list + pages.
 
 ## Domain model
+
+**System layers:** every shape has an optional `category` (`SystemCategory` in
+`core/layers/systemCategories.ts` — architectural/structural/electrical/plumbing/
+hvac/roof/furniture/annotation; absent = architectural via `categoryOf`). The
+Systems panel toggles visibility per category. To patch a shape use the
+`ShapePatch` type (a *distributive* `Partial<Omit<…>>`) — a plain
+`Partial<Omit<Shape, …>>` collapses to the union's common keys and rejects
+variant-specific fields.
 
 `Shape` is a union by `type`: `wall | line | dashed-line | text | window | door`.
 Walls/lines/openings are segments (`x1,y1 -> x2,y2`); walls/openings have
