@@ -32,7 +32,7 @@ import { useEditorStore } from "@/store/editor.store";
 import { resolvePoint, type ResolveConfig } from "@/core/drawing-engine/resolvePoint";
 import type { Shape, DrawingHints, GhostShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeTopology, nodeKey, type TopologyMap } from "@/core/topology/computeTopology";
-import { findWallById, slideOpening, resizeOpeningEndpoint, tOnWall, wallLength } from "@/core/wall-utils/wallGeometry";
+import { findWallById, slideOpening, resizeOpeningEndpoint, tOnWall } from "@/core/wall-utils/wallGeometry";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -171,6 +171,14 @@ export const useTransformEngine = () => {
   const linkConnectedNodes = useEditorStore((s) => s.linkConnectedNodes);
 
   const modeRef = useRef<TransformMode>({ kind: "idle" });
+  /**
+   * Snapshot taken once at drag start. The committed shapes don't change until
+   * mouseUp, so the topology graph and the "everything except the dragged
+   * shape" resolve-config are constant for the whole drag. Computing them once
+   * here — instead of rebuilding `computeTopology(shapes)` and re-spreading the
+   * shapes map on every pointer-move frame — is the key mobile-perf win.
+   */
+  const dragSnapshotRef = useRef<{ topology: TopologyMap | null; config: ResolveConfig } | null>(null);
   const [previewShape, setPreviewShape] = useState<GhostShape>(null);
   /**
    * During a shared-node resize, every shape that shares the dragged node
@@ -212,6 +220,13 @@ export const useTransformEngine = () => {
 
       selectShape(hit.shapeId);
       const shape = shapes[hit.shapeId];
+
+      // Snapshot the data that stays constant for the whole drag — built once
+      // here, reused on every pointer-move (see dragSnapshotRef).
+      dragSnapshotRef.current = {
+        topology: linkConnectedNodes ? computeTopology(shapes) : null,
+        config: makeConfigExcluding(hit.shapeId),
+      };
 
       if (hit.zone === "body") {
         if (shape.type === "text") {
@@ -275,7 +290,7 @@ export const useTransformEngine = () => {
         modeRef.current = { kind: "idle" };
       }
     },
-    [shapes, selectShape, makeConfig],
+    [shapes, selectShape, makeConfig, makeConfigExcluding, linkConnectedNodes],
   );
 
   // -------------------------------------------------------------------------
@@ -292,7 +307,7 @@ export const useTransformEngine = () => {
 
       // ---- MOVE ----
       if (mode.kind === "move") {
-        const config = makeConfigExcluding(mode.shapeId);
+        const config = dragSnapshotRef.current?.config ?? makeConfigExcluding(mode.shapeId);
 
         if (shape.type === "text") {
           const { x, y, guides, pointSnap, axisLocked, axisLockAngle } = resolvePoint(
@@ -367,8 +382,8 @@ export const useTransformEngine = () => {
           // shape — unless the "move connected" setting is off, in which case
           // the shape detaches and moves on its own.
           const previews: Record<string, { x1?: number; y1?: number; x2?: number; y2?: number }> = {};
-          if (linkConnectedNodes) {
-            const topology = computeTopology(shapes);
+          const topology = dragSnapshotRef.current?.topology;
+          if (topology) {
             for (const epKey of [nodeKey(shape.x1, shape.y1), nodeKey(shape.x2, shape.y2)]) {
               const node = topology.get(epKey);
               if (!node) continue;
@@ -405,7 +420,7 @@ export const useTransformEngine = () => {
         } else {
           const fixedX = mode.handle === "p1" ? shape.x2 : shape.x1;
           const fixedY = mode.handle === "p1" ? shape.y2 : shape.y1;
-          const config = makeConfigExcluding(mode.shapeId);
+          const config = dragSnapshotRef.current?.config ?? makeConfigExcluding(mode.shapeId);
 
           const { x, y, guides, pointSnap, axisLocked, axisLockAngle, perpLocked, dimension } = resolvePoint(
             rawX,
@@ -421,8 +436,8 @@ export const useTransformEngine = () => {
           // Drag the shared node's other shapes along, unless the "move
           // connected" setting is off — then only this endpoint moves.
           const previews: Record<string, { x1?: number; y1?: number; x2?: number; y2?: number }> = {};
-          if (linkConnectedNodes) {
-            const topology = computeTopology(shapes);
+          const topology = dragSnapshotRef.current?.topology;
+          if (topology) {
             const node = topology.get(mode.nodeKey);
             if (node) {
               for (const ref of node.refs) {
@@ -465,7 +480,7 @@ export const useTransformEngine = () => {
         setConnectedPreviews({});
       }
     },
-    [shapes, makeConfigExcluding, axisAngleThreshold, linkConnectedNodes],
+    [shapes, makeConfigExcluding, axisAngleThreshold],
   );
 
   // -------------------------------------------------------------------------
@@ -490,6 +505,7 @@ export const useTransformEngine = () => {
       }
 
       modeRef.current = { kind: "idle" };
+      dragSnapshotRef.current = null;
       setPreviewShape(null);
       setConnectedPreviews({});
       setHints(EMPTY_HINTS);
@@ -500,6 +516,7 @@ export const useTransformEngine = () => {
   /** Abort an in-progress move/resize/rotate without committing it. */
   const cancel = useCallback(() => {
     modeRef.current = { kind: "idle" };
+    dragSnapshotRef.current = null;
     setPreviewShape(null);
     setConnectedPreviews({});
     setHints(EMPTY_HINTS);

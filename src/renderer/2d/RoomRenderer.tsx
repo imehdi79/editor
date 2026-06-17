@@ -26,7 +26,7 @@ const RoomRenderer = () => {
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
   const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
 
-  const rooms = computeRoomAreas(shapes).sort((a, b) => b.areaPx - a.areaPx);
+  const rooms = computeRoomAreas(shapes); // already sorted largest-first
   if (rooms.length === 0) return null;
 
   return (

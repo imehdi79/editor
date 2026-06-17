@@ -18,8 +18,14 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
-        rules: {
-      "react-refresh/only-export-components": false
-    }
+    rules: {
+      "react-refresh/only-export-components": "off",
+      // The codebase uses a leading underscore to mark intentionally-unused
+      // bindings (destructure-to-drop, e.g. `const { id: _id, ...patch }`).
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
+    },
   },
 ]);

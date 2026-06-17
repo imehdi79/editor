@@ -113,7 +113,7 @@ const projParam = (p: Pt, s: Seg): { t: number; dist: number } => {
   return { t, dist: Math.hypot(p.x - cx, p.y - cy) };
 };
 
-export const computeRoomAreas = (shapes: Record<string, Shape>): RoomArea[] => {
+const computeRoomAreasUncached = (shapes: Record<string, Shape>): RoomArea[] => {
   // --- Wall centerlines as segments ---
   const segs: Seg[] = [];
   for (const s of Object.values(shapes)) {
@@ -238,5 +238,29 @@ export const computeRoomAreas = (shapes: Record<string, Shape>): RoomArea[] => {
     }
   }
 
+  // Largest room first — both the takeoff table and the on-canvas labels number
+  // rooms in this order, so centralize the ordering here (callers must not
+  // re-sort the shared, cached array).
+  rooms.sort((a, b) => b.areaPx - a.areaPx);
+  return rooms;
+};
+
+/**
+ * Cached entry point. Room detection is an O(n²) arrangement build + planar
+ * face trace, and several components consume it (RoomRenderer, the takeoff
+ * table, …). Shapes are stored immutably, so a WeakMap keyed on the shapes
+ * object computes once per shapes version and dedupes every consumer in the
+ * same render pass — and across renders where shapes didn't change.
+ *
+ * The returned array is shared and pre-sorted (largest area first). Treat it as
+ * read-only: do not sort or mutate it in place.
+ */
+const roomCache = new WeakMap<Record<string, Shape>, RoomArea[]>();
+
+export const computeRoomAreas = (shapes: Record<string, Shape>): RoomArea[] => {
+  const cached = roomCache.get(shapes);
+  if (cached) return cached;
+  const rooms = computeRoomAreasUncached(shapes);
+  roomCache.set(shapes, rooms);
   return rooms;
 };

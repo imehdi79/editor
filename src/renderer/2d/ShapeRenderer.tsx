@@ -181,14 +181,15 @@ const renderShape = (shape: Shape) => {
   }
 };
 
+// Render walls first, then openings (so white infill cuts through wall lines).
+const RENDER_ORDER: Record<string, number> = { wall: 0, line: 1, "dashed-line": 1, text: 2, window: 3, door: 3 };
+
 const ShapeRenderer = () => {
   const shapes = useFloorPlanStore((s) => s.shapes);
 
-  // Render walls first, then openings (so white infill cuts through wall lines)
-  const sorted = Object.values(shapes).sort((a, b) => {
-    const order: Record<string, number> = { wall: 0, line: 1, "dashed-line": 1, text: 2, window: 3, door: 3 };
-    return (order[a.type] ?? 1) - (order[b.type] ?? 1);
-  });
+  const sorted = Object.values(shapes).sort(
+    (a, b) => (RENDER_ORDER[a.type] ?? 1) - (RENDER_ORDER[b.type] ?? 1),
+  );
 
   return <>{sorted.map(renderShape)}</>;
 };

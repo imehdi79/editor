@@ -75,7 +75,7 @@ export const buildDrawingInfo = (
         id: s.id,
         kind: s.type,
         type: s.type === "line" ? "Line" : "Dashed Line",
-        length: lenCell(l, "length"),
+        length: lenCell(l),
         width: EMPTY,
         height: EMPTY,
         area: EMPTY,
@@ -97,20 +97,19 @@ export const buildDrawingInfo = (
   rows.sort((a, b) => ORDER[a.kind] - ORDER[b.kind]);
 
   // Enclosed rooms — appended as a summary section with floor area.
-  const rooms = computeRoomAreas(shapes);
-  rooms
-    .sort((a, b) => b.areaPx - a.areaPx)
-    .forEach((room, i) => {
-      rows.push({
-        id: room.id,
-        kind: "room",
-        type: `Room ${i + 1}`,
-        length: EMPTY,
-        width: EMPTY,
-        height: EMPTY,
-        area: { display: formatArea(room.areaPx / (pixelsPerMeter * pixelsPerMeter)) },
-      });
+  // computeRoomAreas returns a shared, pre-sorted (largest-first) array; iterate
+  // without re-sorting so we don't mutate the cached result.
+  computeRoomAreas(shapes).forEach((room, i) => {
+    rows.push({
+      id: room.id,
+      kind: "room",
+      type: `Room ${i + 1}`,
+      length: EMPTY,
+      width: EMPTY,
+      height: EMPTY,
+      area: { display: formatArea(room.areaPx / (pixelsPerMeter * pixelsPerMeter)) },
     });
+  });
 
   return rows;
 };

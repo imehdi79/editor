@@ -24,7 +24,7 @@ import { Circle, Group, Line, Rect, Text } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import { useViewportStore } from "@/store/viewport.store";
-import type { Shape, GhostShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, GhostShape } from "@/core/drawing-engine/drawing.types";
 import { rotationHandlePos, ROTATE_HANDLE_OFFSET } from "@/features/select-tool/useTransformEngine";
 import { computeTopology, nodeKey } from "@/core/topology/computeTopology";
 import { absoluteAngleDeg, formatAngle } from "@/core/wall-utils/wallAngles";
