@@ -73,6 +73,8 @@ const SettingsPanel = () => {
   const setDefaultWallHeight = useEditorStore((s) => s.setDefaultWallHeight);
   const linkConnectedNodes = useEditorStore((s) => s.linkConnectedNodes);
   const setLinkConnectedNodes = useEditorStore((s) => s.setLinkConnectedNodes);
+  const showAllDimensions = useEditorStore((s) => s.showAllDimensions);
+  const setShowAllDimensions = useEditorStore((s) => s.setShowAllDimensions);
 
   useEffect(() => {
     if (!open) return;
@@ -131,6 +133,29 @@ const SettingsPanel = () => {
                   {opt.label}
                 </Button>
               ))}
+            </div>
+          </div>
+
+          {/* Dimensions display — contextual (on selection) vs the full sheet */}
+          <div className="flex flex-col gap-1.5 border-t pt-2">
+            <span className="text-xs text-muted-foreground">Dimensions</span>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={!showAllDimensions ? "default" : "outline"}
+                className="flex-1 px-0"
+                onClick={() => setShowAllDimensions(false)}
+              >
+                On selection
+              </Button>
+              <Button
+                size="sm"
+                variant={showAllDimensions ? "default" : "outline"}
+                className="flex-1 px-0"
+                onClick={() => setShowAllDimensions(true)}
+              >
+                Show all
+              </Button>
             </div>
           </div>
 

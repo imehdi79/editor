@@ -17,6 +17,8 @@
 import { Line, Text, Group, Rect } from "react-konva";
 import { useDimensionLayout } from "@/core/dimensions/useDimensionLayout";
 import { useViewportStore } from "@/store/viewport.store";
+import { useEditorStore } from "@/store/editor.store";
+import { useSelectionStore } from "@/store/selection.store";
 import type { DimensionCandidate } from "@/core/dimensions/dimensionCollision";
 import { TICK_HALF } from "@/core/dimensions/dimensionGeometry";
 import { LABEL_FONT_FAMILY, dimensionPxScale } from "@/core/dimensions/dimensionLayout";
@@ -256,12 +258,18 @@ const DimensionAnnotation = ({ candidate, pxScale }: { candidate: DimensionCandi
 const DimensionLayerRenderer = () => {
   const candidates = useDimensionLayout();
   const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
+  const showAll = useEditorStore((s) => s.showAllDimensions);
+  const selectedId = useSelectionStore((s) => s.selectedId);
 
-  if (candidates.length === 0) return null;
+  // Contextual by default: keep the canvas readable (mobile) by drawing only
+  // the selected shape's dimension. "Show all" restores the full annotation set.
+  // Each candidate's id is its shape id, so selection filtering is a direct match.
+  const visible = showAll ? candidates : candidates.filter((c) => c.id === selectedId);
+  if (visible.length === 0) return null;
 
   return (
     <Group listening={false}>
-      {candidates.map((c) => (
+      {visible.map((c) => (
         <DimensionAnnotation key={c.id} candidate={c} pxScale={pxScale} />
       ))}
     </Group>

@@ -13,6 +13,7 @@
 import { Group, Line, Text, Rect } from "react-konva";
 import { useDimensionChains } from "@/core/dimensions/useDimensionChains";
 import { useViewportStore } from "@/store/viewport.store";
+import { useEditorStore } from "@/store/editor.store";
 import type { ChainSegment } from "@/core/dimensions/dimensionChains";
 import { TICK_HALF } from "@/core/dimensions/dimensionGeometry";
 import { LABEL_FONT_FAMILY, dimensionPxScale } from "@/core/dimensions/dimensionLayout";
@@ -126,9 +127,12 @@ const ChainAnnotation = ({ seg, pxScale }: { seg: ChainSegment; pxScale: number 
 // ---------------------------------------------------------------------------
 
 const DimensionChainsRenderer = () => {
+  const showAll = useEditorStore((s) => s.showAllDimensions);
   const chains = useDimensionChains();
   const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
-  if (chains.length === 0) return null;
+  // Running chains are the densest annotation (the "spaghetti" on mobile); only
+  // draw them in the full "show all dimensions" sheet, never in contextual mode.
+  if (!showAll || chains.length === 0) return null;
 
   return (
     <Group listening={false}>

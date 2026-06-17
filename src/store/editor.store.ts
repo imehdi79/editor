@@ -45,12 +45,22 @@ interface EditorStore {
    */
   linkConnectedNodes: boolean;
 
+  /**
+   * Dimension display mode. When false (default), standing dimensions are
+   * contextual — hidden until a shape is selected (then only that shape's
+   * dimension shows), which keeps the canvas readable on mobile. When true,
+   * every wall's per-segment dimensions and the inner/outer running chains are
+   * drawn at once (the full CAD annotation sheet).
+   */
+  showAllDimensions: boolean;
+
   setViewMode: (mode: "2d" | "3d") => void;
   setDimensionUnit: (unit: DimensionUnit) => void;
   setMeasurementReference: (ref: MeasurementReference) => void;
   setDefaultWallThickness: (thickness: number) => void;
   setDefaultWallHeight: (height: number) => void;
   setLinkConnectedNodes: (link: boolean) => void;
+  setShowAllDimensions: (show: boolean) => void;
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -65,6 +75,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   defaultWallThickness: 12,
   defaultWallHeight: 280,
   linkConnectedNodes: true,
+  showAllDimensions: false,
 
   setViewMode: (mode) => set({ viewMode: mode }),
   setDimensionUnit: (unit) => set({ dimensionUnit: unit }),
@@ -72,4 +83,5 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setDefaultWallThickness: (thickness) => set({ defaultWallThickness: thickness }),
   setDefaultWallHeight: (height) => set({ defaultWallHeight: height }),
   setLinkConnectedNodes: (link) => set({ linkConnectedNodes: link }),
+  setShowAllDimensions: (show) => set({ showAllDimensions: show }),
 }));
