@@ -7,6 +7,7 @@ import { useDrawingEngine } from "@/core/drawing-engine/useDrawingEngine";
 import { useTransformEngine } from "@/features/select-tool/useTransformEngine";
 import { TOOL_REGISTRY } from "@/features/tool-registry";
 import ShapeRenderer from "./ShapeRenderer";
+import RoomRenderer from "./RoomRenderer";
 import GhostRenderer from "./GhostRenderer";
 import HintsRenderer from "./HintsRenderer";
 import SelectionRenderer from "./SelectionRenderer";
@@ -114,6 +115,7 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
     >
       <Layer>
         <GridRenderer />
+        <RoomRenderer />
         <ShapeRenderer />
         <DimensionLayerRenderer />
         <DimensionChainsRenderer />
