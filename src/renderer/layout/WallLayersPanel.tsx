@@ -20,6 +20,8 @@ import { buildWallLayerRows } from "@/core/wall-layers/buildWallLayerRows";
 import {
   WALL_SIDES,
   WALL_SIDE_LABEL,
+  WALL_MATERIALS,
+  materialColor,
   createWallLayer,
   layersOf,
   withSideLayers,
@@ -71,13 +73,26 @@ const SideTable = ({ wall, side }: { wall: WallShape; side: WallSide }) => {
               key={row.id}
               className="grid grid-cols-[1fr_3rem_3.25rem_3rem_3.5rem_1.25rem] items-center gap-1 border-b px-1.5 py-1 last:border-b-0"
             >
-              <input
-                type="text"
-                value={row.material}
-                placeholder="Material"
-                onChange={(e) => patchLayer(row.id, { material: e.target.value })}
-                className="h-6 w-full rounded border bg-background px-1.5 outline-none focus-visible:border-ring"
-              />
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className="size-3 shrink-0 rounded-sm border border-black/10"
+                  style={{ backgroundColor: materialColor(row.material) }}
+                />
+                <select
+                  value={row.material}
+                  onChange={(e) => patchLayer(row.id, { material: e.target.value })}
+                  className="h-6 w-full min-w-0 rounded border bg-background px-1 outline-none focus-visible:border-ring"
+                >
+                  {!WALL_MATERIALS.some((m) => m.name === row.material) && (
+                    <option value={row.material}>{row.material}</option>
+                  )}
+                  {WALL_MATERIALS.map((m) => (
+                    <option key={m.name} value={m.name}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <span className="truncate text-right text-muted-foreground">{row.lengthDisplay}</span>
               <input
                 type="number"

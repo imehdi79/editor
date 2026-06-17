@@ -12,18 +12,11 @@
 
 import type { Shape } from "@/core/drawing-engine/drawing.types";
 import type { DimensionUnit } from "@/store/editor.store";
-import { formatDimension, formatArea, toUnit, cmToPx } from "@/core/dimensions/dimensionUnits";
+import { formatDimension, formatArea, cmToPx } from "@/core/dimensions/dimensionUnits";
 import { computeRoomAreas } from "./computeRoomAreas";
-
-/** Which shape field a given cell edits. */
-export type EditField = "length" | "thickness" | "width" | "height";
 
 export interface DrawingCell {
   display: string;
-  /** Raw value shown in the input, in the active display unit. */
-  value?: number;
-  /** Field this cell writes to; absent = read-only (derived) cell. */
-  field?: EditField;
 }
 
 export interface DrawingRow {
@@ -47,11 +40,7 @@ export const buildDrawingInfo = (
   defaultWallHeight: number,
 ): DrawingRow[] => {
   const fmt = (px: number) => formatDimension(px, unit, pixelsPerMeter);
-  const lenCell = (px: number, field: EditField): DrawingCell => ({
-    display: fmt(px),
-    value: toUnit(px, unit, pixelsPerMeter),
-    field,
-  });
+  const lenCell = (px: number): DrawingCell => ({ display: fmt(px) });
 
   const rows: DrawingRow[] = [];
 
@@ -64,10 +53,10 @@ export const buildDrawingInfo = (
         id: s.id,
         kind: "wall",
         type: "Wall",
-        length: lenCell(l, "length"),
-        width: lenCell(s.thickness, "thickness"),
-        // Height is stored in cm; bridge to px so it displays/edits in the active unit.
-        height: lenCell(cmToPx(h, pixelsPerMeter), "height"),
+        length: lenCell(l),
+        width: lenCell(s.thickness),
+        // Height is stored in cm; bridge to px so it displays in the active unit.
+        height: lenCell(cmToPx(h, pixelsPerMeter)),
         area: { display: formatArea(surfaceM2) },
       });
     } else if (s.type === "window" || s.type === "door") {
@@ -75,8 +64,8 @@ export const buildDrawingInfo = (
         id: s.id,
         kind: s.type,
         type: s.type === "window" ? "Window" : "Door",
-        length: lenCell(s.width, "width"),
-        width: lenCell(s.thickness, "thickness"),
+        length: lenCell(s.width),
+        width: lenCell(s.thickness),
         height: EMPTY,
         area: EMPTY,
       });

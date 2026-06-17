@@ -2,6 +2,7 @@ import { Line, Text, Shape as KonvaShape, Group } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import type { Shape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeDoorSwing } from "@/core/door/computeDoorSwing";
+import { buildWallLayerBands } from "@/core/wall-layers/wallLayers";
 
 // ---------------------------------------------------------------------------
 // Window renderer
@@ -124,16 +125,27 @@ const DoorRenderer = ({ shape }: { shape: DoorShape }) => {
 
 const renderShape = (shape: Shape) => {
   switch (shape.type) {
-    case "wall":
-      return (
+    case "wall": {
+      const core = (
         <Line
-          key={shape.id}
           points={[shape.x1, shape.y1, shape.x2, shape.y2]}
           stroke="#1e293b"
           strokeWidth={shape.thickness}
           lineCap="butt"
         />
       );
+      const bands = buildWallLayerBands(shape);
+      if (bands.length === 0) return <Group key={shape.id}>{core}</Group>;
+      return (
+        <Group key={shape.id}>
+          {/* Construction layers as coloured build-up beside the structural core */}
+          {bands.map((b, i) => (
+            <Line key={i} points={b.points} stroke={b.color} strokeWidth={b.width} lineCap="butt" />
+          ))}
+          {core}
+        </Group>
+      );
+    }
 
     case "line":
       return (
