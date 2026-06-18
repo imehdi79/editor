@@ -11,44 +11,5 @@
     "Reuse existing components and patterns whenever possible.",
     "Avoid overengineering. Build the simplest scalable solution that meets current requirements. Do not add abstractions, optimizations, or features without a clear need."
   ],
-  "steps": [
-    {
-      "id": "frontend-sub-pages",
-      "title": "Implement page sub-classes",
-      "description": "Allow each page to contain multiple sub-pages (sub-classes) that can be managed directly from the page view.",
-      "requirements": [
-        "Display sub-pages section below the page header.",
-        "Users can rename sub-pages inline.",
-        "Provide a quick-add button for creating an empty sub-page.",
-        "Provide a template button for creating a sub-page from predefined templates."
-      ],
-      "templateModal": {
-        "trigger": "Template button",
-        "behavior": "Open a modal containing available templates.",
-        "requirements": [
-          "User can select a template.",
-          "Create a new sub-page from the selected template.",
-          "Close modal after successful creation."
-        ],
-        "initialTemplates": [
-          {
-            "name": "Plumbing",
-            "description": "Basic plumbing checklist and structure."
-          },
-          {
-            "name": "Electrical",
-            "description": "Basic electrical checklist and structure."
-          }
-        ]
-      },
-      "acceptanceCriteria": [
-        "Sub-pages are visible under the page header.",
-        "Users can create sub-pages manually.",
-        "Users can create sub-pages from templates.",
-        "Users can rename sub-pages.",
-        "No page reload is required after creation.",
-        "UI remains responsive and consistent with existing design."
-      ]
-    }
-  ]
+  "steps": []
 }
