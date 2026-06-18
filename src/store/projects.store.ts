@@ -22,9 +22,10 @@ import { useSelectionStore } from "./selection.store";
 import { uid } from "@/lib/uid";
 import { projectsApi } from "@/services/projectsApi";
 import { invalidateProjects } from "@/api/queryClient";
-import type { Page, PageViewport, Project } from "./project.types";
+import type { Page, PageViewport, Project, SubPage } from "./project.types";
+import type { SubPageTemplate } from "@/core/sub-page/templates";
 
-export type { Page, PageViewport, Project, ProjectSummary } from "./project.types";
+export type { Page, PageViewport, Project, ProjectSummary, SubPage } from "./project.types";
 
 type SaveStatus = "idle" | "saving" | "loading" | "error";
 
@@ -50,6 +51,11 @@ interface ProjectsActions {
   openPage: (pageId: string) => void;
   deletePage: (pageId: string) => void;
 
+  /** Add a sub-page to the active page — blank, or seeded from a template. */
+  addSubPage: (template?: SubPageTemplate) => void;
+  renameSubPage: (subPageId: string, name: string) => void;
+  deleteSubPage: (subPageId: string) => void;
+
   /** Snapshot the live canvas into the current project and persist it. */
   saveCurrentProject: () => Promise<void>;
   /** Load a project by id (from cache if present, else the persistence layer). */
@@ -67,6 +73,7 @@ const emptyPage = (name: string): Page => ({
   name,
   shapes: {},
   viewport: { ...DEFAULT_VIEWPORT },
+  subPages: [],
 });
 
 const newProject = (name: string): Project => {
@@ -239,6 +246,36 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
     if (wasActive) loadLive(get().projects[currentProjectId].pages[0]);
   },
 
+  // Sub-pages are metadata on the active page (no live document), so these never
+  // touch the canvas mirror — the page object is replaced in place, no reload.
+  addSubPage: (template) => {
+    const subPage: SubPage = {
+      id: uid(),
+      name: template?.name ?? "New sub-page",
+      template: template?.id,
+    };
+    console.log("[projects] add sub-page", subPage.id, subPage.name);
+    set((s) => patchActivePage(s, (p) => ({ ...p, subPages: [...(p.subPages ?? []), subPage] })));
+  },
+
+  renameSubPage: (subPageId, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    set((s) =>
+      patchActivePage(s, (p) => ({
+        ...p,
+        subPages: (p.subPages ?? []).map((sp) => (sp.id === subPageId ? { ...sp, name: trimmed } : sp)),
+      })),
+    );
+  },
+
+  deleteSubPage: (subPageId) => {
+    console.log("[projects] delete sub-page", subPageId);
+    set((s) =>
+      patchActivePage(s, (p) => ({ ...p, subPages: (p.subPages ?? []).filter((sp) => sp.id !== subPageId) })),
+    );
+  },
+
   saveCurrentProject: async () => {
     set({ status: "saving" });
     // Fold the live canvas into the current project before persisting.
@@ -300,4 +337,16 @@ function snapshotIntoCurrent(s: ProjectsState): Project {
   const live = snapshotLive();
   const pages = project.pages.map((p) => (p.id === project.activePageId ? { ...p, ...live } : p));
   return { ...project, pages, updatedAt: Date.now() };
+}
+
+/**
+ * Replace the current project's active page via `fn` and return the partial
+ * state for `set()`. For metadata edits that must not disturb the live canvas
+ * (the active page's stale `shapes` are intentionally left untouched).
+ */
+function patchActivePage(s: ProjectsState, fn: (p: Page) => Page): Pick<ProjectsState, "projects"> {
+  const project = s.projects[s.currentProjectId];
+  if (!project) return { projects: s.projects };
+  const pages = project.pages.map((p) => (p.id === project.activePageId ? fn(p) : p));
+  return { projects: { ...s.projects, [project.id]: { ...project, pages, updatedAt: Date.now() } } };
 }

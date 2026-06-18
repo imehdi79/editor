@@ -2,6 +2,7 @@ import Sidebar from "./sidebar";
 import GlobalCursor from "./sidebar/GlobalCursor";
 import WallActions from "./WallActions";
 import Header from "./header";
+import SubPageBar from "./header/SubPageBar";
 
 const Layout = () => {
   return (
@@ -9,6 +10,7 @@ const Layout = () => {
       <GlobalCursor />
 
       <Header />
+      <SubPageBar />
 
       <Sidebar />
 

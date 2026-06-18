@@ -14,11 +14,24 @@ export interface PageViewport {
   scale: number;
 }
 
+/**
+ * A sub-page (sub-class) of a page — a named organisational child managed from
+ * the page view. Created blank or seeded from a predefined template.
+ */
+export interface SubPage {
+  id: string;
+  name: string;
+  /** Id of the template this sub-page was created from (undefined when blank). */
+  template?: string;
+}
+
 export interface Page {
   id: string;
   name: string;
   shapes: Record<ShapeId, Shape>;
   viewport: PageViewport;
+  /** Organisational sub-pages shown below the page header. */
+  subPages: SubPage[];
 }
 
 export interface Project {
