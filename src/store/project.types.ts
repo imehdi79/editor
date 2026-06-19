@@ -15,23 +15,27 @@ export interface PageViewport {
 }
 
 /**
- * A sub-page (sub-class) of a page — a named organisational child managed from
- * the page view. Created blank or seeded from a predefined template.
+ * A sub-page (sub-class) of a page — the actual drawing surface. Each carries
+ * its own document (shapes + viewport) and is rendered on the live canvas like a
+ * page. Created blank (copies the page's pinned default) or from a template.
  */
 export interface SubPage {
   id: string;
   name: string;
   /** Id of the template this sub-page was created from (undefined when blank). */
   template?: string;
+  /** The page's default sub-page: always present and cannot be removed. */
+  pinned?: boolean;
+  shapes: Record<ShapeId, Shape>;
+  viewport: PageViewport;
 }
 
 export interface Page {
   id: string;
   name: string;
-  shapes: Record<ShapeId, Shape>;
-  viewport: PageViewport;
-  /** Organisational sub-pages shown below the page header. */
+  /** Drawing surfaces of this page; always holds at least the pinned default. */
   subPages: SubPage[];
+  activeSubPageId: string;
 }
 
 export interface Project {

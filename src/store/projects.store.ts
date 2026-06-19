@@ -1,18 +1,16 @@
 /**
- * projects.store — the project → pages document tree.
+ * projects.store — the project → pages → sub-pages document tree.
  *
  * The canvas keeps a single *live* document (floor-plan.store.shapes +
- * viewport.store). This store owns the tree of projects, each with one or more
- * pages; every page carries its own shapes + viewport snapshot.
+ * viewport.store). This store owns the tree of projects; each project has one or
+ * more pages, and each page has one or more sub-pages. The sub-page is the
+ * drawing surface — it carries the shapes + viewport snapshot. Every page has a
+ * pinned default sub-page that cannot be removed.
  *
- * Switching page/project follows one rule:
- *   1. snapshot the live stores into the outgoing page
- *   2. load the target page into the live stores
- *   3. reset undo history + selection (each page is its own undo timeline)
- *
- * No persistence yet: everything lives in memory and actions are console.logged.
- * When a backend lands, this store becomes the cache — load/save turn async and
- * persist Page.shapes; the live-mirror pattern stays the same.
+ * Switching page/sub-page/project follows one rule:
+ *   1. snapshot the live stores into the outgoing sub-page
+ *   2. load the target sub-page into the live stores
+ *   3. reset undo history + selection (each sub-page is its own undo timeline)
  */
 
 import { create } from "zustand";
@@ -51,9 +49,16 @@ interface ProjectsActions {
   openPage: (pageId: string) => void;
   deletePage: (pageId: string) => void;
 
-  /** Add a sub-page to the active page — blank, or seeded from a template. */
+  /**
+   * Add a sub-page to the active page and switch the canvas to it. A blank
+   * sub-page copies the page's pinned default document; a template sub-page
+   * starts empty.
+   */
   addSubPage: (template?: SubPageTemplate) => void;
+  /** Switch the live canvas to a sub-page of the active page. */
+  openSubPage: (subPageId: string) => void;
   renameSubPage: (subPageId: string, name: string) => void;
+  /** Remove a sub-page (the pinned default cannot be removed). */
   deleteSubPage: (subPageId: string) => void;
 
   /** Snapshot the live canvas into the current project and persist it. */
@@ -67,14 +72,24 @@ interface ProjectsActions {
 export type ProjectsStore = ProjectsState & ProjectsActions;
 
 const DEFAULT_VIEWPORT: PageViewport = { x: 0, y: 0, scale: 1 };
+const DEFAULT_SUBPAGE_NAME = "Main";
 
-const emptyPage = (name: string): Page => ({
+const emptySubPage = (name: string, pinned = false): SubPage => ({
   id: uid(),
   name,
+  pinned,
   shapes: {},
   viewport: { ...DEFAULT_VIEWPORT },
-  subPages: [],
 });
+
+const emptyPage = (name: string): Page => {
+  const sub = emptySubPage(DEFAULT_SUBPAGE_NAME, true);
+  return { id: uid(), name, subPages: [sub], activeSubPageId: sub.id };
+};
+
+/** The page's active drawing surface (falls back to its first sub-page). */
+const activeSubPage = (page: Page): SubPage =>
+  page.subPages.find((sp) => sp.id === page.activeSubPageId) ?? page.subPages[0];
 
 const newProject = (name: string): Project => {
   const page = emptyPage("Page 1");
@@ -86,18 +101,18 @@ const newProject = (name: string): Project => {
 // Live-document mirror: read/write the canvas stores
 // ---------------------------------------------------------------------------
 
-/** Read the live canvas state into a page snapshot. */
-const snapshotLive = (): Pick<Page, "shapes" | "viewport"> => {
+/** Read the live canvas state into a sub-page snapshot. */
+const snapshotLive = (): Pick<SubPage, "shapes" | "viewport"> => {
   const { shapes } = useFloorPlanStore.getState();
   const { x, y, scale } = useViewportStore.getState();
   return { shapes: { ...shapes }, viewport: { x, y, scale } };
 };
 
-/** Push a page's document into the live canvas stores + reset undo/selection. */
-const loadLive = (page: Page): void => {
-  useFloorPlanStore.getState().loadShapes({ ...page.shapes });
+/** Push a sub-page's document into the live canvas stores + reset undo/selection. */
+const loadLive = (sub: SubPage): void => {
+  useFloorPlanStore.getState().loadShapes({ ...sub.shapes });
   useFloorPlanStore.temporal.getState().clear();
-  useViewportStore.getState().setViewport(page.viewport.x, page.viewport.y, page.viewport.scale);
+  useViewportStore.getState().setViewport(sub.viewport.x, sub.viewport.y, sub.viewport.scale);
   useSelectionStore.getState().clearSelection();
 };
 
@@ -127,7 +142,7 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
       currentProjectId: project.id,
       recentIds: [project.id, ...s.recentIds.filter((id) => id !== project.id)],
     }));
-    loadLive(project.pages[0]);
+    loadLive(activeSubPage(project.pages[0]));
   },
 
   openProject: (id) => {
@@ -141,7 +156,7 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
     }));
     const project = get().projects[id];
     const active = project.pages.find((p) => p.id === project.activePageId) ?? project.pages[0];
-    loadLive(active);
+    loadLive(activeSubPage(active));
   },
 
   renameProject: (id, name) => {
@@ -199,7 +214,7 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
         },
       };
     });
-    loadLive(page);
+    loadLive(activeSubPage(page));
   },
 
   openPage: (pageId) => {
@@ -217,7 +232,7 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
     });
     // Re-read the (just-snapshotted) target page so we don't load stale shapes.
     const fresh = get().projects[currentProjectId].pages.find((p) => p.id === pageId)!;
-    loadLive(fresh);
+    loadLive(activeSubPage(fresh));
   },
 
   deletePage: (pageId) => {
@@ -243,19 +258,53 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
         },
       };
     });
-    if (wasActive) loadLive(get().projects[currentProjectId].pages[0]);
+    if (wasActive) loadLive(activeSubPage(get().projects[currentProjectId].pages[0]));
   },
 
-  // Sub-pages are metadata on the active page (no live document), so these never
-  // touch the canvas mirror — the page object is replaced in place, no reload.
+  // Sub-pages are real drawing surfaces, so add/open/delete follow the same
+  // snapshot-then-load dance as pages: fold the live canvas into the current
+  // sub-page first, then load the target.
   addSubPage: (template) => {
-    const subPage: SubPage = {
-      id: uid(),
-      name: template?.name ?? "New sub-page",
-      template: template?.id,
-    };
-    console.log("[projects] add sub-page", subPage.id, subPage.name);
-    set((s) => patchActivePage(s, (p) => ({ ...p, subPages: [...(p.subPages ?? []), subPage] })));
+    const { currentProjectId } = get();
+    // Snapshot the live canvas into the current sub-page first, so a blank copy
+    // includes the latest edits and we append onto the up-to-date page.
+    const snapped = snapshotIntoCurrent(get());
+    const page = snapped.pages.find((p) => p.id === snapped.activePageId);
+    if (!page) return;
+    // Blank sub-pages copy the page's pinned default; template sub-pages start empty.
+    const base = page.subPages.find((sp) => sp.pinned) ?? page.subPages[0];
+    const created: SubPage = template
+      ? { id: uid(), name: template.name, template: template.id, shapes: {}, viewport: { ...DEFAULT_VIEWPORT } }
+      : {
+          id: uid(),
+          name: `Sub-page ${page.subPages.length + 1}`,
+          shapes: { ...base.shapes },
+          viewport: { ...base.viewport },
+        };
+    const pages = snapped.pages.map((p) =>
+      p.id === snapped.activePageId ? { ...p, subPages: [...p.subPages, created], activeSubPageId: created.id } : p,
+    );
+    set((s) => ({ projects: { ...s.projects, [currentProjectId]: { ...snapped, pages } } }));
+    console.log("[projects] add sub-page", created.id, created.name);
+    loadLive(created);
+  },
+
+  openSubPage: (subPageId) => {
+    const { currentProjectId } = get();
+    const project = get().projects[currentProjectId];
+    const page = project.pages.find((p) => p.id === project.activePageId);
+    if (!page || page.activeSubPageId === subPageId) return;
+    if (!page.subPages.some((sp) => sp.id === subPageId)) return;
+    console.log("[projects] open sub-page", subPageId);
+    set((s) => {
+      const snapped = snapshotIntoCurrent(s);
+      const pages = snapped.pages.map((p) =>
+        p.id === snapped.activePageId ? { ...p, activeSubPageId: subPageId } : p,
+      );
+      return { projects: { ...s.projects, [currentProjectId]: { ...snapped, pages } } };
+    });
+    const fresh = get().projects[currentProjectId].pages.find((p) => p.id === project.activePageId)!;
+    loadLive(activeSubPage(fresh));
   },
 
   renameSubPage: (subPageId, name) => {
@@ -264,16 +313,33 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
     set((s) =>
       patchActivePage(s, (p) => ({
         ...p,
-        subPages: (p.subPages ?? []).map((sp) => (sp.id === subPageId ? { ...sp, name: trimmed } : sp)),
+        subPages: p.subPages.map((sp) => (sp.id === subPageId ? { ...sp, name: trimmed } : sp)),
       })),
     );
   },
 
   deleteSubPage: (subPageId) => {
+    const { currentProjectId } = get();
+    const project = get().projects[currentProjectId];
+    const page = project.pages.find((p) => p.id === project.activePageId);
+    if (!page) return;
+    const target = page.subPages.find((sp) => sp.id === subPageId);
+    if (!target || target.pinned) return; // the default sub-page is permanent
     console.log("[projects] delete sub-page", subPageId);
-    set((s) =>
-      patchActivePage(s, (p) => ({ ...p, subPages: (p.subPages ?? []).filter((sp) => sp.id !== subPageId) })),
-    );
+    const wasActive = page.activeSubPageId === subPageId;
+    set((s) => {
+      const snapped = snapshotIntoCurrent(s);
+      const pages = snapped.pages.map((p) => {
+        if (p.id !== snapped.activePageId) return p;
+        const remaining = p.subPages.filter((sp) => sp.id !== subPageId);
+        return { ...p, subPages: remaining, activeSubPageId: wasActive ? remaining[0].id : p.activeSubPageId };
+      });
+      return { projects: { ...s.projects, [currentProjectId]: { ...snapped, pages } } };
+    });
+    if (wasActive) {
+      const fresh = get().projects[currentProjectId].pages.find((p) => p.id === project.activePageId)!;
+      loadLive(activeSubPage(fresh));
+    }
   },
 
   saveCurrentProject: async () => {
@@ -300,12 +366,13 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
     }
     set({ status: "loading" });
     try {
-      const project = await projectsApi.get(id);
-      if (!project) {
+      const raw = await projectsApi.get(id);
+      if (!raw) {
         console.warn("[projects] load: not found", id);
         set({ status: "idle" });
         return;
       }
+      const project = normalizeProject(raw);
       set((s) => ({ projects: { ...s.projects, [id]: project }, status: "idle" }));
       console.log("[projects] loaded", id, project.name);
       get().openProject(id);
@@ -324,7 +391,7 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
       status: "idle",
       lastSavedAt: null,
     });
-    loadLive(project.pages[0]);
+    loadLive(activeSubPage(project.pages[0]));
   },
 }));
 
@@ -335,8 +402,46 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
 function snapshotIntoCurrent(s: ProjectsState): Project {
   const project = s.projects[s.currentProjectId];
   const live = snapshotLive();
-  const pages = project.pages.map((p) => (p.id === project.activePageId ? { ...p, ...live } : p));
+  const pages = project.pages.map((page) =>
+    page.id === project.activePageId
+      ? { ...page, subPages: page.subPages.map((sp) => (sp.id === page.activeSubPageId ? { ...sp, ...live } : sp)) }
+      : page,
+  );
   return { ...project, pages, updatedAt: Date.now() };
+}
+
+/**
+ * Normalise a project fetched from the backend so it always conforms to the
+ * sub-page document model: every page gets a pinned default sub-page (seeded
+ * from any legacy page-level document), every sub-page has a document, and
+ * `activeSubPageId` points at a real sub-page. Idempotent for current data.
+ */
+function normalizeProject(project: Project): Project {
+  return { ...project, pages: project.pages.map(normalizePage) };
+}
+
+function normalizePage(page: Page): Page {
+  const legacy = page as Page & { shapes?: SubPage["shapes"]; viewport?: PageViewport };
+  let subPages: SubPage[] = (page.subPages ?? []).map((sp) => ({
+    id: sp.id ?? uid(),
+    name: sp.name ?? "Sub-page",
+    template: sp.template,
+    pinned: sp.pinned,
+    shapes: sp.shapes ?? {},
+    viewport: sp.viewport ?? { ...DEFAULT_VIEWPORT },
+  }));
+  if (!subPages.some((sp) => sp.pinned)) {
+    const def: SubPage = {
+      id: uid(),
+      name: DEFAULT_SUBPAGE_NAME,
+      pinned: true,
+      shapes: legacy.shapes ?? {},
+      viewport: legacy.viewport ?? { ...DEFAULT_VIEWPORT },
+    };
+    subPages = [def, ...subPages];
+  }
+  const active = subPages.find((sp) => sp.id === page.activeSubPageId) ?? subPages.find((sp) => sp.pinned) ?? subPages[0];
+  return { id: page.id, name: page.name, subPages, activeSubPageId: active.id };
 }
 
 /**

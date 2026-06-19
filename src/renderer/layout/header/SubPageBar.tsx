@@ -1,20 +1,21 @@
 /**
  * SubPageBar — the sub-pages section shown directly below the header for the
- * active page. Lists the page's sub-pages (renamed inline), with a quick-add
- * button for a blank sub-page and a template button that opens the picker.
- *
- * Sub-pages are page metadata, not a live document, so all mutations go through
- * projects.store without touching the canvas (no reload on create/rename).
+ * active page. Sub-pages are the page's drawing surfaces: tap one to render it
+ * on the canvas (same mirror logic as pages). The active sub-page exposes inline
+ * rename and (unless it's the pinned default) delete. A quick-add button adds a
+ * blank sub-page copied from the default; the template button opens the picker.
  */
 
 import { useState } from "react";
-import { Plus, LayoutTemplate, X } from "lucide-react";
+import { Plus, LayoutTemplate, X, Pencil, Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useProjectsStore } from "@/store/projects.store";
 import type { SubPage } from "@/store/projects.store";
 import SubPageTemplateModal from "./SubPageTemplateModal";
 
-const SubPageTab = ({ subPage }: { subPage: SubPage }) => {
+const SubPageTab = ({ subPage, active }: { subPage: SubPage; active: boolean }) => {
+  const openSubPage = useProjectsStore((s) => s.openSubPage);
   const renameSubPage = useProjectsStore((s) => s.renameSubPage);
   const deleteSubPage = useProjectsStore((s) => s.deleteSubPage);
 
@@ -47,17 +48,36 @@ const SubPageTab = ({ subPage }: { subPage: SubPage }) => {
   }
 
   return (
-    <div className="flex shrink-0 items-center rounded-md bg-muted text-xs text-muted-foreground hover:text-foreground">
-      <button onClick={begin} className="max-w-[28vw] truncate px-2.5 py-1 font-medium" title="Rename sub-page">
-        {subPage.name}
-      </button>
+    <div
+      className={cn(
+        "flex shrink-0 items-center rounded-md text-xs",
+        active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground",
+      )}
+    >
       <button
-        onClick={() => deleteSubPage(subPage.id)}
-        title="Delete sub-page"
-        className="shrink-0 pr-1.5 opacity-70 hover:opacity-100"
+        onClick={() => openSubPage(subPage.id)}
+        className="flex max-w-[28vw] items-center gap-1 truncate px-2.5 py-1 font-medium"
+        title={subPage.name}
       >
-        <X size={11} />
+        {subPage.pinned && <Pin size={10} className="shrink-0 opacity-70" />}
+        <span className="truncate">{subPage.name}</span>
       </button>
+      {active && (
+        <>
+          <button onClick={begin} title="Rename sub-page" className="shrink-0 pr-1 opacity-80 hover:opacity-100">
+            <Pencil size={11} />
+          </button>
+          {!subPage.pinned && (
+            <button
+              onClick={() => deleteSubPage(subPage.id)}
+              title="Delete sub-page"
+              className="shrink-0 pr-1.5 opacity-80 hover:opacity-100"
+            >
+              <X size={11} />
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 };
@@ -70,18 +90,15 @@ const SubPageBar = () => {
   if (!project) return null;
   const page = project.pages.find((p) => p.id === project.activePageId);
   if (!page) return null;
-  const subPages = page.subPages ?? [];
 
   return (
     <div className="fixed inset-x-0 top-12 z-40 flex h-9 items-center gap-1.5 border-b bg-popover/95 px-2 backdrop-blur-sm">
       <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Sub-pages</span>
 
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-        {subPages.length === 0 ? (
-          <span className="truncate text-[11px] text-muted-foreground/70">None yet</span>
-        ) : (
-          subPages.map((sp) => <SubPageTab key={sp.id} subPage={sp} />)
-        )}
+        {page.subPages.map((sp) => (
+          <SubPageTab key={sp.id} subPage={sp} active={sp.id === page.activeSubPageId} />
+        ))}
       </div>
 
       <Button size="icon-sm" variant="ghost" className="shrink-0" title="Add sub-page" onClick={() => addSubPage()}>

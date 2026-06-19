@@ -11,5 +11,16 @@
     "Reuse existing components and patterns whenever possible.",
     "Avoid overengineering. Build the simplest scalable solution that meets current requirements. Do not add abstractions, optimizations, or features without a clear need."
   ],
-  "steps": []
+  "steps": [
+    {
+      "id": "frontend-sub-pages",
+      "title": "update page sub-classes",
+      "description": "default and clickable sub page and show new canvas",
+      "requirements": [
+        "each always has one sub page with default name and pinned and could not removed.",
+        "by creating new subpage, if its not template must copy default and shows in new canvas.",
+        "new canvas its not means create an instance of canvas, its just render current sub page like pages logics."
+      ]
+    }
+  ]
 }
