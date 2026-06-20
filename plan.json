@@ -19,13 +19,5 @@
     "Wall height (WallShape.height) is carried in 2D now for future 3D: set it on creation, keep it editable in 2D, and preserve/propagate it through every junction and edit path — never drop it.",
     "See .claude/skills/wall-junctions for the authoritative geometry/computation reference for all 20 junction types."
   ],
-  "steps": [
-    {
-      "id": "wj-16",
-      "title": "3D height consumption",
-      "covers": ["#18"],
-      "detail": "Extrude each wall to its own WallShape.height in the lazy-loaded 3D scene; handle height-mismatch junctions in 3D. Keep height editing in 2D.",
-      "dimensions": "2D unaffected; 3D respects per-wall height."
-    }
-  ]
+  "steps": []
 }
