@@ -49,3 +49,5 @@ export const junctionAt = (
 
 export * from "./junction.types";
 export { DEFAULT_JUNCTION_CONFIG } from "./junctionConfig";
+export { getJoinResolver } from "./joinStyles";
+export { intersectLines, type Vec2 } from "./geometry";
