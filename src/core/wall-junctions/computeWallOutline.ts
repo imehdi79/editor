@@ -18,6 +18,7 @@ import { nodeKey } from "@/core/topology/computeTopology";
 import { computeWallJunctions } from "./computeWallJunctions";
 import { getJoinResolver } from "./joinStyles";
 import { getEndCap } from "./endCaps";
+import { buttCornersForEnd } from "./buttJoin";
 import type { Vec2 } from "./geometry";
 import type { ClassifiedJunction, JunctionConfig, Wedge, WallEnd } from "./junction.types";
 
@@ -73,6 +74,12 @@ const cornersAtEnd = (
 
   if (!junction || junction.ends.length < 2) {
     return splitBySide(butt1, butt2, node, nWall);
+  }
+
+  // Butt is asymmetric (one wall runs through, others clip to its face), so it is
+  // resolved at the node, not via the symmetric per-wedge registry.
+  if (config.joinStyle === "butt") {
+    return buttCornersForEnd(junction, end, node, nWall);
   }
 
   const ends = junction.ends;
