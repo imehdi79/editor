@@ -19,6 +19,7 @@ import { computeWallJunctions } from "./computeWallJunctions";
 import { getJoinResolver } from "./joinStyles";
 import { getEndCap } from "./endCaps";
 import { buttCornersForEnd } from "./buttJoin";
+import { endThickness } from "@/core/wall-utils/wallThickness";
 import type { Vec2 } from "./geometry";
 import type { ClassifiedJunction, JunctionConfig, Wedge, WallEnd } from "./junction.types";
 
@@ -192,9 +193,11 @@ const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: Ju
   const off = wall.offset ?? 0;
   const bi = (wall.layers?.inner ?? []).reduce((s, l) => s + l.thickness, 0);
   const bo = (wall.layers?.outer ?? []).reduce((s, l) => s + l.thickness, 0);
-  const base = { thickness: wall.thickness, offset: off, buildupInner: bi, buildupOuter: bo };
-  const end1: WallEnd = { wallId: wall.id, handle: "p1", ...base, dirX: dx / len, dirY: dy / len, bearing: 0 };
-  const end2: WallEnd = { wallId: wall.id, handle: "p2", ...base, dirX: -dx / len, dirY: -dy / len, bearing: 0 };
+  // Per-end thickness: a tapered wall is thinner/thicker at each node, so each
+  // end resolves at its own width (the body becomes a trapezoid).
+  const shared = { offset: off, buildupInner: bi, buildupOuter: bo };
+  const end1: WallEnd = { wallId: wall.id, handle: "p1", thickness: endThickness(wall, "p1"), ...shared, dirX: dx / len, dirY: dy / len, bearing: 0 };
+  const end2: WallEnd = { wallId: wall.id, handle: "p2", thickness: endThickness(wall, "p2"), ...shared, dirX: -dx / len, dirY: -dy / len, bearing: 0 };
 
   const j1 = junctions.get(nodeKey(wall.x1, wall.y1)) ?? null;
   const j2 = junctions.get(nodeKey(wall.x2, wall.y2)) ?? null;
@@ -208,15 +211,15 @@ const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: Ju
 
   // Free ends get the configured cap (butt/round/square); joined ends keep their
   // mitre cut. The corner fields stay the face points (dimensions/bands measure
-  // from them); only the rendered body polygon carries the cap.
-  const half = wall.thickness / 2;
+  // from them); only the rendered body polygon carries the cap. Each cap uses
+  // its own end's half-width so a tapered wall caps correctly at both ends.
   const ux = dx / len;
   const uy = dy / len;
   const free1 = !j1 || j1.ends.length < 2;
   const free2 = !j2 || j2.ends.length < 2;
   const cap = getEndCap(config.endCap);
-  const cap1 = free1 ? cap(c1.outer, c1.inner, { x: -ux, y: -uy }, half) : [c1.outer, c1.inner];
-  const cap2 = free2 ? cap(c2.inner, c2.outer, { x: ux, y: uy }, half) : [c2.inner, c2.outer];
+  const cap1 = free1 ? cap(c1.outer, c1.inner, { x: -ux, y: -uy }, e1.thickness / 2) : [c1.outer, c1.inner];
+  const cap2 = free2 ? cap(c2.inner, c2.outer, { x: ux, y: uy }, e2.thickness / 2) : [c2.inner, c2.outer];
 
   return {
     wallId: wall.id,

@@ -12,6 +12,7 @@
 import type { Shape, WallShape } from "@/core/drawing-engine/drawing.types";
 import type { TopologyNode } from "@/core/topology/computeTopology";
 import { absoluteAngleDeg } from "@/core/wall-utils/wallAngles";
+import { endThickness } from "@/core/wall-utils/wallThickness";
 import type { ClassifiedJunction, JunctionKind, WallEnd } from "./junction.types";
 
 /**
@@ -42,7 +43,9 @@ const wallEndsAt = (node: TopologyNode, shapes: Record<string, Shape>): WallEnd[
     ends.push({
       wallId: wall.id,
       handle: ref.handle,
-      thickness: wall.thickness,
+      // A tapered wall contributes its thickness AT THIS NODE, so the junction
+      // mitres each end at the correct local width.
+      thickness: endThickness(wall, ref.handle),
       offset: wall.offset ?? 0,
       buildupInner: sideBuildup(wall, "inner"),
       buildupOuter: sideBuildup(wall, "outer"),

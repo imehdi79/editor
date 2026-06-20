@@ -15,7 +15,8 @@ import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useEditorStore } from "@/store/editor.store";
 import { useViewportStore } from "@/store/viewport.store";
 import { toPx, toUnit, stepFor } from "@/core/dimensions/dimensionUnits";
-import { useSetWallThickness } from "@/features/wall-tool/useWallThickness";
+import { endThickness } from "@/core/wall-utils/wallThickness";
+import { useSetWallThickness, useSetWallEndThickness } from "@/features/wall-tool/useWallThickness";
 import { useTranslation } from "@/i18n";
 
 interface Props {
@@ -33,6 +34,7 @@ const NodeThicknessPopover = ({ shapeId, handle, onClose }: Props) => {
   const vy = useViewportStore((s) => s.y);
   const scale = useViewportStore((s) => s.scale);
   const setWallThickness = useSetWallThickness();
+  const setWallEndThickness = useSetWallEndThickness();
   const cardRef = useRef<HTMLDivElement>(null);
 
   const isWall = !!shape && (shape.type === "wall" || shape.type === "arc-wall");
@@ -68,6 +70,12 @@ const NodeThicknessPopover = ({ shapeId, handle, onClose }: Props) => {
   const left = nodeX * scale + vx;
   const top = nodeY * scale + vy;
 
+  // Straight walls taper per node; arc walls stay uniform (one thickness).
+  const tapered = shape.type === "wall";
+  const valuePx = tapered ? endThickness(shape, handle) : shape.thickness;
+  const commit = (px: number) =>
+    tapered ? setWallEndThickness(shapeId, handle, px) : setWallThickness(shapeId, px);
+
   return (
     <div
       ref={cardRef}
@@ -80,14 +88,14 @@ const NodeThicknessPopover = ({ shapeId, handle, onClose }: Props) => {
         autoFocus
         min={stepFor(unit)}
         step={stepFor(unit)}
-        value={toUnit(shape.thickness, unit, ppm)}
+        value={toUnit(valuePx, unit, ppm)}
         onFocus={(e) => e.target.select()}
         onKeyDown={(e) => {
           if (e.key === "Enter") onClose();
         }}
         onChange={(e) => {
           const v = Number(e.target.value);
-          if (!Number.isNaN(v) && v >= stepFor(unit)) setWallThickness(shapeId, toPx(v, unit, ppm));
+          if (!Number.isNaN(v) && v >= stepFor(unit)) commit(toPx(v, unit, ppm));
         }}
         className="h-7 w-16 rounded-md border bg-background px-2 text-right outline-none focus-visible:border-ring"
       />

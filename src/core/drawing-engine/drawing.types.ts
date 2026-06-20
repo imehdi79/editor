@@ -37,7 +37,18 @@ export interface WallShape extends BaseShape {
   y1: number;
   x2: number;
   y2: number;
+  /** Nominal structural thickness (px). Also the fallback per end and the value
+   *  used wherever a single thickness is needed (openings, dimensions, takeoff).
+   *  For a tapered wall it is kept as the mean of the two end thicknesses. */
   thickness: number;
+  /**
+   * Optional per-node thickness overrides (px). When set, the wall body tapers
+   * from `thicknessP1` at p1 to `thicknessP2` at p2; absent ends fall back to
+   * `thickness` (so a normal wall leaves both undefined and stays uniform).
+   * Resolve with `endThickness(wall, handle)`.
+   */
+  thicknessP1?: number;
+  thicknessP2?: number;
   /** Wall height in real units. Not drawn in 2D; used for future
    *  surface/volume (area) calculations. Optional for back-compat. */
   height?: number;
