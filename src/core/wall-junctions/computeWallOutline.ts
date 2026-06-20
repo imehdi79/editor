@@ -17,6 +17,7 @@ import type { Shape, ShapeId, WallShape } from "@/core/drawing-engine/drawing.ty
 import { nodeKey } from "@/core/topology/computeTopology";
 import { computeWallJunctions } from "./computeWallJunctions";
 import { getJoinResolver } from "./joinStyles";
+import { getEndCap } from "./endCaps";
 import type { Vec2 } from "./geometry";
 import type { ClassifiedJunction, JunctionConfig, Wedge, WallEnd } from "./junction.types";
 
@@ -130,13 +131,25 @@ const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: Ju
   const c1 = cornersAtEnd(j1, e1, { x: wall.x1, y: wall.y1 }, nWall, config);
   const c2 = cornersAtEnd(j2, e2, { x: wall.x2, y: wall.y2 }, nWall, config);
 
+  // Free ends get the configured cap (butt/round/square); joined ends keep their
+  // mitre cut. The corner fields stay the face points (dimensions/bands measure
+  // from them); only the rendered body polygon carries the cap.
+  const half = wall.thickness / 2;
+  const ux = dx / len;
+  const uy = dy / len;
+  const free1 = !j1 || j1.ends.length < 2;
+  const free2 = !j2 || j2.ends.length < 2;
+  const cap = getEndCap(config.endCap);
+  const cap1 = free1 ? cap(c1.outer, c1.inner, { x: -ux, y: -uy }, half) : [c1.outer, c1.inner];
+  const cap2 = free2 ? cap(c2.inner, c2.outer, { x: ux, y: uy }, half) : [c2.inner, c2.outer];
+
   return {
     wallId: wall.id,
     p1Inner: c1.inner,
     p1Outer: c1.outer,
     p2Inner: c2.inner,
     p2Outer: c2.outer,
-    polygon: [c1.inner, c2.inner, c2.outer, c1.outer],
+    polygon: [...cap1, ...cap2],
   };
 };
 
