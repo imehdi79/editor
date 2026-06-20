@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-14",
-      "title": "Composite multi-layer junction matching (BIM)",
-      "covers": ["#19"],
-      "detail": "Match each wallLayers band to its counterpart across the junction so layers wrap/meet correctly, not only the structural core.",
-      "dimensions": "Layer takeoff lengths follow matched joins."
-    },
-    {
       "id": "wj-15",
       "title": "Curved / arc walls (separate shape + tool)",
       "covers": ["#17"],
