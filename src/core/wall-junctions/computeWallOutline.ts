@@ -93,14 +93,28 @@ const cornersAtEnd = (
   // CCW corner: this end is the a-side of the wedge with its CCW neighbour.
   const ccwWedge = wedgeBetween(node, end, ccwNeighbor);
   const ccwRes = resolve(ccwWedge).vertices;
-  const ccwCorner = ccwRes[0] ?? { x: ccwWedge.a.x, y: ccwWedge.a.y };
+  const ccwCorner = sane(ccwRes[0], { x: ccwWedge.a.x, y: ccwWedge.a.y }, node, end.thickness);
 
   // CW corner: this end is the b-side of the wedge with its CW neighbour.
   const cwWedge = wedgeBetween(node, cwNeighbor, end);
   const cwRes = resolve(cwWedge).vertices;
-  const cwCorner = cwRes[cwRes.length - 1] ?? { x: cwWedge.b.x, y: cwWedge.b.y };
+  const cwCorner = sane(cwRes[cwRes.length - 1], { x: cwWedge.b.x, y: cwWedge.b.y }, node, end.thickness);
 
   return splitBySide(ccwCorner, cwCorner, node, nWall);
+};
+
+/**
+ * Hard safety net for multi-way (X/star) and overlapping-wall nodes: a
+ * near-degenerate wedge (two walls almost coincident) makes the mitre apex shoot
+ * to infinity. Beyond this many half-thicknesses the corner is meaningless, so
+ * fall back to the square face point. This is distinct from the user's miter
+ * limit (wj-8), which turns long-but-finite spikes into bevels.
+ */
+const SPIKE_CAP = 1000;
+const sane = (corner: Vec2 | undefined, fallback: Vec2, node: Vec2, thickness: number): Vec2 => {
+  if (!corner || !Number.isFinite(corner.x) || !Number.isFinite(corner.y)) return fallback;
+  if (Math.hypot(corner.x - node.x, corner.y - node.y) > thickness * SPIKE_CAP) return fallback;
+  return corner;
 };
 
 /**
