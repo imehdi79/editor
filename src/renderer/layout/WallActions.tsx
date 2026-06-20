@@ -21,6 +21,7 @@ import { useToolsStore } from "@/store/tools.store";
 import { useEditorStore } from "@/store/editor.store";
 import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
 import type { Shape, WallShape, ArcWallShape, DoorShape } from "@/core/drawing-engine/drawing.types";
+import { useTranslation } from "@/i18n";
 import WallLayersPanel from "./WallLayersPanel";
 
 /** Wall or arc wall — both carry thickness/height/offset and editable properties. */
@@ -64,6 +65,7 @@ const NumberField = ({
 );
 
 const WallActions = () => {
+  const { t } = useTranslation();
   const tool = useToolsStore((s) => s.tool);
   const selectedId = useSelectionStore((s) => s.selectedId);
   const shapes = useFloorPlanStore((s) => s.shapes);
@@ -125,7 +127,7 @@ const WallActions = () => {
         <Button
           size="icon"
           variant="default"
-          title="Wall actions"
+          title={t("wall.actions")}
           className="shadow-2xl"
           onClick={() => setOpen(true)}
         >
@@ -144,8 +146,8 @@ const WallActions = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Wall</span>
-              <Button size="icon-xs" variant="ghost" title="Close" onClick={() => setOpen(false)}>
+              <span className="text-sm font-medium">{t("wall.title")}</span>
+              <Button size="icon-xs" variant="ghost" title={t("common.close")} onClick={() => setOpen(false)}>
                 <X size={14} />
               </Button>
             </div>
@@ -153,18 +155,18 @@ const WallActions = () => {
             {/* Tabs — arc walls expose properties only (layer takeoff is exact
                 only for straight walls). */}
             <div className="flex gap-1 rounded-lg bg-muted p-0.5">
-              {(isArc ? (["properties"] as const) : (["properties", "layers"] as const)).map((t) => (
+              {(isArc ? (["properties"] as const) : (["properties", "layers"] as const)).map((tabId) => (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
+                  key={tabId}
+                  onClick={() => setTab(tabId)}
                   className={cn(
-                    "flex-1 rounded-md px-2 py-1 text-xs font-medium capitalize transition-colors",
-                    tab === t
+                    "flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                    tab === tabId
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {t}
+                  {tabId === "properties" ? t("wall.properties") : t("wall.layers")}
                 </button>
               ))}
             </div>
@@ -176,7 +178,7 @@ const WallActions = () => {
             {/* Dimensions — shown/entered in the active measurement unit */}
             <div className="flex flex-col gap-2">
               <NumberField
-                label="Thickness"
+                label={t("wall.thickness")}
                 value={toUnit(wall.thickness, unit, ppm)}
                 min={stepFor(unit)}
                 step={stepFor(unit)}
@@ -184,7 +186,7 @@ const WallActions = () => {
                 onChange={(v) => setThickness(toPx(v, unit, ppm))}
               />
               <NumberField
-                label="Height"
+                label={t("wall.height")}
                 value={toUnit(cmToPx(wall.height ?? defaultWallHeight, ppm), unit, ppm)}
                 min={stepFor(unit)}
                 step={stepFor(unit)}
@@ -193,7 +195,7 @@ const WallActions = () => {
               />
               {/* Eccentric offset — signed; shifts the body off the location line. */}
               <NumberField
-                label="Offset"
+                label={t("wall.offset")}
                 value={toUnit(wall.offset ?? 0, unit, ppm)}
                 min={-9999}
                 step={stepFor(unit)}
@@ -203,7 +205,7 @@ const WallActions = () => {
               {/* Curvature (sagitta) — arc walls only; signed bulge of the arc. */}
               {wall.type === "arc-wall" && (
                 <NumberField
-                  label="Curvature"
+                  label={t("wall.curvature")}
                   value={toUnit(wall.bulge, unit, ppm)}
                   min={-9999}
                   step={stepFor(unit)}
@@ -216,34 +218,34 @@ const WallActions = () => {
             {/* Opening alignment — only meaningful when doors exist */}
             {doors.length > 0 ? (
               <div className="flex flex-col gap-2 border-t pt-3">
-                <span className="text-xs text-muted-foreground">Align doors ({doors.length})</span>
+                <span className="text-xs text-muted-foreground">{t("wall.alignDoors", { count: doors.length })}</span>
 
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-[11px] text-muted-foreground">Swing side</span>
+                  <span className="text-[11px] text-muted-foreground">{t("wall.swingSide")}</span>
                   <div className="flex gap-1">
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => alignSwing("inward")}>
-                      Inward
+                      {t("wall.inward")}
                     </Button>
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => alignSwing("outward")}>
-                      Outward
+                      {t("wall.outward")}
                     </Button>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-[11px] text-muted-foreground">Hinge side</span>
+                  <span className="text-[11px] text-muted-foreground">{t("wall.hingeSide")}</span>
                   <div className="flex gap-1">
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => alignHinge("left")}>
-                      Left
+                      {t("wall.left")}
                     </Button>
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => alignHinge("right")}>
-                      Right
+                      {t("wall.right")}
                     </Button>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="border-t pt-3 text-[11px] text-muted-foreground">No doors on this wall to align.</p>
+              <p className="border-t pt-3 text-[11px] text-muted-foreground">{t("wall.noDoors")}</p>
             )}
               </>
             )}

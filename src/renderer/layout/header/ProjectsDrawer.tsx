@@ -17,11 +17,13 @@ import { useAuthStore } from "@/store/auth.store";
 import { useRecentProjects, useAllProjects } from "@/api/useProjectsQueries";
 import type { ProjectSummary } from "@/store/project.types";
 import { formatRelativeTime } from "@/lib/relativeTime";
+import { useTranslation } from "@/i18n";
 
 type Category = "projects" | "account";
 type ProjectTab = "recent" | "all";
 
 const SaveButton = () => {
+  const { t } = useTranslation();
   const status = useProjectsStore((s) => s.status);
   const lastSavedAt = useProjectsStore((s) => s.lastSavedAt);
   const saveCurrentProject = useProjectsStore((s) => s.saveCurrentProject);
@@ -37,7 +39,7 @@ const SaveButton = () => {
       className="h-9 shrink-0"
       disabled={saving}
       onClick={() => saveCurrentProject()}
-      title="Save project"
+      title={t("workspace.saveProject")}
     >
       {saving ? (
         <Loader2 size={14} className="animate-spin" />
@@ -46,12 +48,13 @@ const SaveButton = () => {
       ) : (
         <Save size={14} />
       )}
-      <span>{saving ? "Saving…" : justSaved ? "Saved" : "Save"}</span>
+      <span>{saving ? t("workspace.saving") : justSaved ? t("workspace.saved") : t("workspace.save")}</span>
     </Button>
   );
 };
 
 const EditableName = () => {
+  const { t } = useTranslation();
   const currentId = useProjectsStore((s) => s.currentProjectId);
   const name = useProjectsStore((s) => s.projects[s.currentProjectId]?.name ?? "");
   const renameProject = useProjectsStore((s) => s.renameProject);
@@ -87,7 +90,7 @@ const EditableName = () => {
   return (
     <button
       onClick={begin}
-      title="Rename project"
+      title={t("workspace.renameProject")}
       className="flex h-9 min-w-0 flex-1 items-center truncate rounded-md border px-3 text-left text-sm font-medium hover:bg-muted"
     >
       {name}
@@ -125,28 +128,33 @@ const ProjectRow = ({
   isCurrent: boolean;
   onOpen: () => void;
   onDelete: () => void;
-}) => (
-  <div className="group flex items-center rounded-md hover:bg-muted">
-    <button onClick={onOpen} className="flex min-w-0 flex-1 flex-col items-start px-3 py-2 text-left">
-      <span className="w-full truncate text-sm font-medium">
-        {project.name}
-        {isCurrent && <span className="text-muted-foreground"> · current</span>}
-      </span>
-      <span className="text-[11px] text-muted-foreground">
-        {project.pageCount} page{project.pageCount > 1 ? "s" : ""} · {formatRelativeTime(project.updatedAt)}
-      </span>
-    </button>
-    <button
-      onClick={onDelete}
-      title="Delete project"
-      className="shrink-0 px-3 py-2 text-muted-foreground hover:text-destructive"
-    >
-      <Trash2 size={15} />
-    </button>
-  </div>
-);
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div className="group flex items-center rounded-md hover:bg-muted">
+      <button onClick={onOpen} className="flex min-w-0 flex-1 flex-col items-start px-3 py-2 text-left">
+        <span className="w-full truncate text-sm font-medium">
+          {project.name}
+          {isCurrent && <span className="text-muted-foreground"> · {t("workspace.currentSuffix")}</span>}
+        </span>
+        <span className="text-[11px] text-muted-foreground">
+          {project.pageCount} {project.pageCount === 1 ? t("workspace.page") : t("workspace.pages")} ·{" "}
+          {formatRelativeTime(project.updatedAt)}
+        </span>
+      </button>
+      <button
+        onClick={onDelete}
+        title={t("workspace.deleteProject")}
+        className="shrink-0 px-3 py-2 text-muted-foreground hover:text-destructive"
+      >
+        <Trash2 size={15} />
+      </button>
+    </div>
+  );
+};
 
 const ProjectsPanel = ({ onClose }: { onClose: () => void }) => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<ProjectTab>("recent");
   const currentId = useProjectsStore((s) => s.currentProjectId);
   const createProject = useProjectsStore((s) => s.createProject);
@@ -162,7 +170,7 @@ const ProjectsPanel = ({ onClose }: { onClose: () => void }) => {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1.5">
-        <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Current project</div>
+        <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("workspace.currentProject")}</div>
         <div className="flex items-center gap-2">
           <EditableName />
           <SaveButton />
@@ -178,30 +186,30 @@ const ProjectsPanel = ({ onClose }: { onClose: () => void }) => {
           onClose();
         }}
       >
-        <Plus size={15} /> New project
+        <Plus size={15} /> {t("workspace.newProject")}
       </Button>
 
       <div className="flex gap-1">
         <Pill active={tab === "recent"} onClick={() => setTab("recent")}>
-          Recent
+          {t("workspace.recent")}
         </Pill>
         <Pill active={tab === "all"} onClick={() => setTab("all")}>
-          All projects
+          {t("workspace.allProjects")}
         </Pill>
       </div>
 
       <div className="flex flex-col">
         {q.isLoading ? (
           <div className="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
-            <Loader2 size={14} className="animate-spin" /> Loading…
+            <Loader2 size={14} className="animate-spin" /> {t("common.loading")}
           </div>
         ) : q.isError ? (
           <div className="py-6 text-center text-xs text-destructive">
-            {(q.error as Error)?.message ?? "Failed to load projects."}
+            {(q.error as Error)?.message ?? t("workspace.loadFailed")}
           </div>
         ) : items.length === 0 ? (
           <div className="py-8 text-center text-xs text-muted-foreground">
-            No saved projects yet — create one and hit Save.
+            {t("workspace.empty")}
           </div>
         ) : (
           items.map((p) => (
@@ -223,13 +231,14 @@ const ProjectsPanel = ({ onClose }: { onClose: () => void }) => {
 };
 
 const AccountPanel = ({ onClose }: { onClose: () => void }) => {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Signed in as</div>
+        <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("workspace.signedInAs")}</div>
         <div className="truncate text-sm font-medium" title={user?.email}>
           {user?.email}
         </div>
@@ -242,36 +251,37 @@ const AccountPanel = ({ onClose }: { onClose: () => void }) => {
           logout();
         }}
       >
-        <LogOut size={15} /> Log out
+        <LogOut size={15} /> {t("workspace.logout")}
       </Button>
     </div>
   );
 };
 
 const ProjectsDrawer = () => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<Category>("projects");
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button size="sm" variant="outline" className="shrink-0" title="Workspace">
+        <Button size="sm" variant="outline" className="shrink-0" title={t("workspace.title")}>
           <FolderOpen size={15} />
-          <span className="hidden sm:inline">Projects</span>
+          <span className="hidden sm:inline">{t("workspace.projects")}</span>
         </Button>
       </DrawerTrigger>
 
       <DrawerContent className="mx-auto w-full max-w-lg">
         <DrawerHeader className="pb-2">
-          <DrawerTitle>Workspace</DrawerTitle>
+          <DrawerTitle>{t("workspace.title")}</DrawerTitle>
         </DrawerHeader>
 
         <div className="flex gap-1 px-4">
           <Pill active={category === "projects"} onClick={() => setCategory("projects")}>
-            <FileStack size={14} /> Projects
+            <FileStack size={14} /> {t("workspace.projects")}
           </Pill>
           <Pill active={category === "account"} onClick={() => setCategory("account")}>
-            <UserRound size={14} /> Account
+            <UserRound size={14} /> {t("workspace.account")}
           </Pill>
         </div>
 

@@ -3,16 +3,19 @@ import { useTemporalStore, useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import type { SideBarToolsListItem, Tools, NoOneClickTools } from "./tools.types";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/i18n";
 
 const ONE_CLICK_TOOLS = new Set<Tools>(["undo", "redo", "delete"]);
 
 const SidebarToolButton = ({
   icon,
-  label,
+  labelKey,
   tool,
   variant = "default",
   showLabel = false,
 }: { tool: Tools; showLabel?: boolean } & SideBarToolsListItem) => {
+  const { t } = useTranslation();
+  const label = t(labelKey);
   const activeTool = useToolsStore((s) => s.tool);
   const setTool = useToolsStore((s) => s.setTool);
 

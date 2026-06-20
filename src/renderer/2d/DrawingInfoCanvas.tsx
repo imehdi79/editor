@@ -25,12 +25,12 @@ import { buildDrawingInfo, type DrawingRow, type DrawingCell } from "@/core/draw
 import { buildWallLayerRows } from "@/core/wall-layers/buildWallLayerRows";
 import {
   WALL_SIDES,
-  WALL_SIDE_LABEL,
   materialColor,
   createWallLayer,
   layersOf,
   withSideLayers,
 } from "@/core/wall-layers/wallLayers";
+import { useTranslation, type TranslationKey } from "@/i18n";
 
 // ---------------------------------------------------------------------------
 // Layout (world px) & palette
@@ -46,13 +46,14 @@ const SWATCH = 9; // layer colour chip
 const INDENT = 22; // detail rows are indented under their wall (room for swatch)
 
 // `min` is a floor; each column grows to fit its widest cell (see colWidths).
+// `labelKey` is resolved against the active locale at render time.
 const COLS = [
-  { key: "type", label: "Type", min: 70, align: "left" as const },
-  { key: "length", label: "Length", min: 70, align: "right" as const },
-  { key: "width", label: "Width", min: 70, align: "right" as const },
-  { key: "height", label: "Height", min: 70, align: "right" as const },
-  { key: "area", label: "Area", min: 70, align: "right" as const },
-];
+  { key: "type", labelKey: "drawingInfo.type", min: 70, align: "left" as const },
+  { key: "length", labelKey: "drawingInfo.length", min: 70, align: "right" as const },
+  { key: "width", labelKey: "drawingInfo.width", min: 70, align: "right" as const },
+  { key: "height", labelKey: "drawingInfo.height", min: 70, align: "right" as const },
+  { key: "area", labelKey: "drawingInfo.area", min: 70, align: "right" as const },
+] satisfies { key: string; labelKey: TranslationKey; min: number; align: "left" | "right" }[];
 
 const ADD_BTN_W = 56; // ＋ Layer button on a side row
 const REMOVE_W = 18; // × button reserved at the right of a layer row
@@ -118,9 +119,11 @@ const tableAnchor = (shapes: Record<string, Shape>): { x: number; y: number } | 
 // ---------------------------------------------------------------------------
 
 type Item =
-  | { kind: "shape"; row: DrawingRow }
+  | { kind: "shape"; row: DrawingRow; typeLabel: string }
   | { kind: "side"; wall: WallShape; side: WallSide } // side label + ＋ add
-  | { kind: "layer"; wall: WallShape; side: WallSide; layerId: string; type: string; width: string; area: string };
+  // `type` keeps the raw material key (for the colour chip); `typeLabel` is its
+  // localized display name.
+  | { kind: "layer"; wall: WallShape; side: WallSide; layerId: string; type: string; typeLabel: string; width: string; area: string };
 
 const select = (id: string) => {
   useSelectionStore.getState().selectShape(id);
@@ -132,12 +135,16 @@ const select = (id: string) => {
 // ---------------------------------------------------------------------------
 
 const DrawingInfoCanvas = () => {
+  const { t, tf } = useTranslation();
   const shapes = useFloorPlanStore((s) => s.shapes);
   const updateShape = useFloorPlanStore((s) => s.updateShape);
   const unit = useEditorStore((s) => s.dimensionUnit);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
   const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
   const selectedId = useSelectionStore((s) => s.selectedId);
+
+  const sideLabel = (side: WallSide) => t(`wallSides.${side}`);
+  const materialLabel = (name: string) => tf(`materials.${name.toLowerCase()}`, name);
 
   const rows = buildDrawingInfo(shapes, unit, ppm, defaultWallHeight);
   const anchor = tableAnchor(shapes);
@@ -154,9 +161,14 @@ const DrawingInfoCanvas = () => {
     });
 
   // Flatten rows, expanding the selected wall into per-side layer detail rows.
+  // Rooms are numbered in encounter order so "Room"/"Locale"/"Raum"/"اتاق" + n
+  // reads correctly in every locale.
   const items: Item[] = [];
+  let roomOrdinal = 0;
   for (const row of rows) {
-    items.push({ kind: "shape", row });
+    const typeLabel =
+      row.kind === "room" ? `${t("drawingInfo.types.room")} ${++roomOrdinal}` : t(`drawingInfo.types.${row.kind}`);
+    items.push({ kind: "shape", row, typeLabel });
     if (selectedWall && row.id === selectedWall.id) {
       for (const side of WALL_SIDES) {
         items.push({ kind: "side", wall: selectedWall, side });
@@ -166,7 +178,8 @@ const DrawingInfoCanvas = () => {
             wall: selectedWall,
             side,
             layerId: lr.id,
-            type: lr.material || "Layer",
+            type: lr.material,
+            typeLabel: lr.material ? materialLabel(lr.material) : t("wallLayers.layer"),
             width: lr.widthDisplay,
             area: lr.areaDisplay,
           });
@@ -177,9 +190,9 @@ const DrawingInfoCanvas = () => {
 
   const tableH = HEADER_H + items.length * ROW_H;
 
-  // Per-row cells in column order (type cell is synthesised from row.type).
-  const cellsOf = (row: DrawingRow): DrawingCell[] => [
-    { display: row.type },
+  // Per-row cells in column order (the localized type label leads the row).
+  const cellsOf = (row: DrawingRow, typeLabel: string): DrawingCell[] => [
+    { display: typeLabel },
     row.length,
     row.width,
     row.height,
@@ -188,22 +201,22 @@ const DrawingInfoCanvas = () => {
 
   // Column widths: start at each column's floor, then grow to fit the widest
   // cell content so the panel sizes itself to the data instead of clipping it.
-  const colW = COLS.map((c) => Math.max(c.min, textWidth(c.label.toUpperCase(), FONT - 1, true, 0.4) + PAD_X * 2));
+  const colW = COLS.map((c) => Math.max(c.min, textWidth(t(c.labelKey).toUpperCase(), FONT - 1, true, 0.4) + PAD_X * 2));
   const fit = (i: number, w: number) => (colW[i] = Math.max(colW[i], w));
   for (const it of items) {
     if (it.kind === "shape") {
-      cellsOf(it.row).forEach((cell, i) => fit(i, textWidth(cell.display) + PAD_X * 2));
+      cellsOf(it.row, it.typeLabel).forEach((cell, i) => fit(i, textWidth(cell.display) + PAD_X * 2));
     } else if (it.kind === "side") {
-      fit(0, textWidth(WALL_SIDE_LABEL[it.side]) + PAD_X * 2 + INDENT);
+      fit(0, textWidth(sideLabel(it.side)) + PAD_X * 2 + INDENT);
     } else {
-      fit(0, textWidth(it.type) + PAD_X * 2 + INDENT);
+      fit(0, textWidth(it.typeLabel) + PAD_X * 2 + INDENT);
       fit(2, textWidth(it.width) + PAD_X * 2);
       fit(4, textWidth(it.area) + PAD_X * 2 + REMOVE_W);
     }
   }
   // Reserve room on the right so a side row's ＋ button never overlaps its label.
   if (selectedWall) {
-    const labelMax = Math.max(...WALL_SIDES.map((s) => textWidth(WALL_SIDE_LABEL[s]) + PAD_X + INDENT));
+    const labelMax = Math.max(...WALL_SIDES.map((s) => textWidth(sideLabel(s)) + PAD_X + INDENT));
     const total = colW.reduce((s, w) => s + w, 0);
     const need = labelMax + 8 + ADD_BTN_W + 8;
     if (total < need) colW[colW.length - 1] += need - total;
@@ -264,7 +277,7 @@ const DrawingInfoCanvas = () => {
           y={(HEADER_H - (FONT - 1)) / 2}
           width={colW[i] - PAD_X * 2}
           align={c.align}
-          text={c.label.toUpperCase()}
+          text={t(c.labelKey).toUpperCase()}
           fontSize={FONT - 1}
           fontStyle="bold"
           letterSpacing={0.4}
@@ -281,7 +294,7 @@ const DrawingInfoCanvas = () => {
           const { row } = item;
           const isSel = row.id === selectedId;
           const selectable = row.kind !== "room";
-          const cells = cellsOf(row);
+          const cells = cellsOf(row, item.typeLabel);
           return (
             <Group key={`row-${row.id}`}>
               {isSel ? (
@@ -306,7 +319,7 @@ const DrawingInfoCanvas = () => {
             <Group key={`side-${item.side}`}>
               <Rect x={0} y={top} width={TABLE_W} height={ROW_H} fill={DETAIL_BG} listening={false} />
               <Line points={[0, top, TABLE_W, top]} stroke={GRID} strokeWidth={0.5} listening={false} />
-              {cellText(0, top, WALL_SIDE_LABEL[item.side], HEADER_TEXT, INDENT)}
+              {cellText(0, top, sideLabel(item.side), HEADER_TEXT, INDENT)}
               {/* ＋ Layer — one-tap add for this face */}
               <Rect
                 x={TABLE_W - 64}
@@ -325,7 +338,7 @@ const DrawingInfoCanvas = () => {
                 y={top + (ROW_H - FONT) / 2}
                 width={56}
                 align="center"
-                text="＋ Layer"
+                text={`＋ ${t("drawingInfo.addLayer")}`}
                 fontSize={FONT - 1}
                 fontStyle="bold"
                 fill={ACCENT}
@@ -356,7 +369,7 @@ const DrawingInfoCanvas = () => {
               cornerRadius={2}
               listening={false}
             />
-            {cellText(0, top, item.type, TEXT, INDENT)}
+            {cellText(0, top, item.typeLabel, TEXT, INDENT)}
             {cellText(2, top, item.width, MUTED)}
             {/* area — narrowed to clear the × button on the right */}
             <Text

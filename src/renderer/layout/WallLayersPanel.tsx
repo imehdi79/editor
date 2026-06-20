@@ -19,15 +19,23 @@ import type { WallLayer, WallShape, WallSide } from "@/core/drawing-engine/drawi
 import { buildWallLayerRows } from "@/core/wall-layers/buildWallLayerRows";
 import {
   WALL_SIDES,
-  WALL_SIDE_LABEL,
   WALL_MATERIALS,
   materialColor,
   createWallLayer,
   layersOf,
   withSideLayers,
 } from "@/core/wall-layers/wallLayers";
+import { useTranslation } from "@/i18n";
+
+/** Localized material name (storage keeps the English key). */
+const useMaterialLabel = () => {
+  const { tf } = useTranslation();
+  return (name: string) => tf(`materials.${name.toLowerCase()}`, name);
+};
 
 const SideTable = ({ wall, side }: { wall: WallShape; side: WallSide }) => {
+  const { t } = useTranslation();
+  const materialLabel = useMaterialLabel();
   const unit = useEditorStore((s) => s.dimensionUnit);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
   const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
@@ -46,25 +54,25 @@ const SideTable = ({ wall, side }: { wall: WallShape; side: WallSide }) => {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium text-muted-foreground">{WALL_SIDE_LABEL[side]}</span>
+        <span className="text-[11px] font-medium text-muted-foreground">{t(`wallSides.${side}`)}</span>
         <Button size="xs" variant="outline" onClick={addLayer}>
-          <Plus /> Layer
+          <Plus /> {t("wallLayers.addLayer")}
         </Button>
       </div>
 
       {rows.length === 0 ? (
         <p className="rounded-md border border-dashed py-2 text-center text-[11px] text-muted-foreground">
-          No layers.
+          {t("wallLayers.noLayers")}
         </p>
       ) : (
         <div className="overflow-hidden rounded-md border text-[11px]">
           {/* Header — mirrors the drawing-info table columns */}
           <div className="grid grid-cols-[1fr_3rem_3.25rem_3rem_3.5rem_1.25rem] gap-1 border-b bg-muted/50 px-1.5 py-1 font-medium text-muted-foreground">
-            <span>Type</span>
-            <span className="text-right">Length</span>
-            <span className="text-right">Width</span>
-            <span className="text-right">Height</span>
-            <span className="text-right">Area</span>
+            <span>{t("wallLayers.type")}</span>
+            <span className="text-right">{t("wallLayers.length")}</span>
+            <span className="text-right">{t("wallLayers.width")}</span>
+            <span className="text-right">{t("wallLayers.height")}</span>
+            <span className="text-right">{t("wallLayers.area")}</span>
             <span />
           </div>
 
@@ -84,11 +92,11 @@ const SideTable = ({ wall, side }: { wall: WallShape; side: WallSide }) => {
                   className="h-6 w-full min-w-0 rounded border bg-background px-1 outline-none focus-visible:border-ring"
                 >
                   {!WALL_MATERIALS.some((m) => m.name === row.material) && (
-                    <option value={row.material}>{row.material}</option>
+                    <option value={row.material}>{materialLabel(row.material)}</option>
                   )}
                   {WALL_MATERIALS.map((m) => (
                     <option key={m.name} value={m.name}>
-                      {m.name}
+                      {materialLabel(m.name)}
                     </option>
                   ))}
                 </select>
@@ -110,7 +118,7 @@ const SideTable = ({ wall, side }: { wall: WallShape; side: WallSide }) => {
               <Button
                 size="icon-xs"
                 variant="ghost"
-                title="Remove layer"
+                title={t("wallLayers.removeLayer")}
                 className="text-muted-foreground hover:text-destructive"
                 onClick={() => removeLayer(row.id)}
               >

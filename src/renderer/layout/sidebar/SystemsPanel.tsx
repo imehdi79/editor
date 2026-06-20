@@ -12,10 +12,12 @@ import { Layers3, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLayersStore } from "@/store/layers.store";
 import { SYSTEM_CATEGORIES } from "@/core/layers/systemCategories";
+import { useTranslation } from "@/i18n";
 
 const SystemsPanel = () => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   const visibility = useLayersStore((s) => s.visibility);
   const toggleCategory = useLayersStore((s) => s.toggleCategory);
@@ -34,7 +36,7 @@ const SystemsPanel = () => {
       <Button
         size="icon"
         variant={open ? "default" : "ghost"}
-        title="Systems / layers"
+        title={t("systems.tooltip")}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="true"
         aria-expanded={open}
@@ -44,7 +46,7 @@ const SystemsPanel = () => {
 
       {open && (
         <div className="absolute left-full top-0 ml-2 z-50 flex w-56 flex-col gap-0.5 rounded-lg border bg-popover p-2 shadow-2xl">
-          <span className="px-1 pb-1 text-xs text-muted-foreground">Systems</span>
+          <span className="px-1 pb-1 text-xs text-muted-foreground">{t("systems.title")}</span>
           {SYSTEM_CATEGORIES.map((cat) => {
             const visible = visibility[cat.id];
             return (
@@ -63,7 +65,7 @@ const SystemsPanel = () => {
                       : "flex-1 text-left text-muted-foreground line-through"
                   }
                 >
-                  {cat.label}
+                  {t(`systems.categories.${cat.id}`)}
                 </span>
                 {visible ? (
                   <Eye size={14} className="shrink-0 text-muted-foreground" />

@@ -11,10 +11,12 @@ import { useState } from "react";
 import { Loader2, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth.store";
+import { useTranslation } from "@/i18n";
 
 type Mode = "login" | "register";
 
 const AuthScreen = () => {
+  const { t } = useTranslation();
   const login = useAuthStore((s) => s.login);
   const register = useAuthStore((s) => s.register);
   const busy = useAuthStore((s) => s.busy);
@@ -45,15 +47,15 @@ const AuthScreen = () => {
     <div className="flex h-svh w-svw items-center justify-center bg-muted/40 px-4">
       <div className="w-full max-w-sm rounded-2xl border bg-popover p-6 shadow-2xl">
         <div className="mb-5 text-center">
-          <h1 className="text-lg font-semibold">Construct Editor</h1>
+          <h1 className="text-lg font-semibold">{t("auth.appName")}</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            {isRegister ? "Create an account to save your projects." : "Sign in to your projects."}
+            {isRegister ? t("auth.registerSubtitle") : t("auth.signInSubtitle")}
           </p>
         </div>
 
         <form onSubmit={submit} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-xs">
-            <span className="text-muted-foreground">Email</span>
+            <span className="text-muted-foreground">{t("auth.email")}</span>
             <input
               type="email"
               autoComplete="email"
@@ -65,7 +67,7 @@ const AuthScreen = () => {
           </label>
 
           <label className="flex flex-col gap-1 text-xs">
-            <span className="text-muted-foreground">Password</span>
+            <span className="text-muted-foreground">{t("auth.password")}</span>
             <input
               type="password"
               autoComplete={isRegister ? "new-password" : "current-password"}
@@ -77,7 +79,7 @@ const AuthScreen = () => {
               className="h-9 rounded-md border bg-background px-3 text-sm outline-none focus-visible:border-ring"
             />
             <span className={passwordTooShort ? "text-destructive" : "text-muted-foreground"}>
-              8–72 characters
+              {t("auth.passwordHint")}
             </span>
           </label>
 
@@ -95,14 +97,14 @@ const AuthScreen = () => {
             ) : (
               <LogIn size={15} />
             )}
-            {isRegister ? "Create account" : "Sign in"}
+            {isRegister ? t("auth.createAccount") : t("auth.signIn")}
           </Button>
         </form>
 
         <div className="mt-4 text-center text-xs text-muted-foreground">
-          {isRegister ? "Already have an account?" : "No account yet?"}{" "}
+          {isRegister ? t("auth.haveAccount") : t("auth.noAccount")}{" "}
           <button type="button" onClick={switchMode} className="font-medium text-primary hover:underline">
-            {isRegister ? "Sign in" : "Create one"}
+            {isRegister ? t("auth.signIn") : t("auth.createOne")}
           </button>
         </div>
       </div>

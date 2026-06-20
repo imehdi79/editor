@@ -3,6 +3,7 @@ import SidebarToolGroup from "./SidebarToolGroup";
 import SidebarToolMenu from "./SidebarToolMenu";
 import SettingsPanel from "./SettingsPanel";
 import SystemsPanel from "./SystemsPanel";
+import { useTranslation } from "@/i18n";
 import {
   Type,
   BrickWallIcon,
@@ -22,53 +23,56 @@ import {
 
 // Select and Pan are always-visible bare buttons
 const navigationTools: SideBarToolsList<"select" | "pan"> = {
-  select: { icon: <SplinePointer size={16} />, label: "Select" },
-  pan: { icon: <Hand size={16} />, label: "Pan" },
+  select: { icon: <SplinePointer size={16} />, labelKey: "tools.select" },
+  pan: { icon: <Hand size={16} />, labelKey: "tools.pan" },
 };
 
 const structureTools: SideBarToolsList<"wall" | "arc-wall" | "window" | "door"> = {
-  wall: { icon: <BrickWallIcon size={16} />, label: "Wall" },
-  "arc-wall": { icon: <Spline size={16} />, label: "Arc Wall" },
-  window: { icon: <AppWindowMac size={16} />, label: "Window" },
-  door: { icon: <DoorOpen size={16} />, label: "Door" },
+  wall: { icon: <BrickWallIcon size={16} />, labelKey: "tools.wall" },
+  "arc-wall": { icon: <Spline size={16} />, labelKey: "tools.arcWall" },
+  window: { icon: <AppWindowMac size={16} />, labelKey: "tools.window" },
+  door: { icon: <DoorOpen size={16} />, labelKey: "tools.door" },
 };
 
 const drawingTools: SideBarToolsList<"line" | "dashed-line" | "text"> = {
-  line: { icon: <Minus size={16} />, label: "Line" },
-  "dashed-line": { icon: <Ellipsis size={16} />, label: "Dashed Line" },
-  text: { icon: <Type size={16} />, label: "Text" },
+  line: { icon: <Minus size={16} />, labelKey: "tools.line" },
+  "dashed-line": { icon: <Ellipsis size={16} />, labelKey: "tools.dashedLine" },
+  text: { icon: <Type size={16} />, labelKey: "tools.text" },
 };
 
 const actionTools: SideBarToolsList<"undo" | "redo" | "delete"> = {
-  undo: { icon: <Undo size={16} />, label: "Undo", variant: "ghost" },
-  redo: { icon: <Redo size={16} />, label: "Redo", variant: "ghost" },
-  delete: { icon: <Trash2 size={16} />, label: "Delete selected", variant: "destructive" },
+  undo: { icon: <Undo size={16} />, labelKey: "tools.undo", variant: "ghost" },
+  redo: { icon: <Redo size={16} />, labelKey: "tools.redo", variant: "ghost" },
+  delete: { icon: <Trash2 size={16} />, labelKey: "tools.delete", variant: "destructive" },
 };
 
-const SidebarTools = () => (
-  <div className="flex flex-col gap-2">
-    {/* Select + Pan — always visible */}
-    <SidebarToolGroup tools={navigationTools} />
+const SidebarTools = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Select + Pan — always visible */}
+      <SidebarToolGroup tools={navigationTools} />
 
-    {/* Structure tools — collapsed to icon menu */}
-    <div className="flex flex-col gap-0.5 bg-popover p-1 rounded-lg border shadow-2xl">
-      <SidebarToolMenu groupIcon={<Layers size={16} />} tools={structureTools} tooltip="Structure" />
+      {/* Structure tools — collapsed to icon menu */}
+      <div className="flex flex-col gap-0.5 bg-popover p-1 rounded-lg border shadow-2xl">
+        <SidebarToolMenu groupIcon={<Layers size={16} />} tools={structureTools} tooltip={t("tools.structure")} />
+      </div>
+
+      {/* Drawing tools — collapsed to icon menu */}
+      <div className="flex flex-col gap-0.5 bg-popover p-1 rounded-lg border shadow-2xl">
+        <SidebarToolMenu groupIcon={<PenLine size={16} />} tools={drawingTools} tooltip={t("tools.drawing")} />
+      </div>
+
+      {/* Action tools */}
+      <SidebarToolGroup tools={actionTools} />
+
+      {/* Systems / layers + Settings */}
+      <div className="flex flex-col gap-0.5 bg-popover p-1 rounded-lg border shadow-2xl">
+        <SystemsPanel />
+        <SettingsPanel />
+      </div>
     </div>
-
-    {/* Drawing tools — collapsed to icon menu */}
-    <div className="flex flex-col gap-0.5 bg-popover p-1 rounded-lg border shadow-2xl">
-      <SidebarToolMenu groupIcon={<PenLine size={16} />} tools={drawingTools} tooltip="Drawing" />
-    </div>
-
-    {/* Action tools */}
-    <SidebarToolGroup tools={actionTools} />
-
-    {/* Systems / layers + Settings */}
-    <div className="flex flex-col gap-0.5 bg-popover p-1 rounded-lg border shadow-2xl">
-      <SystemsPanel />
-      <SettingsPanel />
-    </div>
-  </div>
-);
+  );
+};
 
 export default SidebarTools;

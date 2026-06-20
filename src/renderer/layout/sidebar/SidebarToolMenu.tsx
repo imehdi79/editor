@@ -57,7 +57,7 @@ const SidebarToolMenu = <T extends Tools>({ groupIcon, tools, tooltip }: Props<T
             const item = (tools as SideBarToolsList<T>)[tool];
             return (
               <div key={String(tool)} onClick={() => setOpen(false)}>
-                <SidebarToolButton tool={tool as Tools} icon={item.icon} label={item.label} variant={item.variant} showLabel />
+                <SidebarToolButton tool={tool as Tools} icon={item.icon} labelKey={item.labelKey} variant={item.variant} showLabel />
               </div>
             );
           })}

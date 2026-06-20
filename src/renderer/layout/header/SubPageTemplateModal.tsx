@@ -6,6 +6,7 @@
 
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { SUB_PAGE_TEMPLATES, type SubPageTemplate } from "@/core/sub-page/templates";
+import { useTranslation } from "@/i18n";
 
 const SubPageTemplateModal = ({
   open,
@@ -16,11 +17,12 @@ const SubPageTemplateModal = ({
   onOpenChange: (open: boolean) => void;
   onSelect: (template: SubPageTemplate) => void;
 }) => {
+  const { t, tf } = useTranslation();
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="mx-auto w-full max-w-lg">
         <DrawerHeader className="pb-2">
-          <DrawerTitle>New sub-page from template</DrawerTitle>
+          <DrawerTitle>{t("subPages.templateTitle")}</DrawerTitle>
         </DrawerHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-4 pt-3">
@@ -30,8 +32,10 @@ const SubPageTemplateModal = ({
               onClick={() => onSelect(template)}
               className="flex flex-col items-start gap-0.5 rounded-md border px-3 py-2.5 text-left hover:bg-muted"
             >
-              <span className="text-sm font-medium">{template.name}</span>
-              <span className="text-xs text-muted-foreground">{template.description}</span>
+              <span className="text-sm font-medium">{tf(`templates.${template.id}.name`, template.name)}</span>
+              <span className="text-xs text-muted-foreground">
+                {tf(`templates.${template.id}.description`, template.description)}
+              </span>
             </button>
           ))}
         </div>

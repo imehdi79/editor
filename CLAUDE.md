@@ -123,6 +123,26 @@ Key derived computations (all pure, in `core/`):
 - Conventional commits, lowercase: `feat(scope): …`, `perf: …`, `fix(scope): …`.
   Some files carry Persian/Farsi comments (dimensions) — that's intentional.
 
+## Internationalization (i18n)
+
+All user-facing copy goes through `src/i18n` — **no hardcoded UI strings**.
+
+- **Dictionaries** live in `src/i18n/locales/{en,it,de,fa}.ts`. `en` is the
+  authoritative shape; the others are typed `: Dictionary` (= `typeof en`), so a
+  missing/renamed key is a **compile error**. Add a key to `en` first, then mirror
+  it to the other three. Use professional construction/architecture terminology
+  (e.g. mitre = Gehrung/Quartabuono/اریب, layers = stratigrafia/Schichten/لایه‌ها),
+  not literal translations.
+- **Hook:** `const { t, tf, dir } = useTranslation()` (from `@/i18n`).
+  `t("settings.title")` — typed dot-path key, autocompleted; `t(key, { count })`
+  interpolates `{placeholders}`. `tf(key, fallback)` is for **dynamic** keys not
+  known at compile time (material/template ids) — returns `fallback` on a miss.
+- Keep `core/` framework-free: it stores **stable ids/keys** (material names,
+  `SystemCategory` ids, `WallSide`), and the renderer maps id → label via `t`.
+  Don't put display strings in `core/`.
+- **Active locale** is `i18n.store` (persisted; mirrors `lang`/`dir` onto `<html>`
+  — Persian is RTL). The switcher is in `SettingsPanel`.
+
 ## Performance (mobile-first — guard these)
 
 - **3D is lazy-loaded** in `components/canvas/index.tsx` (`React.lazy`). The whole

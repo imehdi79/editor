@@ -1,4 +1,5 @@
 import type { ButtonVariant } from "@/components/ui/button";
+import type { TranslationKey } from "@/i18n";
 
 export type Tools =
   | "wall"
@@ -19,7 +20,8 @@ export type NoOneClickTools = Exclude<Tools, OneClickTools | null>;
 
 export type SideBarToolsListItem = {
   icon: React.ReactNode;
-  label: string;
+  /** i18n key for the tool's label/tooltip, resolved at render. */
+  labelKey: TranslationKey;
   variant?: ButtonVariant;
 };
 

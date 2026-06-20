@@ -17,11 +17,6 @@ import { intersectLines, type WallOutline } from "@/core/wall-junctions";
 /** Wall faces in display order. */
 export const WALL_SIDES = ["inner", "outer"] as const satisfies readonly WallSide[];
 
-export const WALL_SIDE_LABEL: Record<WallSide, string> = {
-  inner: "Inner face",
-  outer: "Outer face",
-};
-
 /**
  * Static catalog of construction materials a layer can be. Each carries a fixed
  * display colour (so a layer reads the same everywhere — canvas swatch + panel)

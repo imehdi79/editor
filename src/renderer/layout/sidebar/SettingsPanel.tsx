@@ -3,6 +3,7 @@
  * Uses the same centered-modal pattern as WallActions. Backed by editor.store:
  * measurement reference, default wall thickness, and default wall height
  * (height is reserved for future area/volume calc; it is not drawn in 2D).
+ * The language switcher writes the active locale to i18n.store.
  */
 
 import { useState } from "react";
@@ -11,44 +12,48 @@ import { Button } from "@/components/ui/button";
 import { useEditorStore, type DimensionUnit, type MeasurementReference, type DimensionDisplay } from "@/store/editor.store";
 import type { JoinStyle, EndCap, JunctionAlign } from "@/core/wall-junctions";
 import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
+import { useTranslation, type TranslationKey } from "@/i18n";
+import { useI18nStore } from "@/store/i18n.store";
+import { LOCALES, LOCALE_META } from "@/i18n/config";
 
-const REFERENCE_OPTIONS: { value: MeasurementReference; label: string }[] = [
-  { value: "centerline", label: "Center" },
-  { value: "inner", label: "Inner" },
-  { value: "outer", label: "Outer" },
-];
+/** Measurement-reference options — value + the i18n key for its label. */
+const REFERENCE_OPTIONS = [
+  { value: "centerline", key: "reference.center" },
+  { value: "inner", key: "reference.inner" },
+  { value: "outer", key: "reference.outer" },
+] satisfies { value: MeasurementReference; key: TranslationKey }[];
 
-/** CAD-style metric units, base unit (m) last so it reads small → large. */
+/** CAD-style metric units (SI symbols — language-neutral, not translated). */
 const UNIT_OPTIONS: { value: DimensionUnit; label: string }[] = [
   { value: "mm", label: "mm" },
   { value: "cm", label: "cm" },
   { value: "m", label: "m" },
 ];
 
-const DIMENSION_OPTIONS: { value: DimensionDisplay; label: string }[] = [
-  { value: "selection", label: "Select" },
-  { value: "segments", label: "Segments" },
-  { value: "chains", label: "Chains" },
-];
+const DIMENSION_OPTIONS = [
+  { value: "selection", key: "dimensionDisplay.selection" },
+  { value: "segments", key: "dimensionDisplay.segments" },
+  { value: "chains", key: "dimensionDisplay.chains" },
+] satisfies { value: DimensionDisplay; key: TranslationKey }[];
 
-const JOIN_OPTIONS: { value: JoinStyle; label: string }[] = [
-  { value: "miter", label: "Miter" },
-  { value: "butt", label: "Butt" },
-  { value: "bevel", label: "Bevel" },
-  { value: "round", label: "Round" },
-];
+const JOIN_OPTIONS = [
+  { value: "miter", key: "joinStyle.miter" },
+  { value: "butt", key: "joinStyle.butt" },
+  { value: "bevel", key: "joinStyle.bevel" },
+  { value: "round", key: "joinStyle.round" },
+] satisfies { value: JoinStyle; key: TranslationKey }[];
 
-const END_CAP_OPTIONS: { value: EndCap; label: string }[] = [
-  { value: "butt", label: "Butt" },
-  { value: "round", label: "Round" },
-  { value: "square", label: "Square" },
-];
+const END_CAP_OPTIONS = [
+  { value: "butt", key: "endCap.butt" },
+  { value: "round", key: "endCap.round" },
+  { value: "square", key: "endCap.square" },
+] satisfies { value: EndCap; key: TranslationKey }[];
 
-const ALIGN_OPTIONS: { value: JunctionAlign; label: string }[] = [
-  { value: "flush-left", label: "Left" },
-  { value: "centered", label: "Center" },
-  { value: "flush-right", label: "Right" },
-];
+const ALIGN_OPTIONS = [
+  { value: "flush-left", key: "align.left" },
+  { value: "centered", key: "align.center" },
+  { value: "flush-right", key: "align.right" },
+] satisfies { value: JunctionAlign; key: TranslationKey }[];
 
 /** A labelled row of mutually-exclusive option buttons. */
 const OptionRow = <T extends string>({
@@ -116,6 +121,10 @@ const NumberField = ({
 
 const SettingsPanel = () => {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
+
+  const locale = useI18nStore((s) => s.locale);
+  const setLocale = useI18nStore((s) => s.setLocale);
 
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const setDimensionUnit = useEditorStore((s) => s.setDimensionUnit);
@@ -139,12 +148,18 @@ const SettingsPanel = () => {
   const junctionAlign = useEditorStore((s) => s.junctionAlign);
   const setJunctionAlign = useEditorStore((s) => s.setJunctionAlign);
 
+  // Resolve an option list's i18n keys to labels for the active locale.
+  const labelled = <T extends string>(opts: readonly { value: T; key: TranslationKey }[]) =>
+    opts.map((o) => ({ value: o.value, label: t(o.key) }));
+
+  const languageOptions = LOCALES.map((l) => ({ value: l, label: LOCALE_META[l].label }));
+
   return (
     <>
       <Button
         size="icon"
         variant={open ? "default" : "ghost"}
-        title="Settings"
+        title={t("settings.title")}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -163,70 +178,45 @@ const SettingsPanel = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Settings</span>
-              <Button size="icon-xs" variant="ghost" title="Close" onClick={() => setOpen(false)}>
+              <span className="text-sm font-medium">{t("settings.title")}</span>
+              <Button size="icon-xs" variant="ghost" title={t("common.close")} onClick={() => setOpen(false)}>
                 <X size={14} />
               </Button>
             </div>
 
+            {/* Language — native names, not translated */}
+            <OptionRow label={t("language.label")} value={locale} options={languageOptions} onChange={setLocale} />
+
             {/* Unit of measurement — metre is the base unit; cm/mm derive from it */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">Units</span>
-              <div className="flex gap-1">
-                {UNIT_OPTIONS.map((opt) => (
-                  <Button
-                    key={opt.value}
-                    size="sm"
-                    variant={dimensionUnit === opt.value ? "default" : "outline"}
-                    className="flex-1 px-0"
-                    onClick={() => setDimensionUnit(opt.value)}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            <OptionRow
+              label={t("settings.units")}
+              value={dimensionUnit}
+              options={UNIT_OPTIONS}
+              onChange={setDimensionUnit}
+            />
 
             {/* Measurement reference */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">Measurement reference</span>
-              <div className="flex gap-1">
-                {REFERENCE_OPTIONS.map((opt) => (
-                  <Button
-                    key={opt.value}
-                    size="sm"
-                    variant={measurementReference === opt.value ? "default" : "outline"}
-                    className="flex-1 px-0"
-                    onClick={() => setMeasurementReference(opt.value)}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            <OptionRow
+              label={t("settings.measurementReference")}
+              value={measurementReference}
+              options={labelled(REFERENCE_OPTIONS)}
+              onChange={setMeasurementReference}
+            />
 
             {/* Dimensions display — exactly one system (segments OR chains, or just
                 the selected shape). Never both, to avoid overlapping annotations. */}
-            <div className="flex flex-col gap-1.5 border-t pt-2">
-              <span className="text-xs text-muted-foreground">Dimensions</span>
-              <div className="flex gap-1">
-                {DIMENSION_OPTIONS.map((opt) => (
-                  <Button
-                    key={opt.value}
-                    size="sm"
-                    variant={dimensionDisplay === opt.value ? "default" : "outline"}
-                    className="flex-1 px-0"
-                    onClick={() => setDimensionDisplay(opt.value)}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
+            <div className="border-t pt-2">
+              <OptionRow
+                label={t("settings.dimensions")}
+                value={dimensionDisplay}
+                options={labelled(DIMENSION_OPTIONS)}
+                onChange={setDimensionDisplay}
+              />
             </div>
 
             {/* Connected-node move behavior */}
             <div className="flex flex-col gap-1.5 border-t pt-2">
-              <span className="text-xs text-muted-foreground">Move connected nodes</span>
+              <span className="text-xs text-muted-foreground">{t("settings.moveConnectedNodes")}</span>
               <div className="flex gap-1">
                 <Button
                   size="sm"
@@ -234,7 +224,7 @@ const SettingsPanel = () => {
                   className="flex-1 px-0"
                   onClick={() => setLinkConnectedNodes(true)}
                 >
-                  Together
+                  {t("settings.together")}
                 </Button>
                 <Button
                   size="sm"
@@ -242,7 +232,7 @@ const SettingsPanel = () => {
                   className="flex-1 px-0"
                   onClick={() => setLinkConnectedNodes(false)}
                 >
-                  Separate
+                  {t("settings.separate")}
                 </Button>
               </div>
             </div>
@@ -250,7 +240,7 @@ const SettingsPanel = () => {
             {/* Wall defaults — shown/entered in the active measurement unit */}
             <div className="flex flex-col gap-2 border-t pt-2">
               <NumberField
-                label="Wall thickness"
+                label={t("settings.wallThickness")}
                 value={toUnit(defaultWallThickness, dimensionUnit, ppm)}
                 min={stepFor(dimensionUnit)}
                 step={stepFor(dimensionUnit)}
@@ -258,7 +248,7 @@ const SettingsPanel = () => {
                 onChange={(v) => setDefaultWallThickness(toPx(v, dimensionUnit, ppm))}
               />
               <NumberField
-                label="Wall height"
+                label={t("settings.wallHeight")}
                 value={toUnit(cmToPx(defaultWallHeight, ppm), dimensionUnit, ppm)}
                 min={stepFor(dimensionUnit)}
                 step={stepFor(dimensionUnit)}
@@ -269,11 +259,11 @@ const SettingsPanel = () => {
 
             {/* Wall joins — how wall bodies resolve where they meet. */}
             <div className="flex flex-col gap-2 border-t pt-2">
-              <OptionRow label="Wall join" value={wallJoinStyle} options={JOIN_OPTIONS} onChange={setWallJoinStyle} />
-              <OptionRow label="Free end" value={wallEndCap} options={END_CAP_OPTIONS} onChange={setWallEndCap} />
-              <OptionRow label="Thickness align" value={junctionAlign} options={ALIGN_OPTIONS} onChange={setJunctionAlign} />
+              <OptionRow label={t("settings.wallJoin")} value={wallJoinStyle} options={labelled(JOIN_OPTIONS)} onChange={setWallJoinStyle} />
+              <OptionRow label={t("settings.freeEnd")} value={wallEndCap} options={labelled(END_CAP_OPTIONS)} onChange={setWallEndCap} />
+              <OptionRow label={t("settings.thicknessAlign")} value={junctionAlign} options={labelled(ALIGN_OPTIONS)} onChange={setJunctionAlign} />
               <NumberField
-                label="Miter limit"
+                label={t("settings.miterLimit")}
                 value={miterLimit}
                 min={1}
                 step={0.5}

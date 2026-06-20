@@ -8,8 +8,10 @@ import { X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useProjectsStore } from "@/store/projects.store";
+import { useTranslation } from "@/i18n";
 
 const PageTabs = () => {
+  const { t } = useTranslation();
   const project = useProjectsStore((s) => s.projects[s.currentProjectId]);
   const openPage = useProjectsStore((s) => s.openPage);
   const addPage = useProjectsStore((s) => s.addPage);
@@ -40,7 +42,7 @@ const PageTabs = () => {
             {active && multi && (
               <button
                 onClick={() => deletePage(page.id)}
-                title="Delete page"
+                title={t("pages.delete")}
                 className="shrink-0 pr-1.5 opacity-80 hover:opacity-100"
               >
                 <X size={12} />
@@ -49,7 +51,7 @@ const PageTabs = () => {
           </div>
         );
       })}
-      <Button size="icon-sm" variant="ghost" className="shrink-0" title="Add page" onClick={() => addPage()}>
+      <Button size="icon-sm" variant="ghost" className="shrink-0" title={t("pages.add")} onClick={() => addPage()}>
         <Plus size={14} />
       </Button>
     </div>

@@ -13,8 +13,10 @@ import { cn } from "@/lib/utils";
 import { useProjectsStore } from "@/store/projects.store";
 import type { SubPage } from "@/store/projects.store";
 import SubPageTemplateModal from "./SubPageTemplateModal";
+import { useTranslation } from "@/i18n";
 
 const SubPageTab = ({ subPage, active }: { subPage: SubPage; active: boolean }) => {
+  const { t } = useTranslation();
   const openSubPage = useProjectsStore((s) => s.openSubPage);
   const renameSubPage = useProjectsStore((s) => s.renameSubPage);
   const deleteSubPage = useProjectsStore((s) => s.deleteSubPage);
@@ -64,13 +66,13 @@ const SubPageTab = ({ subPage, active }: { subPage: SubPage; active: boolean }) 
       </button>
       {active && (
         <>
-          <button onClick={begin} title="Rename sub-page" className="shrink-0 pr-1 opacity-80 hover:opacity-100">
+          <button onClick={begin} title={t("subPages.rename")} className="shrink-0 pr-1 opacity-80 hover:opacity-100">
             <Pencil size={11} />
           </button>
           {!subPage.pinned && (
             <button
               onClick={() => deleteSubPage(subPage.id)}
-              title="Delete sub-page"
+              title={t("subPages.delete")}
               className="shrink-0 pr-1.5 opacity-80 hover:opacity-100"
             >
               <X size={11} />
@@ -83,6 +85,7 @@ const SubPageTab = ({ subPage, active }: { subPage: SubPage; active: boolean }) 
 };
 
 const SubPageBar = () => {
+  const { t } = useTranslation();
   const project = useProjectsStore((s) => s.projects[s.currentProjectId]);
   const addSubPage = useProjectsStore((s) => s.addSubPage);
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -93,7 +96,7 @@ const SubPageBar = () => {
 
   return (
     <div className="fixed inset-x-0 top-12 z-40 flex h-9 items-center gap-1.5 border-b bg-popover/95 px-2 backdrop-blur-sm">
-      <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Sub-pages</span>
+      <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("subPages.title")}</span>
 
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {page.subPages.map((sp) => (
@@ -101,14 +104,14 @@ const SubPageBar = () => {
         ))}
       </div>
 
-      <Button size="icon-sm" variant="ghost" className="shrink-0" title="Add sub-page" onClick={() => addSubPage()}>
+      <Button size="icon-sm" variant="ghost" className="shrink-0" title={t("subPages.add")} onClick={() => addSubPage()}>
         <Plus size={14} />
       </Button>
       <Button
         size="icon-sm"
         variant="ghost"
         className="shrink-0"
-        title="New from template"
+        title={t("subPages.newFromTemplate")}
         onClick={() => setTemplateOpen(true)}
       >
         <LayoutTemplate size={14} />
