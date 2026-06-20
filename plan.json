@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-8",
-      "title": "Miter limit -> bevel (incl. acute-angle spike clamp)",
-      "covers": ["#8", "#10"],
-      "detail": "Add joinStyles/bevel.ts; when mitre length exceeds miterLimit×half-thickness (sharp/acute angles), substitute a straight chamfer between the two face points.",
-      "dimensions": "Face endpoints follow the chamfer, not the clamped spike."
-    },
-    {
       "id": "wj-9",
       "title": "Round join",
       "covers": ["#9"],
