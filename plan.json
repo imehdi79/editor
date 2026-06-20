@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-7",
-      "title": "X / cross + star multi-way junctions",
-      "covers": ["#4", "#5"],
-      "detail": "Generalise the angular-sort mitre to N ends (4 = cross, 5+ = star): mitre each adjacent neighbour pair around the node.",
-      "dimensions": "Each arm's face-to-face length measured to its mitre apex."
-    },
-    {
       "id": "wj-8",
       "title": "Miter limit -> bevel (incl. acute-angle spike clamp)",
       "covers": ["#8", "#10"],
