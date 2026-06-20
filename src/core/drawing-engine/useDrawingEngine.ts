@@ -2,8 +2,10 @@ import { useCallback, useRef, useState } from "react";
 import { useEditorStore } from "@/store/editor.store";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { resolvePoint, type ResolveConfig } from "./resolvePoint";
+import { resolveMidSpanSplits } from "@/core/wall-junctions";
 import type { GhostShape, DrawingHints } from "./drawing.types";
 import type { ToolDefinition } from "./tool-definition.types";
+import type { WallShape } from "./drawing.types";
 
 const EMPTY_HINTS: DrawingHints = {
   snapResult: null,
@@ -23,6 +25,7 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
   const shapes = useFloorPlanStore((s) => s.shapes);
   const addShape = useFloorPlanStore((s) => s.addShape);
+  const addShapeWithSplits = useFloorPlanStore((s) => s.addShapeWithSplits);
 
   // --- local state ---
   const startRef = useRef<{ x: number; y: number } | null>(null);
@@ -94,14 +97,23 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
       const dist = Math.hypot(x - start.x, y - start.y);
 
       if (dist >= (toolDef.minLength ?? 5)) {
-        addShape(toolDef.buildShape(start.x, start.y, x, y));
+        const shape = toolDef.buildShape(start.x, start.y, x, y);
+        // A new wall whose endpoint lands mid-span on an existing wall splits
+        // that host into a real T (one atomic undo step).
+        if (shape.type === "wall") {
+          const { wall, splits } = resolveMidSpanSplits(shape as Omit<WallShape, "id">, shapes);
+          if (splits.length > 0) addShapeWithSplits(wall, splits);
+          else addShape(wall);
+        } else {
+          addShape(shape);
+        }
       }
 
       startRef.current = null;
       setGhost(null);
       setHints(EMPTY_HINTS);
     },
-    [toolDef, makeConfig, addShape],
+    [toolDef, makeConfig, addShape, addShapeWithSplits, shapes],
   );
 
   /** Abort an in-progress draw without committing (e.g. a pinch-zoom began). */

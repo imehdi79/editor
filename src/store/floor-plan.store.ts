@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { temporal, type TemporalState } from "zundo";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import type { Shape, ShapeId, ShapePatch } from "@/core/drawing-engine/drawing.types";
+import type { WallSplit } from "@/core/wall-junctions";
 import { generateId } from "@/lib/generateId";
 import { categoryOf } from "@/core/layers/systemCategories";
 
@@ -13,6 +14,12 @@ interface FloorPlanState {
 
 interface FloorPlanActions {
   addShape: (shape: Omit<Shape, "id">) => void;
+  /**
+   * Add a wall while splitting any hosts it lands on mid-span, in ONE undo step.
+   * Each split host is removed and replaced by its two halves; the new wall and
+   * all halves are added together so undo restores the host atomically.
+   */
+  addShapeWithSplits: (shape: Omit<Shape, "id">, splits: WallSplit[]) => void;
   removeShape: (id: ShapeId) => void;
   /** Commit a transform (move / resize / rotate) — recorded in undo history. */
   updateShape: (id: ShapeId, patch: ShapePatch) => void;
@@ -35,6 +42,21 @@ export const useFloorPlanStore = create<FloorPlanStore>()(
         const full = { ...shape, id, category: categoryOf(shape) } as Shape;
         set((s) => ({ shapes: { ...s.shapes, [id]: full } }));
       },
+
+      addShapeWithSplits: (shape, splits) =>
+        set((s) => {
+          const next: ShapesMap = { ...s.shapes };
+          for (const split of splits) {
+            delete next[split.hostId];
+            for (const part of split.parts) {
+              const pid = generateId(part.type);
+              next[pid] = { ...part, id: pid, category: categoryOf(part) } as Shape;
+            }
+          }
+          const id = generateId(shape.type);
+          next[id] = { ...shape, id, category: categoryOf(shape) } as Shape;
+          return { shapes: next };
+        }),
 
       removeShape: (id) =>
         set((s) => {
