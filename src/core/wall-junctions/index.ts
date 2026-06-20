@@ -48,3 +48,4 @@ export const junctionAt = (
 ): ClassifiedJunction | null => junctions.get(nodeKey(x, y)) ?? null;
 
 export * from "./junction.types";
+export { DEFAULT_JUNCTION_CONFIG } from "./junctionConfig";

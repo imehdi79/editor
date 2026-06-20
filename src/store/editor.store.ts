@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import type { JoinStyle, EndCap, JunctionAlign, JunctionConfig } from "@/core/wall-junctions";
+import { DEFAULT_JUNCTION_CONFIG } from "@/core/wall-junctions";
 
 /**
  * DimensionUnit — the real-world unit dimensions are displayed/entered in.
@@ -49,6 +51,15 @@ interface EditorStore {
    *  reserved for future area/volume (surface) calculations */
   defaultWallHeight: number;
 
+  /** How wall faces resolve at a corner (mitre/butt/bevel/round). */
+  wallJoinStyle: JoinStyle;
+  /** Sharp-angle threshold: mitre longer than this × half-thickness → bevel. */
+  miterLimit: number;
+  /** How a free (unconnected) wall end is closed. */
+  wallEndCap: EndCap;
+  /** Which faces align when two joined walls differ in thickness. */
+  junctionAlign: JunctionAlign;
+
   /**
    * When true (default), moving/resizing a shape drags every other shape that
    * shares an endpoint node along with it (connected nodes stay welded). When
@@ -69,6 +80,10 @@ interface EditorStore {
   setDefaultWallHeight: (height: number) => void;
   setLinkConnectedNodes: (link: boolean) => void;
   setDimensionDisplay: (mode: DimensionDisplay) => void;
+  setWallJoinStyle: (style: JoinStyle) => void;
+  setMiterLimit: (limit: number) => void;
+  setWallEndCap: (cap: EndCap) => void;
+  setJunctionAlign: (align: JunctionAlign) => void;
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -85,6 +100,11 @@ export const useEditorStore = create<EditorStore>((set) => ({
   linkConnectedNodes: true,
   dimensionDisplay: "segments",
 
+  wallJoinStyle: DEFAULT_JUNCTION_CONFIG.joinStyle,
+  miterLimit: DEFAULT_JUNCTION_CONFIG.miterLimit,
+  wallEndCap: DEFAULT_JUNCTION_CONFIG.endCap,
+  junctionAlign: DEFAULT_JUNCTION_CONFIG.align,
+
   setViewMode: (mode) => set({ viewMode: mode }),
   setDimensionUnit: (unit) => set({ dimensionUnit: unit }),
   setMeasurementReference: (ref) => set({ measurementReference: ref }),
@@ -92,4 +112,16 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setDefaultWallHeight: (height) => set({ defaultWallHeight: height }),
   setLinkConnectedNodes: (link) => set({ linkConnectedNodes: link }),
   setDimensionDisplay: (mode) => set({ dimensionDisplay: mode }),
+  setWallJoinStyle: (style) => set({ wallJoinStyle: style }),
+  setMiterLimit: (limit) => set({ miterLimit: limit }),
+  setWallEndCap: (cap) => set({ wallEndCap: cap }),
+  setJunctionAlign: (align) => set({ junctionAlign: align }),
 }));
+
+/** Assemble the current junction config from editor settings (for geometry). */
+export const selectJunctionConfig = (s: EditorStore): JunctionConfig => ({
+  joinStyle: s.wallJoinStyle,
+  miterLimit: s.miterLimit,
+  endCap: s.wallEndCap,
+  align: s.junctionAlign,
+});

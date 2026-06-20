@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from "react";
 import { Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEditorStore, type DimensionUnit, type MeasurementReference, type DimensionDisplay } from "@/store/editor.store";
+import type { JoinStyle, EndCap, JunctionAlign } from "@/core/wall-junctions";
 import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
 
 const REFERENCE_OPTIONS: { value: MeasurementReference; label: string }[] = [
@@ -29,6 +30,55 @@ const DIMENSION_OPTIONS: { value: DimensionDisplay; label: string }[] = [
   { value: "segments", label: "Segments" },
   { value: "chains", label: "Chains" },
 ];
+
+const JOIN_OPTIONS: { value: JoinStyle; label: string }[] = [
+  { value: "miter", label: "Miter" },
+  { value: "butt", label: "Butt" },
+  { value: "bevel", label: "Bevel" },
+  { value: "round", label: "Round" },
+];
+
+const END_CAP_OPTIONS: { value: EndCap; label: string }[] = [
+  { value: "butt", label: "Butt" },
+  { value: "round", label: "Round" },
+  { value: "square", label: "Square" },
+];
+
+const ALIGN_OPTIONS: { value: JunctionAlign; label: string }[] = [
+  { value: "flush-left", label: "Left" },
+  { value: "centered", label: "Center" },
+  { value: "flush-right", label: "Right" },
+];
+
+/** A labelled row of mutually-exclusive option buttons. */
+const OptionRow = <T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+}) => (
+  <div className="flex flex-col gap-1.5">
+    <span className="text-xs text-muted-foreground">{label}</span>
+    <div className="flex gap-1">
+      {options.map((opt) => (
+        <Button
+          key={opt.value}
+          size="sm"
+          variant={value === opt.value ? "default" : "outline"}
+          className="flex-1 px-0"
+          onClick={() => onChange(opt.value)}
+        >
+          {opt.label}
+        </Button>
+      ))}
+    </div>
+  </div>
+);
 
 const NumberField = ({
   label,
@@ -81,6 +131,14 @@ const SettingsPanel = () => {
   const setLinkConnectedNodes = useEditorStore((s) => s.setLinkConnectedNodes);
   const dimensionDisplay = useEditorStore((s) => s.dimensionDisplay);
   const setDimensionDisplay = useEditorStore((s) => s.setDimensionDisplay);
+  const wallJoinStyle = useEditorStore((s) => s.wallJoinStyle);
+  const setWallJoinStyle = useEditorStore((s) => s.setWallJoinStyle);
+  const miterLimit = useEditorStore((s) => s.miterLimit);
+  const setMiterLimit = useEditorStore((s) => s.setMiterLimit);
+  const wallEndCap = useEditorStore((s) => s.wallEndCap);
+  const setWallEndCap = useEditorStore((s) => s.setWallEndCap);
+  const junctionAlign = useEditorStore((s) => s.junctionAlign);
+  const setJunctionAlign = useEditorStore((s) => s.setJunctionAlign);
 
   useEffect(() => {
     if (!open) return;
@@ -201,6 +259,21 @@ const SettingsPanel = () => {
               step={stepFor(dimensionUnit)}
               suffix={dimensionUnit}
               onChange={(v) => setDefaultWallHeight(pxToCm(toPx(v, dimensionUnit, ppm), ppm))}
+            />
+          </div>
+
+          {/* Wall joins — how wall bodies resolve where they meet. */}
+          <div className="flex flex-col gap-2 border-t pt-2">
+            <OptionRow label="Wall join" value={wallJoinStyle} options={JOIN_OPTIONS} onChange={setWallJoinStyle} />
+            <OptionRow label="Free end" value={wallEndCap} options={END_CAP_OPTIONS} onChange={setWallEndCap} />
+            <OptionRow label="Thickness align" value={junctionAlign} options={ALIGN_OPTIONS} onChange={setJunctionAlign} />
+            <NumberField
+              label="Miter limit"
+              value={miterLimit}
+              min={1}
+              step={0.5}
+              suffix="×"
+              onChange={setMiterLimit}
             />
           </div>
         </div>
