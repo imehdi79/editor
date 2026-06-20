@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-11",
-      "title": "Mid-span connection (split host)",
-      "covers": ["#16"],
-      "detail": "When a wall end lands on another wall's body, project onto the host (wallGeometry.projectOntoWall) and split the host at that t into two segments sharing a node, producing a real T. Preserve height/layers/category on both halves.",
-      "dimensions": "Re-trace computeRoomAreas (centreline graph changed); chain break appears at the split."
-    },
-    {
       "id": "wj-12",
       "title": "Validation hints: overlap + touching-not-joined",
       "covers": ["#13", "#14"],
