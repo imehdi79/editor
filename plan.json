@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-15",
-      "title": "Curved / arc walls (separate shape + tool)",
-      "covers": ["#17"],
-      "detail": "Add an arc-wall shape variant and its own tool (distinct option alongside the straight wall). Join a straight wall to an arc using the arc tangent at the contact node.",
-      "dimensions": "Arc-length-aware dimensions; tangent-based face joins."
-    },
-    {
       "id": "wj-16",
       "title": "3D height consumption",
       "covers": ["#18"],
