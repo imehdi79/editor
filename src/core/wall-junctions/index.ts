@@ -14,4 +14,4 @@ export { DEFAULT_JUNCTION_CONFIG } from "./junctionConfig";
 export { getJoinResolver } from "./joinStyles";
 export { intersectLines, type Vec2 } from "./geometry";
 export { computeWallJunctions, junctionAt } from "./computeWallJunctions";
-export { computeWallOutlines, type WallOutline, type WallOutlineMap } from "./computeWallOutline";
+export { computeWallOutlines, computeJunctionPatches, type WallOutline, type WallOutlineMap } from "./computeWallOutline";

@@ -112,6 +112,8 @@ export interface Wedge {
   b: FaceRay;
   /** Interior angle of the wedge in degrees (0, 360). */
   angleDeg: number;
+  /** Sharp-angle threshold (mitre length ÷ half-thickness) → bevel above it. */
+  miterLimit: number;
 }
 
 /** The corner point(s) that close a wedge, ordered from a's side to b's side. */

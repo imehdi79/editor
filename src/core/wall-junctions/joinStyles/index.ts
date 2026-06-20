@@ -12,9 +12,11 @@
 
 import type { JoinResolver, JoinStyle } from "../junction.types";
 import { miterJoin } from "./miter";
+import { bevelJoin } from "./bevel";
 
 const REGISTRY: Partial<Record<JoinStyle, JoinResolver>> = {
   miter: miterJoin,
+  bevel: bevelJoin,
 };
 
 /** The resolver for a join style, falling back to mitre when not yet registered. */

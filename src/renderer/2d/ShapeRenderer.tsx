@@ -6,7 +6,7 @@ import { categoryOf } from "@/core/layers/systemCategories";
 import type { Shape, WallShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeDoorSwing } from "@/core/door/computeDoorSwing";
 import { buildWallLayerBands } from "@/core/wall-layers/wallLayers";
-import { computeWallOutlines, type WallOutline } from "@/core/wall-junctions";
+import { computeWallOutlines, computeJunctionPatches, type WallOutline } from "@/core/wall-junctions";
 
 const WALL_FILL = "#1e293b"; // slate-800 — structural body
 
@@ -203,13 +203,26 @@ const ShapeRenderer = () => {
   const miterLimit = useEditorStore((s) => s.miterLimit);
   const endCap = useEditorStore((s) => s.wallEndCap);
   const align = useEditorStore((s) => s.junctionAlign);
-  const outlines = computeWallOutlines(shapes, { joinStyle, miterLimit, endCap, align });
+  const config = { joinStyle, miterLimit, endCap, align };
+  const outlines = computeWallOutlines(shapes, config);
+  // Corner chamfer/fillet fills for bevel & round joins. Hidden when the
+  // architectural category is hidden (patches are structural wall geometry).
+  const patches = visibility.architectural ? computeJunctionPatches(shapes, config) : [];
 
   const sorted = Object.values(shapes)
     .filter((s) => visibility[categoryOf(s)]) // hide shapes in hidden categories
     .sort((a, b) => (RENDER_ORDER[a.type] ?? 1) - (RENDER_ORDER[b.type] ?? 1));
 
-  return <>{sorted.map((s) => renderShape(s, outlines))}</>;
+  return (
+    <>
+      {/* Corner patches sit below the wall bodies; same colour, so they only show
+          where a chamfer/fillet leaves the bodies short. */}
+      {patches.map((p, i) => (
+        <Line key={`patch-${i}`} points={flatRing(p)} closed fill={WALL_FILL} />
+      ))}
+      {sorted.map((s) => renderShape(s, outlines))}
+    </>
+  );
 };
 
 export default ShapeRenderer;

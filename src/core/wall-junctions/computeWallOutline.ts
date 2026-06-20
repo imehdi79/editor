@@ -45,7 +45,7 @@ const pccw = (dx: number, dy: number): Vec2 => ({ x: dy, y: -dx });
 const pcw = (dx: number, dy: number): Vec2 => ({ x: -dy, y: dx });
 
 /** The wedge between angularly-adjacent ends `cw` (a-side) and `ccw` (b-side). */
-const wedgeBetween = (node: Vec2, cw: WallEnd, ccw: WallEnd): Wedge => {
+const wedgeBetween = (node: Vec2, cw: WallEnd, ccw: WallEnd, miterLimit: number): Wedge => {
   const a = pccw(cw.dirX, cw.dirY); // cw end's face that faces the wedge (its CCW side)
   const b = pcw(ccw.dirX, ccw.dirY); // ccw end's face that faces the wedge (its CW side)
   let angle = ccw.bearing - cw.bearing;
@@ -56,6 +56,7 @@ const wedgeBetween = (node: Vec2, cw: WallEnd, ccw: WallEnd): Wedge => {
     a: { x: node.x + a.x * (cw.thickness / 2), y: node.y + a.y * (cw.thickness / 2), dx: cw.dirX, dy: cw.dirY },
     b: { x: node.x + b.x * (ccw.thickness / 2), y: node.y + b.y * (ccw.thickness / 2), dx: ccw.dirX, dy: ccw.dirY },
     angleDeg: angle,
+    miterLimit,
   };
 };
 
@@ -91,12 +92,12 @@ const cornersAtEnd = (
   const resolve = getJoinResolver(config.joinStyle);
 
   // CCW corner: this end is the a-side of the wedge with its CCW neighbour.
-  const ccwWedge = wedgeBetween(node, end, ccwNeighbor);
+  const ccwWedge = wedgeBetween(node, end, ccwNeighbor, config.miterLimit);
   const ccwRes = resolve(ccwWedge).vertices;
   const ccwCorner = sane(ccwRes[0], { x: ccwWedge.a.x, y: ccwWedge.a.y }, node, end.thickness);
 
   // CW corner: this end is the b-side of the wedge with its CW neighbour.
-  const cwWedge = wedgeBetween(node, cwNeighbor, end);
+  const cwWedge = wedgeBetween(node, cwNeighbor, end, config.miterLimit);
   const cwRes = resolve(cwWedge).vertices;
   const cwCorner = sane(cwRes[cwRes.length - 1], { x: cwWedge.b.x, y: cwWedge.b.y }, node, end.thickness);
 
@@ -174,11 +175,39 @@ const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: Ju
   };
 };
 
+/**
+ * Node patches: when a wedge resolves to a chamfer (bevel) or fillet (round) the
+ * two wall bodies end square, leaving a gap. A patch [node, ...joinVertices]
+ * fills it so the corner reads as one solid. Mitre apexes (single vertex) need
+ * no patch — both bodies already reach them. Butt joins clip/extend instead, so
+ * they emit no patches.
+ */
+const buildPatches = (shapes: Record<string, Shape>, config: JunctionConfig): Vec2[][] => {
+  if (config.joinStyle === "butt") return [];
+  const junctions = computeWallJunctions(shapes);
+  const resolve = getJoinResolver(config.joinStyle);
+  const patches: Vec2[][] = [];
+  for (const j of junctions.values()) {
+    if (j.ends.length < 2) continue;
+    const node: Vec2 = { x: j.x, y: j.y };
+    for (let i = 0; i < j.ends.length; i++) {
+      const wedge = wedgeBetween(node, j.ends[i], j.ends[(i + 1) % j.ends.length], config.miterLimit);
+      const verts = resolve(wedge).vertices;
+      if (verts.length >= 2) patches.push([node, ...verts]);
+    }
+  }
+  return patches;
+};
+
 // --- Cache: keyed by shapes, invalidated when the config fields change ---------
 
-interface CacheEntry {
-  config: JunctionConfig;
+interface OutlineData {
   outlines: WallOutlineMap;
+  patches: Vec2[][];
+}
+
+interface CacheEntry extends OutlineData {
+  config: JunctionConfig;
 }
 
 const sameConfig = (a: JunctionConfig, b: JunctionConfig): boolean =>
@@ -186,13 +215,9 @@ const sameConfig = (a: JunctionConfig, b: JunctionConfig): boolean =>
 
 const cache = new WeakMap<Record<string, Shape>, CacheEntry>();
 
-/** Resolved wall body outlines for the floor plan. Cached per (shapes, config). */
-export const computeWallOutlines = (
-  shapes: Record<string, Shape>,
-  config: JunctionConfig,
-): WallOutlineMap => {
+const outlineData = (shapes: Record<string, Shape>, config: JunctionConfig): OutlineData => {
   const hit = cache.get(shapes);
-  if (hit && sameConfig(hit.config, config)) return hit.outlines;
+  if (hit && sameConfig(hit.config, config)) return hit;
 
   const outlines: WallOutlineMap = new Map();
   for (const shape of Object.values(shapes)) {
@@ -200,6 +225,15 @@ export const computeWallOutlines = (
     const outline = buildOutline(shape, shapes, config);
     if (outline) outlines.set(shape.id, outline);
   }
-  cache.set(shapes, { config: { ...config }, outlines });
-  return outlines;
+  const patches = buildPatches(shapes, config);
+  cache.set(shapes, { config: { ...config }, outlines, patches });
+  return { outlines, patches };
 };
+
+/** Resolved wall body outlines for the floor plan. Cached per (shapes, config). */
+export const computeWallOutlines = (shapes: Record<string, Shape>, config: JunctionConfig): WallOutlineMap =>
+  outlineData(shapes, config).outlines;
+
+/** Corner fill patches (chamfers / fillets) for bevel & round joins. */
+export const computeJunctionPatches = (shapes: Record<string, Shape>, config: JunctionConfig): Vec2[][] =>
+  outlineData(shapes, config).patches;
