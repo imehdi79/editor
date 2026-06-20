@@ -62,6 +62,9 @@ export interface WallEnd {
   thickness: number;
   /** Lateral eccentricity of the body from the centreline, along the wall +n. */
   offset: number;
+  /** Total construction-layer build-up on the inner (+n) / outer (−n) face. */
+  buildupInner: number;
+  buildupOuter: number;
   /** Unit direction pointing AWAY from the node, into the wall body. */
   dirX: number;
   dirY: number;

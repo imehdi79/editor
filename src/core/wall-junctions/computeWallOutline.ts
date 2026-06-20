@@ -190,8 +190,11 @@ const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: Ju
   const nWall: Vec2 = { x: -dy / len, y: dx / len };
 
   const off = wall.offset ?? 0;
-  const end1: WallEnd = { wallId: wall.id, handle: "p1", thickness: wall.thickness, offset: off, dirX: dx / len, dirY: dy / len, bearing: 0 };
-  const end2: WallEnd = { wallId: wall.id, handle: "p2", thickness: wall.thickness, offset: off, dirX: -dx / len, dirY: -dy / len, bearing: 0 };
+  const bi = (wall.layers?.inner ?? []).reduce((s, l) => s + l.thickness, 0);
+  const bo = (wall.layers?.outer ?? []).reduce((s, l) => s + l.thickness, 0);
+  const base = { thickness: wall.thickness, offset: off, buildupInner: bi, buildupOuter: bo };
+  const end1: WallEnd = { wallId: wall.id, handle: "p1", ...base, dirX: dx / len, dirY: dy / len, bearing: 0 };
+  const end2: WallEnd = { wallId: wall.id, handle: "p2", ...base, dirX: -dx / len, dirY: -dy / len, bearing: 0 };
 
   const j1 = junctions.get(nodeKey(wall.x1, wall.y1)) ?? null;
   const j2 = junctions.get(nodeKey(wall.x2, wall.y2)) ?? null;

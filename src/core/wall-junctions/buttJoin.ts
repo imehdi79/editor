@@ -50,11 +50,24 @@ interface Host {
   /** World-space offset shift of the host centreline (eccentricity). */
   ox: number;
   oy: number;
+  /** Layer build-up on the +hN / −hN face — abutting walls stop at the finish. */
+  buildupPlus: number;
+  buildupMinus: number;
 }
 
 const hostFromEnd = (rep: WallEnd, half: number, node: Vec2): Host => {
   const o = offsetOrigin(node, rep);
-  return { dirX: rep.dirX, dirY: rep.dirY, half, ox: o.x - node.x, oy: o.y - node.y };
+  // +hN side is the host's inner face when rep is its p1 end, else its outer.
+  const plusIsInner = rep.handle === "p1";
+  return {
+    dirX: rep.dirX,
+    dirY: rep.dirY,
+    half,
+    ox: o.x - node.x,
+    oy: o.y - node.y,
+    buildupPlus: plusIsInner ? rep.buildupInner : rep.buildupOuter,
+    buildupMinus: plusIsInner ? rep.buildupOuter : rep.buildupInner,
+  };
 };
 
 /** The through slab at the node + the set of ends that belong to it. */
@@ -112,11 +125,15 @@ export const buttCornersForEnd = (
     );
   }
 
-  // Abutting end: clip both faces to the host slab's near face line.
+  // Abutting end: clip both faces to the host slab's FINISHED near face — its
+  // structural half plus any construction-layer build-up on the contact side —
+  // so an abutting wall (and its own layers) stop at the host's finish, not its
+  // bare structure (composite junction matching #19).
   const hN = perp(host.dirX, host.dirY);
   const side = dot(end.dirX, end.dirY, hN.x, hN.y) >= 0 ? 1 : -1;
-  const faceX = node.x + host.ox + hN.x * host.half * side;
-  const faceY = node.y + host.oy + hN.y * host.half * side;
+  const finish = host.half + (side > 0 ? host.buildupPlus : host.buildupMinus);
+  const faceX = node.x + host.ox + hN.x * finish * side;
+  const faceY = node.y + host.oy + hN.y * finish * side;
   const nE = perp(end.dirX, end.dirY);
   const f1 = { x: o.x + nE.x * half, y: o.y + nE.y * half };
   const f2 = { x: o.x - nE.x * half, y: o.y - nE.y * half };

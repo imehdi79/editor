@@ -25,6 +25,10 @@ const COLLINEAR_COS = 0.985;
 const otherEnd = (wall: WallShape, handle: "p1" | "p2"): { x: number; y: number } =>
   handle === "p1" ? { x: wall.x2, y: wall.y2 } : { x: wall.x1, y: wall.y1 };
 
+/** Total layer build-up on one face (kept inline to avoid a wall-layers cycle). */
+const sideBuildup = (wall: WallShape, side: "inner" | "outer"): number =>
+  (wall.layers?.[side] ?? []).reduce((sum, layer) => sum + layer.thickness, 0);
+
 /** Build the wall ends meeting at a node, sorted by bearing (CCW from East). */
 const wallEndsAt = (node: TopologyNode, shapes: Record<string, Shape>): WallEnd[] => {
   const ends: WallEnd[] = [];
@@ -40,6 +44,8 @@ const wallEndsAt = (node: TopologyNode, shapes: Record<string, Shape>): WallEnd[
       handle: ref.handle,
       thickness: wall.thickness,
       offset: wall.offset ?? 0,
+      buildupInner: sideBuildup(wall, "inner"),
+      buildupOuter: sideBuildup(wall, "outer"),
       dirX: dx / len,
       dirY: dy / len,
       bearing: absoluteAngleDeg(node.x, node.y, away.x, away.y),
