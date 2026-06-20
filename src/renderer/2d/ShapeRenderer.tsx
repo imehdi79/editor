@@ -1,10 +1,17 @@
 import { Line, Text, Shape as KonvaShape, Group } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useLayersStore } from "@/store/layers.store";
+import { useEditorStore } from "@/store/editor.store";
 import { categoryOf } from "@/core/layers/systemCategories";
-import type { Shape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, WallShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeDoorSwing } from "@/core/door/computeDoorSwing";
 import { buildWallLayerBands } from "@/core/wall-layers/wallLayers";
+import { computeWallOutlines, type WallOutline } from "@/core/wall-junctions";
+
+const WALL_FILL = "#1e293b"; // slate-800 — structural body
+
+/** Flatten a Vec2[] ring to a Konva points array. */
+const flatRing = (ring: { x: number; y: number }[]): number[] => ring.flatMap((p) => [p.x, p.y]);
 
 // ---------------------------------------------------------------------------
 // Window renderer
@@ -125,29 +132,30 @@ const DoorRenderer = ({ shape }: { shape: DoorShape }) => {
 // Shape dispatch
 // ---------------------------------------------------------------------------
 
-const renderShape = (shape: Shape) => {
+/** Wall body: filled mitred polygon from the junction outline, with layer bands.
+ *  Falls back to a butt-capped stroke if no outline (degenerate wall). */
+const WallRenderer = ({ shape, outline }: { shape: WallShape; outline: WallOutline | undefined }) => {
+  if (!outline) {
+    return (
+      <Line points={[shape.x1, shape.y1, shape.x2, shape.y2]} stroke={WALL_FILL} strokeWidth={shape.thickness} lineCap="butt" />
+    );
+  }
+  const bands = buildWallLayerBands(shape, outline);
+  return (
+    <Group>
+      {/* Construction layers as coloured build-up beside the structural core */}
+      {bands.map((b, i) => (
+        <Line key={i} points={b.polygon} closed fill={b.color} />
+      ))}
+      <Line points={flatRing(outline.polygon)} closed fill={WALL_FILL} />
+    </Group>
+  );
+};
+
+const renderShape = (shape: Shape, outlines: ReturnType<typeof computeWallOutlines>) => {
   switch (shape.type) {
-    case "wall": {
-      const core = (
-        <Line
-          points={[shape.x1, shape.y1, shape.x2, shape.y2]}
-          stroke="#1e293b"
-          strokeWidth={shape.thickness}
-          lineCap="butt"
-        />
-      );
-      const bands = buildWallLayerBands(shape);
-      if (bands.length === 0) return <Group key={shape.id}>{core}</Group>;
-      return (
-        <Group key={shape.id}>
-          {/* Construction layers as coloured build-up beside the structural core */}
-          {bands.map((b, i) => (
-            <Line key={i} points={b.points} stroke={b.color} strokeWidth={b.width} lineCap="butt" />
-          ))}
-          {core}
-        </Group>
-      );
-    }
+    case "wall":
+      return <WallRenderer key={shape.id} shape={shape} outline={outlines.get(shape.id)} />;
 
     case "line":
       return (
@@ -189,12 +197,19 @@ const RENDER_ORDER: Record<string, number> = { wall: 0, line: 1, "dashed-line": 
 const ShapeRenderer = () => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const visibility = useLayersStore((s) => s.visibility);
+  // Select primitives (not a derived object) so the store doesn't re-render on
+  // every unrelated change; the compiler memoizes the config + outline build.
+  const joinStyle = useEditorStore((s) => s.wallJoinStyle);
+  const miterLimit = useEditorStore((s) => s.miterLimit);
+  const endCap = useEditorStore((s) => s.wallEndCap);
+  const align = useEditorStore((s) => s.junctionAlign);
+  const outlines = computeWallOutlines(shapes, { joinStyle, miterLimit, endCap, align });
 
   const sorted = Object.values(shapes)
     .filter((s) => visibility[categoryOf(s)]) // hide shapes in hidden categories
     .sort((a, b) => (RENDER_ORDER[a.type] ?? 1) - (RENDER_ORDER[b.type] ?? 1));
 
-  return <>{sorted.map(renderShape)}</>;
+  return <>{sorted.map((s) => renderShape(s, outlines))}</>;
 };
 
 export default ShapeRenderer;

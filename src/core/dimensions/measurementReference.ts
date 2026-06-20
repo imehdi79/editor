@@ -28,6 +28,7 @@
 import type { Shape, WallShape } from "@/core/drawing-engine/drawing.types";
 import type { MeasurementReference } from "@/store/editor.store";
 import { SNAP_EPSILON } from "@/core/topology/computeTopology";
+import type { WallOutline } from "@/core/wall-junctions";
 
 export interface MeasuredSegment {
   x1: number;
@@ -86,19 +87,51 @@ const junctionHalfThickness = (
 };
 
 /**
+ * Inset (along the wall axis) of a mitred face corner from the wall endpoint.
+ * Projecting the outline's inner/outer corner back onto the centreline gives the
+ * exact face-to-face span at any junction angle — the perpendicular heuristic is
+ * just its right-angle special case. Inner corners inset toward the centre
+ * (positive), outer corners extend outward (negative), and free ends give 0.
+ */
+const measuredFromOutline = (wall: WallShape, outline: WallOutline, reference: "inner" | "outer"): MeasuredSegment => {
+  const ux = wall.x2 - wall.x1;
+  const uy = wall.y2 - wall.y1;
+  const len = Math.hypot(ux, uy) || 1;
+  const wx = ux / len;
+  const wy = uy / len;
+  const c1 = reference === "inner" ? outline.p1Inner : outline.p1Outer;
+  const c2 = reference === "inner" ? outline.p2Inner : outline.p2Outer;
+  const i1 = (c1.x - wall.x1) * wx + (c1.y - wall.y1) * wy; // signed inset at p1
+  const i2 = (c2.x - wall.x2) * wx + (c2.y - wall.y2) * wy; // signed inset at p2
+  return {
+    x1: wall.x1 + wx * i1,
+    y1: wall.y1 + wy * i1,
+    x2: wall.x2 + wx * i2,
+    y2: wall.y2 + wy * i2,
+  };
+};
+
+/**
  * Compute the endpoints that should be measured for a wall under the given
  * reference mode. Endpoints are shifted ALONG the wall axis only (length
  * changes), never off-axis — the dimension layer still offsets perpendicular
  * for the witness lines.
+ *
+ * When `outline` is supplied, the inset comes from the true mitred face corners
+ * (exact at any angle). Without it (e.g. during a live drag) the perpendicular
+ * half-thickness heuristic is used as a fallback.
  */
 export const measuredWallSegment = (
   wall: WallShape,
   shapes: Record<string, Shape>,
   reference: MeasurementReference,
+  outline?: WallOutline,
 ): MeasuredSegment => {
   if (reference === "centerline") {
     return { x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 };
   }
+
+  if (outline) return measuredFromOutline(wall, outline, reference);
 
   const ux = wall.x2 - wall.x1;
   const uy = wall.y2 - wall.y1;

@@ -229,6 +229,7 @@ export const resolveCollisions = (
 
 import type { Shape } from "@/core/drawing-engine/drawing.types";
 import type { DimensionUnit, MeasurementReference } from "@/store/editor.store";
+import type { WallOutlineMap } from "@/core/wall-junctions";
 import { formatDimension } from "./dimensionUnits";
 import { measuredWallSegment } from "./measurementReference";
 
@@ -275,6 +276,7 @@ export const buildCandidates = (
   pixelsPerMeter: number,
   reference: MeasurementReference = "centerline",
   pxScale: number = 1,
+  outlines?: WallOutlineMap,
 ): DimensionCandidate[] => {
   // Resolve measured segments first so we can derive a centroid for side-choice.
   type Seg = { id: string; x1: number; y1: number; x2: number; y2: number };
@@ -283,7 +285,7 @@ export const buildCandidates = (
     if (shape.type === "text") continue;
     let { x1, y1, x2, y2 } = shape;
     if (shape.type === "wall") {
-      const m = measuredWallSegment(shape, shapes, reference);
+      const m = measuredWallSegment(shape, shapes, reference, outlines?.get(shape.id));
       x1 = m.x1;
       y1 = m.y1;
       x2 = m.x2;

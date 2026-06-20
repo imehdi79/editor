@@ -1,53 +1,17 @@
 /**
  * wall-junctions — public entry point.
  *
- * `computeWallJunctions` classifies every wall node of the floor plan (free / L
- * / collinear / T / X / star). Classification depends only on `shapes`
- * (geometry), never on the user's join-style choices, so it is WeakMap-cached by
- * the shapes object exactly like computeRoomAreas / computeTopology — every
- * consumer in a render pass shares one result.
- *
- * Join *style* (mitre / butt / bevel / round) is applied on top of this
- * classification by computeWallOutline (config-dependent, added later), so this
- * cache stays correct when only a setting changes.
+ * `computeWallJunctions` classifies wall nodes (free / L / collinear / T / X /
+ * star). `computeWallOutlines` turns that classification + the user's join style
+ * into a solid body polygon per wall. Both are cached so every consumer in a
+ * render pass shares one result.
  *
  * Pure — no React, no Konva, no store.
  */
-
-import type { Shape } from "@/core/drawing-engine/drawing.types";
-import { computeTopology, nodeKey } from "@/core/topology/computeTopology";
-import { classifyJunction } from "./classifyJunction";
-import type { ClassifiedJunction, JunctionMap } from "./junction.types";
-
-const computeUncached = (shapes: Record<string, Shape>): JunctionMap => {
-  const topology = computeTopology(shapes);
-  const map: JunctionMap = new Map();
-  for (const node of topology.values()) {
-    const junction = classifyJunction(node, shapes);
-    if (junction) map.set(junction.key, junction);
-  }
-  return map;
-};
-
-const cache = new WeakMap<Record<string, Shape>, JunctionMap>();
-
-/** Classified wall junctions for the floor plan. Cached per shapes version. */
-export const computeWallJunctions = (shapes: Record<string, Shape>): JunctionMap => {
-  const cached = cache.get(shapes);
-  if (cached) return cached;
-  const result = computeUncached(shapes);
-  cache.set(shapes, result);
-  return result;
-};
-
-/** The junction (if any) at a given canvas point — looks up by node key. */
-export const junctionAt = (
-  x: number,
-  y: number,
-  junctions: JunctionMap,
-): ClassifiedJunction | null => junctions.get(nodeKey(x, y)) ?? null;
 
 export * from "./junction.types";
 export { DEFAULT_JUNCTION_CONFIG } from "./junctionConfig";
 export { getJoinResolver } from "./joinStyles";
 export { intersectLines, type Vec2 } from "./geometry";
+export { computeWallJunctions, junctionAt } from "./computeWallJunctions";
+export { computeWallOutlines, type WallOutline, type WallOutlineMap } from "./computeWallOutline";

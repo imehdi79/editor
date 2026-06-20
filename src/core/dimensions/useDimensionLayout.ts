@@ -18,6 +18,7 @@ import { buildCandidates } from "./dimensionCollision";
 import { resolveCollisions } from "./dimensionCollision";
 import type { DimensionCandidate } from "./dimensionCollision";
 import { dimensionPxScale } from "./dimensionLayout";
+import { computeWallOutlines } from "@/core/wall-junctions";
 
 export const useDimensionLayout = (): DimensionCandidate[] => {
   const shapes = useFloorPlanStore((s) => s.shapes);
@@ -25,9 +26,19 @@ export const useDimensionLayout = (): DimensionCandidate[] => {
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
   const measurementReference = useEditorStore((s) => s.measurementReference);
   const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
+  // Inner/outer references measure to the true mitred faces — share the cached
+  // wall outlines so the dimension matches what is drawn.
+  const joinStyle = useEditorStore((s) => s.wallJoinStyle);
+  const miterLimit = useEditorStore((s) => s.miterLimit);
+  const endCap = useEditorStore((s) => s.wallEndCap);
+  const align = useEditorStore((s) => s.junctionAlign);
 
   return useMemo(() => {
-    const candidates = buildCandidates(shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale);
+    const outlines =
+      measurementReference === "centerline"
+        ? undefined
+        : computeWallOutlines(shapes, { joinStyle, miterLimit, endCap, align });
+    const candidates = buildCandidates(shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale, outlines);
     return resolveCollisions(candidates, pxScale);
-  }, [shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale]);
+  }, [shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale, joinStyle, miterLimit, endCap, align]);
 };
