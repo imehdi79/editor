@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-9",
-      "title": "Round join",
-      "covers": ["#9"],
-      "detail": "Add joinStyles/round.ts: fillet arc tangent to both faces, radius from setting. Registry entry only; renderer unchanged.",
-      "dimensions": "Measure to the arc's tangent points."
-    },
-    {
       "id": "wj-10",
       "title": "Collinear continuation + thickness-mismatch alignment",
       "covers": ["#11", "#12"],
