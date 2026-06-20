@@ -1,12 +1,12 @@
 /**
- * SettingsPanel — a sidebar icon button that opens a settings popover.
- * Backed by editor.store: measurement reference, default wall thickness,
- * and default wall height (height is reserved for future area/volume calc;
- * it is not drawn in the 2D view).
+ * SettingsPanel — a sidebar icon button that opens a settings modal.
+ * Uses the same centered-modal pattern as WallActions. Backed by editor.store:
+ * measurement reference, default wall thickness, and default wall height
+ * (height is reserved for future area/volume calc; it is not drawn in 2D).
  */
 
-import { useState, useRef, useEffect } from "react";
-import { Settings2 } from "lucide-react";
+import { useState } from "react";
+import { Settings2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEditorStore, type DimensionUnit, type MeasurementReference, type DimensionDisplay } from "@/store/editor.store";
 import type { JoinStyle, EndCap, JunctionAlign } from "@/core/wall-junctions";
@@ -116,7 +116,6 @@ const NumberField = ({
 
 const SettingsPanel = () => {
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const setDimensionUnit = useEditorStore((s) => s.setDimensionUnit);
@@ -140,145 +139,152 @@ const SettingsPanel = () => {
   const junctionAlign = useEditorStore((s) => s.junctionAlign);
   const setJunctionAlign = useEditorStore((s) => s.setJunctionAlign);
 
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
   return (
-    <div ref={containerRef} className="relative">
+    <>
       <Button
         size="icon"
         variant={open ? "default" : "ghost"}
         title="Settings"
         onClick={() => setOpen((v) => !v)}
-        aria-haspopup="true"
+        aria-haspopup="dialog"
         aria-expanded={open}
       >
         <Settings2 size={16} />
       </Button>
 
+      {/* Modal — same centered-overlay pattern as WallActions */}
       {open && (
-        <div className="absolute left-full top-0 ml-2 z-50 flex w-56 flex-col gap-3 rounded-lg border bg-popover p-3 shadow-2xl">
-          {/* Unit of measurement — metre is the base unit; cm/mm derive from it */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted-foreground">Units</span>
-            <div className="flex gap-1">
-              {UNIT_OPTIONS.map((opt) => (
-                <Button
-                  key={opt.value}
-                  size="sm"
-                  variant={dimensionUnit === opt.value ? "default" : "outline"}
-                  className="flex-1 px-0"
-                  onClick={() => setDimensionUnit(opt.value)}
-                >
-                  {opt.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Measurement reference */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted-foreground">Measurement reference</span>
-            <div className="flex gap-1">
-              {REFERENCE_OPTIONS.map((opt) => (
-                <Button
-                  key={opt.value}
-                  size="sm"
-                  variant={measurementReference === opt.value ? "default" : "outline"}
-                  className="flex-1 px-0"
-                  onClick={() => setMeasurementReference(opt.value)}
-                >
-                  {opt.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Dimensions display — exactly one system (segments OR chains, or just
-              the selected shape). Never both, to avoid overlapping annotations. */}
-          <div className="flex flex-col gap-1.5 border-t pt-2">
-            <span className="text-xs text-muted-foreground">Dimensions</span>
-            <div className="flex gap-1">
-              {DIMENSION_OPTIONS.map((opt) => (
-                <Button
-                  key={opt.value}
-                  size="sm"
-                  variant={dimensionDisplay === opt.value ? "default" : "outline"}
-                  className="flex-1 px-0"
-                  onClick={() => setDimensionDisplay(opt.value)}
-                >
-                  {opt.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Connected-node move behavior */}
-          <div className="flex flex-col gap-1.5 border-t pt-2">
-            <span className="text-xs text-muted-foreground">Move connected nodes</span>
-            <div className="flex gap-1">
-              <Button
-                size="sm"
-                variant={linkConnectedNodes ? "default" : "outline"}
-                className="flex-1 px-0"
-                onClick={() => setLinkConnectedNodes(true)}
-              >
-                Together
-              </Button>
-              <Button
-                size="sm"
-                variant={!linkConnectedNodes ? "default" : "outline"}
-                className="flex-1 px-0"
-                onClick={() => setLinkConnectedNodes(false)}
-              >
-                Separate
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 supports-backdrop-filter:backdrop-blur-xs"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="flex max-h-[85vh] w-[min(94vw,22rem)] flex-col gap-3 overflow-y-auto rounded-xl border bg-popover p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Settings</span>
+              <Button size="icon-xs" variant="ghost" title="Close" onClick={() => setOpen(false)}>
+                <X size={14} />
               </Button>
             </div>
-          </div>
 
-          {/* Wall defaults — shown/entered in the active measurement unit */}
-          <div className="flex flex-col gap-2 border-t pt-2">
-            <NumberField
-              label="Wall thickness"
-              value={toUnit(defaultWallThickness, dimensionUnit, ppm)}
-              min={stepFor(dimensionUnit)}
-              step={stepFor(dimensionUnit)}
-              suffix={dimensionUnit}
-              onChange={(v) => setDefaultWallThickness(toPx(v, dimensionUnit, ppm))}
-            />
-            <NumberField
-              label="Wall height"
-              value={toUnit(cmToPx(defaultWallHeight, ppm), dimensionUnit, ppm)}
-              min={stepFor(dimensionUnit)}
-              step={stepFor(dimensionUnit)}
-              suffix={dimensionUnit}
-              onChange={(v) => setDefaultWallHeight(pxToCm(toPx(v, dimensionUnit, ppm), ppm))}
-            />
-          </div>
+            {/* Unit of measurement — metre is the base unit; cm/mm derive from it */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Units</span>
+              <div className="flex gap-1">
+                {UNIT_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt.value}
+                    size="sm"
+                    variant={dimensionUnit === opt.value ? "default" : "outline"}
+                    className="flex-1 px-0"
+                    onClick={() => setDimensionUnit(opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
 
-          {/* Wall joins — how wall bodies resolve where they meet. */}
-          <div className="flex flex-col gap-2 border-t pt-2">
-            <OptionRow label="Wall join" value={wallJoinStyle} options={JOIN_OPTIONS} onChange={setWallJoinStyle} />
-            <OptionRow label="Free end" value={wallEndCap} options={END_CAP_OPTIONS} onChange={setWallEndCap} />
-            <OptionRow label="Thickness align" value={junctionAlign} options={ALIGN_OPTIONS} onChange={setJunctionAlign} />
-            <NumberField
-              label="Miter limit"
-              value={miterLimit}
-              min={1}
-              step={0.5}
-              suffix="×"
-              onChange={setMiterLimit}
-            />
+            {/* Measurement reference */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Measurement reference</span>
+              <div className="flex gap-1">
+                {REFERENCE_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt.value}
+                    size="sm"
+                    variant={measurementReference === opt.value ? "default" : "outline"}
+                    className="flex-1 px-0"
+                    onClick={() => setMeasurementReference(opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dimensions display — exactly one system (segments OR chains, or just
+                the selected shape). Never both, to avoid overlapping annotations. */}
+            <div className="flex flex-col gap-1.5 border-t pt-2">
+              <span className="text-xs text-muted-foreground">Dimensions</span>
+              <div className="flex gap-1">
+                {DIMENSION_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt.value}
+                    size="sm"
+                    variant={dimensionDisplay === opt.value ? "default" : "outline"}
+                    className="flex-1 px-0"
+                    onClick={() => setDimensionDisplay(opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Connected-node move behavior */}
+            <div className="flex flex-col gap-1.5 border-t pt-2">
+              <span className="text-xs text-muted-foreground">Move connected nodes</span>
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant={linkConnectedNodes ? "default" : "outline"}
+                  className="flex-1 px-0"
+                  onClick={() => setLinkConnectedNodes(true)}
+                >
+                  Together
+                </Button>
+                <Button
+                  size="sm"
+                  variant={!linkConnectedNodes ? "default" : "outline"}
+                  className="flex-1 px-0"
+                  onClick={() => setLinkConnectedNodes(false)}
+                >
+                  Separate
+                </Button>
+              </div>
+            </div>
+
+            {/* Wall defaults — shown/entered in the active measurement unit */}
+            <div className="flex flex-col gap-2 border-t pt-2">
+              <NumberField
+                label="Wall thickness"
+                value={toUnit(defaultWallThickness, dimensionUnit, ppm)}
+                min={stepFor(dimensionUnit)}
+                step={stepFor(dimensionUnit)}
+                suffix={dimensionUnit}
+                onChange={(v) => setDefaultWallThickness(toPx(v, dimensionUnit, ppm))}
+              />
+              <NumberField
+                label="Wall height"
+                value={toUnit(cmToPx(defaultWallHeight, ppm), dimensionUnit, ppm)}
+                min={stepFor(dimensionUnit)}
+                step={stepFor(dimensionUnit)}
+                suffix={dimensionUnit}
+                onChange={(v) => setDefaultWallHeight(pxToCm(toPx(v, dimensionUnit, ppm), ppm))}
+              />
+            </div>
+
+            {/* Wall joins — how wall bodies resolve where they meet. */}
+            <div className="flex flex-col gap-2 border-t pt-2">
+              <OptionRow label="Wall join" value={wallJoinStyle} options={JOIN_OPTIONS} onChange={setWallJoinStyle} />
+              <OptionRow label="Free end" value={wallEndCap} options={END_CAP_OPTIONS} onChange={setWallEndCap} />
+              <OptionRow label="Thickness align" value={junctionAlign} options={ALIGN_OPTIONS} onChange={setJunctionAlign} />
+              <NumberField
+                label="Miter limit"
+                value={miterLimit}
+                min={1}
+                step={0.5}
+                suffix="×"
+                onChange={setMiterLimit}
+              />
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
