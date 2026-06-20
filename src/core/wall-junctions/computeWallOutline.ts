@@ -130,6 +130,39 @@ const splitBySide = (c1: Vec2, c2: Vec2, node: Vec2, nWall: Vec2): { inner: Vec2
   return d1 >= d2 ? { inner: c1, outer: c2 } : { inner: c2, outer: c1 };
 };
 
+/** Cos tolerance for treating two ends as a collinear (straight) continuation. */
+const COLLINEAR_COS = 0.985;
+
+/**
+ * Thickness-mismatch alignment at a collinear continuation (#12). Non-collinear
+ * joins already mitre each wall at its own thickness, so only a straight
+ * continuation needs a choice of which face stays flush. The thicker wall is
+ * symmetric, so the thinner one simply shifts ±(thickGap) along the wall normal
+ * to bring one face onto the thicker wall's face; "centered" leaves the
+ * symmetric step. Contained to the junction — the wall's mid-span stays centred.
+ */
+const alignTransition = (
+  corners: { inner: Vec2; outer: Vec2 },
+  end: WallEnd,
+  junction: ClassifiedJunction | null,
+  nWall: Vec2,
+  align: JunctionConfig["align"],
+): { inner: Vec2; outer: Vec2 } => {
+  if (align === "centered" || !junction) return corners;
+  const partner = junction.ends.find(
+    (e) =>
+      (e.wallId !== end.wallId || e.handle !== end.handle) &&
+      dot(e.dirX, e.dirY, end.dirX, end.dirY) <= -COLLINEAR_COS,
+  );
+  if (!partner) return corners;
+  const half = end.thickness / 2;
+  const halfP = partner.thickness / 2;
+  if (half >= halfP - 1e-9) return corners; // only the thinner wall shifts
+  const delta = (halfP - half) * (align === "flush-left" ? 1 : -1);
+  const shift = (p: Vec2): Vec2 => ({ x: p.x + nWall.x * delta, y: p.y + nWall.y * delta });
+  return { inner: shift(corners.inner), outer: shift(corners.outer) };
+};
+
 const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: JunctionConfig): WallOutline | null => {
   const dx = wall.x2 - wall.x1;
   const dy = wall.y2 - wall.y1;
@@ -150,8 +183,8 @@ const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: Ju
   const e1 = j1?.ends.find((e) => e.wallId === wall.id && e.handle === "p1") ?? end1;
   const e2 = j2?.ends.find((e) => e.wallId === wall.id && e.handle === "p2") ?? end2;
 
-  const c1 = cornersAtEnd(j1, e1, { x: wall.x1, y: wall.y1 }, nWall, config);
-  const c2 = cornersAtEnd(j2, e2, { x: wall.x2, y: wall.y2 }, nWall, config);
+  const c1 = alignTransition(cornersAtEnd(j1, e1, { x: wall.x1, y: wall.y1 }, nWall, config), e1, j1, nWall, config.align);
+  const c2 = alignTransition(cornersAtEnd(j2, e2, { x: wall.x2, y: wall.y2 }, nWall, config), e2, j2, nWall, config.align);
 
   // Free ends get the configured cap (butt/round/square); joined ends keep their
   // mitre cut. The corner fields stay the face points (dimensions/bands measure
