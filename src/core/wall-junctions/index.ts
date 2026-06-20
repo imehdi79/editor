@@ -16,3 +16,4 @@ export { intersectLines, type Vec2 } from "./geometry";
 export { computeWallJunctions, junctionAt } from "./computeWallJunctions";
 export { computeWallOutlines, computeJunctionPatches, type WallOutline, type WallOutlineMap } from "./computeWallOutline";
 export { resolveMidSpanSplits, type WallSplit, type MidSpanResult } from "./splitHost";
+export { detectWallIssues, type WallIssue, type WallIssueKind } from "./wallIssues";
