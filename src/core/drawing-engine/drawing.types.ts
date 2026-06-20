@@ -56,6 +56,27 @@ export interface WallShape extends BaseShape {
   layers?: Record<WallSide, WallLayer[]>;
 }
 
+/**
+ * ArcWallShape — a curved (circular-arc) wall. A distinct shape/tool, not a flag
+ * on the straight wall. Stored as the chord (x1,y1)→(x2,y2) plus a signed
+ * `bulge` (sagitta); see core/arc/arcGeometry. Carries the same construction
+ * fields as a straight wall (thickness, height, layers, offset). Endpoints join
+ * other walls via topology; tangent-mitred arc↔straight junctions are future.
+ */
+export interface ArcWallShape extends BaseShape {
+  type: "arc-wall";
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  thickness: number;
+  /** Signed perpendicular sagitta of the arc midpoint from the chord (px). */
+  bulge: number;
+  height?: number;
+  offset?: number;
+  layers?: Record<WallSide, WallLayer[]>;
+}
+
 export interface LineShape extends BaseShape {
   type: "line";
   x1: number;
@@ -135,7 +156,14 @@ export interface DoorShape extends BaseShape {
   swingDirection: "inward" | "outward";
 }
 
-export type Shape = WallShape | LineShape | DashedLineShape | TextShape | WindowShape | DoorShape;
+export type Shape =
+  | WallShape
+  | ArcWallShape
+  | LineShape
+  | DashedLineShape
+  | TextShape
+  | WindowShape
+  | DoorShape;
 
 /** Omit that distributes over a union, so each member keeps its own fields. */
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -151,6 +179,7 @@ export type ShapePatch = Partial<DistributiveOmit<Shape, "id" | "type">>;
 // Ghost — همون شکل در حین رسم، بدون id
 export type GhostShape =
   | Omit<WallShape, "id">
+  | Omit<ArcWallShape, "id">
   | Omit<LineShape, "id">
   | Omit<DashedLineShape, "id">
   | Omit<TextShape, "id">

@@ -33,6 +33,7 @@ import { resolvePoint, type ResolveConfig } from "@/core/drawing-engine/resolveP
 import type { Shape, DrawingHints, GhostShape, DoorShape, ShapePatch } from "@/core/drawing-engine/drawing.types";
 import { computeTopology, nodeKey, type TopologyMap } from "@/core/topology/computeTopology";
 import { findWallById, slideOpening, resizeOpeningEndpoint, tOnWall } from "@/core/wall-utils/wallGeometry";
+import { arcPolyline } from "@/core/arc/arcGeometry";
 import { useLayersStore } from "@/store/layers.store";
 import { categoryOf } from "@/core/layers/systemCategories";
 
@@ -135,7 +136,16 @@ const hitTestShape = (x: number, y: number, shape: Shape): "p1" | "p2" | "rotate
     if (distSq(x, y, hx, hy) < rSq) return "hinge";
   }
 
-  // Body
+  // Body — arc walls test the curve, not the chord.
+  if (shape.type === "arc-wall") {
+    const effRSq = Math.max(BODY_HIT_RADIUS ** 2, (shape.thickness / 2) ** 2);
+    const pts = arcPolyline(shape.x1, shape.y1, shape.x2, shape.y2, shape.bulge, 24);
+    for (let i = 0; i + 3 < pts.length; i += 2) {
+      if (pointToSegmentDistSq(x, y, pts[i], pts[i + 1], pts[i + 2], pts[i + 3]) <= effRSq) return "body";
+    }
+    return null;
+  }
+
   const thick = shape.type === "wall" || shape.type === "window" || shape.type === "door" ? shape.thickness / 2 : 0;
   const effectiveRSq = Math.max(BODY_HIT_RADIUS ** 2, thick ** 2);
   if (pointToSegmentDistSq(x, y, shape.x1, shape.y1, shape.x2, shape.y2) <= effectiveRSq) return "body";

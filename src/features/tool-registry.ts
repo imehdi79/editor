@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@/core/drawing-engine/tool-definition.types";
 import { wallToolDefinition } from "./wall-tool/wall.tool";
+import { arcWallToolDefinition } from "./arc-wall-tool/arc-wall.tool";
 import { lineToolDefinition } from "./line-tool/line.tool";
 import { dashedLineToolDefinition } from "./dashed-line-tool/dashed-line.tool";
 import { textToolDefinition } from "./text-tool/text.tool";
@@ -16,6 +17,7 @@ const panToolDefinition: ToolDefinition = {
 
 export const TOOL_REGISTRY: Record<NoOneClickTools, ToolDefinition> = {
   wall: wallToolDefinition,
+  "arc-wall": arcWallToolDefinition,
   line: lineToolDefinition,
   "dashed-line": dashedLineToolDefinition,
   text: textToolDefinition,

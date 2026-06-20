@@ -67,8 +67,10 @@ export const createWallLayer = (
   thickness,
 });
 
-/** A wall's layer stack for one face (empty when none defined). */
-export const layersOf = (wall: WallShape, side: WallSide): WallLayer[] => wall.layers?.[side] ?? [];
+/** A wall's layer stack for one face (empty when none defined). Accepts any
+ *  layered wall (straight or arc) structurally. */
+export const layersOf = (wall: { layers?: Record<WallSide, WallLayer[]> }, side: WallSide): WallLayer[] =>
+  wall.layers?.[side] ?? [];
 
 /**
  * Return a complete `layers` record with `side` replaced by `next`, preserving

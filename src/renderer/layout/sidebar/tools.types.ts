@@ -2,6 +2,7 @@ import type { ButtonVariant } from "@/components/ui/button";
 
 export type Tools =
   | "wall"
+  | "arc-wall"
   | "line"
   | "dashed-line"
   | "text"

@@ -6,6 +6,7 @@ import SystemsPanel from "./SystemsPanel";
 import {
   Type,
   BrickWallIcon,
+  Spline,
   Ellipsis,
   Minus,
   SplinePointer,
@@ -25,8 +26,9 @@ const navigationTools: SideBarToolsList<"select" | "pan"> = {
   pan: { icon: <Hand size={16} />, label: "Pan" },
 };
 
-const structureTools: SideBarToolsList<"wall" | "window" | "door"> = {
+const structureTools: SideBarToolsList<"wall" | "arc-wall" | "window" | "door"> = {
   wall: { icon: <BrickWallIcon size={16} />, label: "Wall" },
+  "arc-wall": { icon: <Spline size={16} />, label: "Arc Wall" },
   window: { icon: <AppWindowMac size={16} />, label: "Window" },
   door: { icon: <DoorOpen size={16} />, label: "Door" },
 };

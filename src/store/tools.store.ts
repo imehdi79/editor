@@ -3,6 +3,7 @@ import { create } from "zustand";
 
 export const TOOL_CURSORS: Record<NoOneClickTools, string> = {
   wall: "crosshair",
+  "arc-wall": "crosshair",
   line: "crosshair",
   "dashed-line": "crosshair",
   text: "text",

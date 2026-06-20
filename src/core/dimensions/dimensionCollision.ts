@@ -283,6 +283,7 @@ export const buildCandidates = (
   const segs: Seg[] = [];
   for (const shape of Object.values(shapes)) {
     if (shape.type === "text") continue;
+    if (shape.type === "arc-wall") continue; // arc length is labelled on the arc itself
     let { x1, y1, x2, y2 } = shape;
     if (shape.type === "wall") {
       const m = measuredWallSegment(shape, shapes, reference, outlines?.get(shape.id));

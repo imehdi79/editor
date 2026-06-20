@@ -20,10 +20,12 @@ import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useToolsStore } from "@/store/tools.store";
 import { useEditorStore } from "@/store/editor.store";
 import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
-import type { Shape, WallShape, DoorShape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, WallShape, ArcWallShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import WallLayersPanel from "./WallLayersPanel";
 
-const isWall = (s: Shape | undefined): s is WallShape => !!s && s.type === "wall";
+/** Wall or arc wall — both carry thickness/height/offset and editable properties. */
+const isWallLike = (s: Shape | undefined): s is WallShape | ArcWallShape =>
+  !!s && (s.type === "wall" || s.type === "arc-wall");
 
 type WallTab = "properties" | "layers";
 
@@ -74,7 +76,8 @@ const WallActions = () => {
   const [tab, setTab] = useState<WallTab>("properties");
 
   const selected = selectedId ? shapes[selectedId] : undefined;
-  const wall = isWall(selected) ? selected : null;
+  const wall = isWallLike(selected) ? selected : null;
+  const isArc = wall?.type === "arc-wall";
 
   // Close the modal whenever the selection leaves a wall
   useEffect(() => {
@@ -88,7 +91,7 @@ const WallActions = () => {
 
   if (tool !== "select" || !wall) return null;
 
-  // Openings hosted on this wall
+  // Openings hosted on this wall (arc walls don't host openings yet → empty)
   const openings = Object.values(shapes).filter(
     (s) => (s.type === "door" || s.type === "window") && s.wallId === wall.id,
   ) as (DoorShape | Extract<Shape, { type: "window" }>)[];
@@ -103,6 +106,8 @@ const WallActions = () => {
   const setHeight = (height: number) => updateShape(wall.id, { height });
 
   const setOffset = (offset: number) => updateShape(wall.id, { offset });
+
+  const setBulge = (bulge: number) => updateShape(wall.id, { bulge });
 
   const alignSwing = (swingDirection: DoorShape["swingDirection"]) => {
     doors.forEach((d) => updateShape(d.id, { swingDirection }));
@@ -145,9 +150,10 @@ const WallActions = () => {
               </Button>
             </div>
 
-            {/* Tabs */}
+            {/* Tabs — arc walls expose properties only (layer takeoff is exact
+                only for straight walls). */}
             <div className="flex gap-1 rounded-lg bg-muted p-0.5">
-              {(["properties", "layers"] as const).map((t) => (
+              {(isArc ? (["properties"] as const) : (["properties", "layers"] as const)).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
@@ -163,7 +169,7 @@ const WallActions = () => {
               ))}
             </div>
 
-            {tab === "layers" ? (
+            {tab === "layers" && wall.type === "wall" ? (
               <WallLayersPanel wall={wall} />
             ) : (
               <>
@@ -194,6 +200,17 @@ const WallActions = () => {
                 suffix={unit}
                 onChange={(v) => setOffset(toPx(v, unit, ppm))}
               />
+              {/* Curvature (sagitta) — arc walls only; signed bulge of the arc. */}
+              {wall.type === "arc-wall" && (
+                <NumberField
+                  label="Curvature"
+                  value={toUnit(wall.bulge, unit, ppm)}
+                  min={-9999}
+                  step={stepFor(unit)}
+                  suffix={unit}
+                  onChange={(v) => setBulge(toPx(v, unit, ppm))}
+                />
+              )}
             </div>
 
             {/* Opening alignment — only meaningful when doors exist */}

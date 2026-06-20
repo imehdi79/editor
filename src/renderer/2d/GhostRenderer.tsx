@@ -1,6 +1,7 @@
 import { Line, Text, Circle, Shape as KonvaShape, Group } from "react-konva";
 import type { GhostShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeDoorSwing } from "@/core/door/computeDoorSwing";
+import { arcPolyline } from "@/core/arc/arcGeometry";
 
 interface Props {
   ghost: GhostShape;
@@ -141,6 +142,19 @@ const GhostRenderer = ({ ghost }: Props) => {
           strokeWidth={ghost.thickness}
           opacity={0.5}
           lineCap="butt"
+          listening={false}
+        />
+      );
+
+    case "arc-wall":
+      return (
+        <Line
+          points={arcPolyline(ghost.x1, ghost.y1, ghost.x2, ghost.y2, ghost.bulge)}
+          stroke="#3b82f6"
+          strokeWidth={ghost.thickness}
+          opacity={0.5}
+          lineCap="round"
+          lineJoin="round"
           listening={false}
         />
       );
