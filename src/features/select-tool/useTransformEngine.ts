@@ -29,6 +29,7 @@ import { useCallback, useRef, useState } from "react";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import { useEditorStore } from "@/store/editor.store";
+import { useViewportStore } from "@/store/viewport.store";
 import { resolvePoint, type ResolveConfig } from "@/core/drawing-engine/resolvePoint";
 import type { Shape, DrawingHints, GhostShape, DoorShape, ShapePatch } from "@/core/drawing-engine/drawing.types";
 import { computeTopology, nodeKey, type TopologyMap } from "@/core/topology/computeTopology";
@@ -44,6 +45,8 @@ import { categoryOf } from "@/core/layers/systemCategories";
 const HANDLE_HIT_RADIUS = 12;
 export const ROTATE_HANDLE_OFFSET = 28;
 const BODY_HIT_RADIUS = 8;
+/** Pointer travel (screen px) under which a node press-release counts as a tap. */
+const NODE_TAP_MAX_TRAVEL = 5;
 
 const EMPTY_HINTS: DrawingHints = {
   snapResult: null,
@@ -171,11 +174,17 @@ const hitTestShapes = (
 // Hook
 // ---------------------------------------------------------------------------
 
-export const useTransformEngine = () => {
+/**
+ * @param onNodeTap Called when a wall node handle is tapped (pressed and
+ *   released without dragging) — used to open the on-canvas thickness editor.
+ *   Fires only for wall / arc-wall shapes; the no-op resize is not committed.
+ */
+export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | "p2") => void) => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const updateShape = useFloorPlanStore((s) => s.updateShape);
   const selectShape = useSelectionStore((s) => s.selectShape);
   const selectedId = useSelectionStore((s) => s.selectedId);
+  const scale = useViewportStore((s) => s.scale);
 
   const categoryVisibility = useLayersStore((s) => s.visibility);
 
@@ -195,6 +204,8 @@ export const useTransformEngine = () => {
    * shapes map on every pointer-move frame — is the key mobile-perf win.
    */
   const dragSnapshotRef = useRef<{ topology: TopologyMap | null; config: ResolveConfig } | null>(null);
+  /** Pointer-down point + whether the pointer has travelled — for node tap vs drag. */
+  const pressRef = useRef<{ x: number; y: number; moved: boolean }>({ x: 0, y: 0, moved: false });
   const [previewShape, setPreviewShape] = useState<GhostShape>(null);
   /**
    * During a shared-node resize, every shape that shares the dragged node
@@ -225,6 +236,7 @@ export const useTransformEngine = () => {
 
   const onMouseDown = useCallback(
     (rawX: number, rawY: number) => {
+      pressRef.current = { x: rawX, y: rawY, moved: false };
       const { x, y } = resolvePoint(rawX, rawY, makeConfig());
       const hit = hitTestShapes(x, y, shapes, (s) => categoryVisibility[categoryOf(s)]);
 
@@ -320,6 +332,13 @@ export const useTransformEngine = () => {
 
       const shape = shapes[mode.shapeId];
       if (!shape) return;
+
+      // Track pointer travel (screen px) so a node press-release with no drag
+      // can be treated as a tap on mouseup.
+      if (!pressRef.current.moved) {
+        const travel = Math.hypot(rawX - pressRef.current.x, rawY - pressRef.current.y) * scale;
+        if (travel > NODE_TAP_MAX_TRAVEL) pressRef.current.moved = true;
+      }
 
       // ---- MOVE ----
       if (mode.kind === "move") {
@@ -496,7 +515,7 @@ export const useTransformEngine = () => {
         setConnectedPreviews({});
       }
     },
-    [shapes, makeConfigExcluding, axisAngleThreshold],
+    [shapes, makeConfigExcluding, axisAngleThreshold, scale],
   );
 
   // -------------------------------------------------------------------------
@@ -507,6 +526,21 @@ export const useTransformEngine = () => {
     (_rawX: number, _rawY: number) => {
       const mode = modeRef.current;
       if (mode.kind === "idle") return;
+
+      // Tap on a wall node (pressed and released without dragging): open the
+      // thickness editor instead of committing the no-op endpoint "resize".
+      if (mode.kind === "resize" && !pressRef.current.moved && onNodeTap) {
+        const tapped = shapes[mode.shapeId];
+        if (tapped && (tapped.type === "wall" || tapped.type === "arc-wall")) {
+          onNodeTap(mode.shapeId, mode.handle);
+          modeRef.current = { kind: "idle" };
+          dragSnapshotRef.current = null;
+          setPreviewShape(null);
+          setConnectedPreviews({});
+          setHints(EMPTY_HINTS);
+          return;
+        }
+      }
 
       // Commit the primary shape
       const shape = shapes[mode.shapeId];
@@ -526,7 +560,7 @@ export const useTransformEngine = () => {
       setConnectedPreviews({});
       setHints(EMPTY_HINTS);
     },
-    [shapes, previewShape, connectedPreviews, updateShape],
+    [shapes, previewShape, connectedPreviews, updateShape, onNodeTap],
   );
 
   /** Abort an in-progress move/resize/rotate without committing it. */

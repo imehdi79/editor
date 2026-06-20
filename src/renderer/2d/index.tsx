@@ -1,4 +1,4 @@
-import { useRef, useEffect, type RefObject } from "react";
+import { useRef, useEffect, useState, type RefObject } from "react";
 import { Stage, Layer } from "react-konva";
 import type Konva from "konva";
 import { useToolsStore, TOOL_CURSORS } from "@/store/tools.store";
@@ -20,6 +20,7 @@ import DimensionRenderer from "./DimensionRenderer";
 import DimensionLayerRenderer from "./DimensionLayerRenderer";
 import DimensionChainsRenderer from "./DimensionChainsRenderer";
 import DrawingInfoCanvas from "./DrawingInfoCanvas";
+import NodeThicknessPopover from "./NodeThicknessPopover";
 
 type StageRef = RefObject<Konva.Stage>;
 type ME = Konva.KonvaEventObject<MouseEvent>;
@@ -34,6 +35,9 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
   const isPanMode = tool === null || tool === "pan";
   const isDrawingTool = tool !== null && tool !== "select" && tool !== "pan";
   const toolDef = isDrawingTool ? (TOOL_REGISTRY[tool] ?? null) : null;
+
+  // On-canvas wall thickness editor — opened by tapping a wall node handle.
+  const [thicknessNode, setThicknessNode] = useState<{ shapeId: string; handle: "p1" | "p2" } | null>(null);
 
   const {
     ghost,
@@ -51,7 +55,7 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
     onMouseMove: selectMove,
     onMouseUp: selectUp,
     cancel: selectCancel,
-  } = useTransformEngine();
+  } = useTransformEngine((shapeId, handle) => setThicknessNode({ shapeId, handle }));
 
   const noop = () => {};
   const activeDown = tool === "select" ? selectDown : isDrawingTool ? drawDown : noop;
@@ -97,41 +101,52 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
   };
 
   return (
-    <Stage
-      ref={stageRef}
-      width={width}
-      height={height}
-      x={x}
-      y={y}
-      scaleX={scale}
-      scaleY={scale}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={viewportEvents.onMouseLeave}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onWheel={viewportEvents.onWheel}
-    >
-      <Layer>
-        <GridRenderer />
-        <RoomRenderer />
-        <ShapeRenderer />
-        <WallIssuesRenderer />
-        <DimensionLayerRenderer />
-        <DimensionChainsRenderer />
-        <DrawingInfoCanvas />
-        {isDrawingTool && <GhostRenderer ghost={ghost} />}
-        {tool === "select" && <SelectionRenderer previewShape={previewShape} connectedPreviews={connectedPreviews} />}
-        {tool !== null && tool !== "pan" && (
-          <>
-            <HintsRenderer hints={activeHints} />
-            <DimensionRenderer hints={activeHints} />
-          </>
-        )}
-      </Layer>
-    </Stage>
+    <>
+      <Stage
+        ref={stageRef}
+        width={width}
+        height={height}
+        x={x}
+        y={y}
+        scaleX={scale}
+        scaleY={scale}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={viewportEvents.onMouseLeave}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onWheel={viewportEvents.onWheel}
+      >
+        <Layer>
+          <GridRenderer />
+          <RoomRenderer />
+          <ShapeRenderer />
+          <WallIssuesRenderer />
+          <DimensionLayerRenderer />
+          <DimensionChainsRenderer />
+          <DrawingInfoCanvas />
+          {isDrawingTool && <GhostRenderer ghost={ghost} />}
+          {tool === "select" && <SelectionRenderer previewShape={previewShape} connectedPreviews={connectedPreviews} />}
+          {tool !== null && tool !== "pan" && (
+            <>
+              <HintsRenderer hints={activeHints} />
+              <DimensionRenderer hints={activeHints} />
+            </>
+          )}
+        </Layer>
+      </Stage>
+
+      {/* DOM overlay — wall thickness editor anchored at a tapped node */}
+      {tool === "select" && thicknessNode && (
+        <NodeThicknessPopover
+          shapeId={thicknessNode.shapeId}
+          handle={thicknessNode.handle}
+          onClose={() => setThicknessNode(null)}
+        />
+      )}
+    </>
   );
 };
 

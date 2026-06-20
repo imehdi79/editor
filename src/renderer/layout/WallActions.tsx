@@ -22,6 +22,7 @@ import { useEditorStore } from "@/store/editor.store";
 import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
 import type { Shape, WallShape, ArcWallShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { useTranslation } from "@/i18n";
+import { useSetWallThickness } from "@/features/wall-tool/useWallThickness";
 import WallLayersPanel from "./WallLayersPanel";
 
 /** Wall or arc wall — both carry thickness/height/offset and editable properties. */
@@ -73,6 +74,7 @@ const WallActions = () => {
   const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
   const unit = useEditorStore((s) => s.dimensionUnit);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
+  const setWallThickness = useSetWallThickness();
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<WallTab>("properties");
@@ -99,11 +101,8 @@ const WallActions = () => {
   ) as (DoorShape | Extract<Shape, { type: "window" }>)[];
   const doors = openings.filter((s): s is DoorShape => s.type === "door");
 
-  const setThickness = (thickness: number) => {
-    updateShape(wall.id, { thickness });
-    // Keep hosted openings visually consistent with the wall they cut
-    openings.forEach((o) => updateShape(o.id, { thickness }));
-  };
+  // Keep hosted openings visually consistent with the wall they cut.
+  const setThickness = (thickness: number) => setWallThickness(wall.id, thickness);
 
   const setHeight = (height: number) => updateShape(wall.id, { height });
 
