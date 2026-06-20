@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-3",
-      "title": "Join-style registry + miter resolver",
-      "covers": ["#6"],
-      "detail": "Add joinStyles/index.ts (Record<JoinStyle, JoinResolver>) and joinStyles/miter.ts. JoinResolver: given two adjacent face rays + included angle, return join vertices. Mirror the determinant line-intersection from dimensionChains.ts for the apex. butt/bevel/round added in later steps.",
-      "dimensions": "None yet."
-    },
-    {
       "id": "wj-4",
       "title": "Render mitred wall outlines (L-junction) + mitred layer bands",
       "covers": ["#2", "#6"],
