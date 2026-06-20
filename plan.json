@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-2",
-      "title": "Add configurable junction settings to editor.store + wall-defaults UI",
-      "covers": ["#6", "#7", "#8", "#9", "#1", "#12"],
-      "detail": "Add wallJoinStyle (miter|butt|bevel|round, default miter), miterLimit (number), wallEndCap (butt|round|square), junctionAlign (flush-left|centered|flush-right) with setters, and expose controls in the wall-defaults panel. Feed them into junctionConfig.ts.",
-      "dimensions": "None (settings only)."
-    },
-    {
       "id": "wj-3",
       "title": "Join-style registry + miter resolver",
       "covers": ["#6"],
