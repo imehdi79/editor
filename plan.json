@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-1",
-      "title": "Scaffold core/wall-junctions module (types + classifier)",
-      "covers": ["#1", "#2", "#3", "#4", "#5", "#11"],
-      "detail": "Add junction.types.ts (JunctionKind, JoinStyle, EndCap, WallNode, WallEnd, JunctionConfig, WallOutline) and classifyJunction.ts that turns a computeTopology node + the ends meeting there into a JunctionKind (free/L/T/X/star/collinear), ends sorted by absoluteAngleDeg. Add index.ts computeWallJunctions(shapes, config), WeakMap-cached by `shapes` like computeRoomAreas. Pure, no React/Konva/store. No visual change yet.",
-      "dimensions": "None yet (no geometry rendered)."
-    },
-    {
       "id": "wj-2",
       "title": "Add configurable junction settings to editor.store + wall-defaults UI",
       "covers": ["#6", "#7", "#8", "#9", "#1", "#12"],
