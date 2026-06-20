@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-12",
-      "title": "Validation hints: overlap + touching-not-joined",
-      "covers": ["#13", "#14"],
-      "detail": "Detect collinear overlapping spans (#13) and near-coincident faces with no shared node (#14); surface as non-destructive warnings / offer-to-join. Never auto-delete.",
-      "dimensions": "No geometry change; warnings only."
-    },
-    {
       "id": "wj-13",
       "title": "Eccentric / offset joins",
       "covers": ["#15"],
