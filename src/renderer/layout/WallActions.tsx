@@ -102,6 +102,8 @@ const WallActions = () => {
 
   const setHeight = (height: number) => updateShape(wall.id, { height });
 
+  const setOffset = (offset: number) => updateShape(wall.id, { offset });
+
   const alignSwing = (swingDirection: DoorShape["swingDirection"]) => {
     doors.forEach((d) => updateShape(d.id, { swingDirection }));
   };
@@ -182,6 +184,15 @@ const WallActions = () => {
                 step={stepFor(unit)}
                 suffix={unit}
                 onChange={(v) => setHeight(pxToCm(toPx(v, unit, ppm), ppm))}
+              />
+              {/* Eccentric offset — signed; shifts the body off the location line. */}
+              <NumberField
+                label="Offset"
+                value={toUnit(wall.offset ?? 0, unit, ppm)}
+                min={-9999}
+                step={stepFor(unit)}
+                suffix={unit}
+                onChange={(v) => setOffset(toPx(v, unit, ppm))}
               />
             </div>
 

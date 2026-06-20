@@ -60,6 +60,8 @@ export interface WallEnd {
   handle: "p1" | "p2";
   /** The wall's structural thickness in px. */
   thickness: number;
+  /** Lateral eccentricity of the body from the centreline, along the wall +n. */
+  offset: number;
   /** Unit direction pointing AWAY from the node, into the wall body. */
   dirX: number;
   dirY: number;

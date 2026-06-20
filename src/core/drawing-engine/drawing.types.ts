@@ -42,6 +42,14 @@ export interface WallShape extends BaseShape {
    *  surface/volume (area) calculations. Optional for back-compat. */
   height?: number;
   /**
+   * Lateral eccentricity (px): the body is shifted this far along the wall's
+   * left-hand normal (+n) from the stored centreline (the location line), so a
+   * wall can sit off-centre — e.g. flush to one side of a column. 0 / absent =
+   * centred. Faces, joins and inner/outer dimensions derive from the offset
+   * body; the centreline reference still measures the stored location line.
+   */
+  offset?: number;
+  /**
    * Per-side construction layers (brick, plaster, ...). Each wall face carries
    * an independent stack. Optional for back-compat; absent = no layers defined.
    */

@@ -39,6 +39,7 @@ const wallEndsAt = (node: TopologyNode, shapes: Record<string, Shape>): WallEnd[
       wallId: wall.id,
       handle: ref.handle,
       thickness: wall.thickness,
+      offset: wall.offset ?? 0,
       dirX: dx / len,
       dirY: dy / len,
       bearing: absoluteAngleDeg(node.x, node.y, away.x, away.y),

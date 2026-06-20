@@ -44,17 +44,32 @@ const pccw = (dx: number, dy: number): Vec2 => ({ x: dy, y: -dx });
 /** CW-side perpendicular of a direction: (−dy, dx). */
 const pcw = (dx: number, dy: number): Vec2 => ({ x: -dy, y: dx });
 
+/** The wall's canonical +n (p1→p2 left normal), derived from an end. */
+const nCanonOf = (end: WallEnd): Vec2 => {
+  const n = pcw(end.dirX, end.dirY);
+  return end.handle === "p1" ? n : { x: -n.x, y: -n.y };
+};
+
+/** Node shifted by the wall's eccentric offset — the origin for its faces. */
+const offsetOrigin = (node: Vec2, end: WallEnd): Vec2 => {
+  if (!end.offset) return node;
+  const n = nCanonOf(end);
+  return { x: node.x + n.x * end.offset, y: node.y + n.y * end.offset };
+};
+
 /** The wedge between angularly-adjacent ends `cw` (a-side) and `ccw` (b-side). */
 const wedgeBetween = (node: Vec2, cw: WallEnd, ccw: WallEnd, miterLimit: number): Wedge => {
   const a = pccw(cw.dirX, cw.dirY); // cw end's face that faces the wedge (its CCW side)
   const b = pcw(ccw.dirX, ccw.dirY); // ccw end's face that faces the wedge (its CW side)
+  const oa = offsetOrigin(node, cw);
+  const ob = offsetOrigin(node, ccw);
   let angle = ccw.bearing - cw.bearing;
   if (angle <= 0) angle += 360;
   return {
     nodeX: node.x,
     nodeY: node.y,
-    a: { x: node.x + a.x * (cw.thickness / 2), y: node.y + a.y * (cw.thickness / 2), dx: cw.dirX, dy: cw.dirY },
-    b: { x: node.x + b.x * (ccw.thickness / 2), y: node.y + b.y * (ccw.thickness / 2), dx: ccw.dirX, dy: ccw.dirY },
+    a: { x: oa.x + a.x * (cw.thickness / 2), y: oa.y + a.y * (cw.thickness / 2), dx: cw.dirX, dy: cw.dirY },
+    b: { x: ob.x + b.x * (ccw.thickness / 2), y: ob.y + b.y * (ccw.thickness / 2), dx: ccw.dirX, dy: ccw.dirY },
     angleDeg: angle,
     miterLimit,
   };
@@ -70,8 +85,9 @@ const cornersAtEnd = (
 ): { inner: Vec2; outer: Vec2 } => {
   const n = pcw(end.dirX, end.dirY); // either ±nWall — symmetric butt corners
   const half = end.thickness / 2;
-  const butt1: Vec2 = { x: node.x + n.x * half, y: node.y + n.y * half };
-  const butt2: Vec2 = { x: node.x - n.x * half, y: node.y - n.y * half };
+  const o = offsetOrigin(node, end);
+  const butt1: Vec2 = { x: o.x + n.x * half, y: o.y + n.y * half };
+  const butt2: Vec2 = { x: o.x - n.x * half, y: o.y - n.y * half };
 
   if (!junction || junction.ends.length < 2) {
     return splitBySide(butt1, butt2, node, nWall);
@@ -173,8 +189,9 @@ const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: Ju
   // Wall's own left-hand normal — the stable inner(+n)/outer(−n) reference.
   const nWall: Vec2 = { x: -dy / len, y: dx / len };
 
-  const end1: WallEnd = { wallId: wall.id, handle: "p1", thickness: wall.thickness, dirX: dx / len, dirY: dy / len, bearing: 0 };
-  const end2: WallEnd = { wallId: wall.id, handle: "p2", thickness: wall.thickness, dirX: -dx / len, dirY: -dy / len, bearing: 0 };
+  const off = wall.offset ?? 0;
+  const end1: WallEnd = { wallId: wall.id, handle: "p1", thickness: wall.thickness, offset: off, dirX: dx / len, dirY: dy / len, bearing: 0 };
+  const end2: WallEnd = { wallId: wall.id, handle: "p2", thickness: wall.thickness, offset: off, dirX: -dx / len, dirY: -dy / len, bearing: 0 };
 
   const j1 = junctions.get(nodeKey(wall.x1, wall.y1)) ?? null;
   const j2 = junctions.get(nodeKey(wall.x2, wall.y2)) ?? null;

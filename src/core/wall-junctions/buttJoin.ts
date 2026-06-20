@@ -23,6 +23,19 @@ const dot = (ax: number, ay: number, bx: number, by: number) => ax * bx + ay * b
 const perp = (dx: number, dy: number): Vec2 => ({ x: -dy, y: dx });
 const endKey = (e: WallEnd) => `${e.wallId}:${e.handle}`;
 
+/** The wall's canonical +n, derived from an end (sign depends on which end). */
+const nCanonOf = (e: WallEnd): Vec2 => {
+  const n = perp(e.dirX, e.dirY);
+  return e.handle === "p1" ? n : { x: -n.x, y: -n.y };
+};
+
+/** Node shifted by the wall's eccentric offset — the origin for its faces. */
+const offsetOrigin = (node: Vec2, e: WallEnd): Vec2 => {
+  if (!e.offset) return node;
+  const n = nCanonOf(e);
+  return { x: node.x + n.x * e.offset, y: node.y + n.y * e.offset };
+};
+
 /** Split two corners into inner(+nWall) / outer(−nWall). */
 const splitBySide = (c1: Vec2, c2: Vec2, node: Vec2, nWall: Vec2): { inner: Vec2; outer: Vec2 } => {
   const d1 = dot(c1.x - node.x, c1.y - node.y, nWall.x, nWall.y);
@@ -34,10 +47,18 @@ interface Host {
   dirX: number;
   dirY: number;
   half: number;
+  /** World-space offset shift of the host centreline (eccentricity). */
+  ox: number;
+  oy: number;
 }
 
+const hostFromEnd = (rep: WallEnd, half: number, node: Vec2): Host => {
+  const o = offsetOrigin(node, rep);
+  return { dirX: rep.dirX, dirY: rep.dirY, half, ox: o.x - node.x, oy: o.y - node.y };
+};
+
 /** The through slab at the node + the set of ends that belong to it. */
-const findHost = (ends: WallEnd[]): { host: Host; through: Set<string> } => {
+const findHost = (ends: WallEnd[], node: Vec2): { host: Host; through: Set<string> } => {
   // Prefer the thickest collinear pair (a real through-wall).
   let pair: { a: WallEnd; b: WallEnd } | null = null;
   for (let i = 0; i < ends.length; i++) {
@@ -49,14 +70,15 @@ const findHost = (ends: WallEnd[]): { host: Host; through: Set<string> } => {
     }
   }
   if (pair) {
+    const rep = pair.a.thickness >= pair.b.thickness ? pair.a : pair.b;
     return {
-      host: { dirX: pair.a.dirX, dirY: pair.a.dirY, half: Math.max(pair.a.thickness, pair.b.thickness) / 2 },
+      host: hostFromEnd(rep, Math.max(pair.a.thickness, pair.b.thickness) / 2, node),
       through: new Set([endKey(pair.a), endKey(pair.b)]),
     };
   }
   // No collinear pair (an L): the dominant wall runs through.
   const dom = [...ends].sort((x, y) => y.thickness - x.thickness || (x.wallId < y.wallId ? -1 : 1))[0];
-  return { host: { dirX: dom.dirX, dirY: dom.dirY, half: dom.thickness / 2 }, through: new Set([endKey(dom)]) };
+  return { host: hostFromEnd(dom, dom.thickness / 2, node), through: new Set([endKey(dom)]) };
 };
 
 /** Inner/outer corners for one wall end under the butt join style. */
@@ -67,9 +89,10 @@ export const buttCornersForEnd = (
   nWall: Vec2,
 ): { inner: Vec2; outer: Vec2 } => {
   const half = end.thickness / 2;
-  const { host, through } = findHost(junction.ends);
-  const sq1: Vec2 = { x: node.x + nWall.x * half, y: node.y + nWall.y * half };
-  const sq2: Vec2 = { x: node.x - nWall.x * half, y: node.y - nWall.y * half };
+  const { host, through } = findHost(junction.ends, node);
+  const o = offsetOrigin(node, end);
+  const sq1: Vec2 = { x: o.x + nWall.x * half, y: o.y + nWall.y * half };
+  const sq2: Vec2 = { x: o.x - nWall.x * half, y: o.y - nWall.y * half };
 
   if (through.has(endKey(end))) {
     const hasPartner = junction.ends.some(
@@ -92,11 +115,11 @@ export const buttCornersForEnd = (
   // Abutting end: clip both faces to the host slab's near face line.
   const hN = perp(host.dirX, host.dirY);
   const side = dot(end.dirX, end.dirY, hN.x, hN.y) >= 0 ? 1 : -1;
-  const faceX = node.x + hN.x * host.half * side;
-  const faceY = node.y + hN.y * host.half * side;
+  const faceX = node.x + host.ox + hN.x * host.half * side;
+  const faceY = node.y + host.oy + hN.y * host.half * side;
   const nE = perp(end.dirX, end.dirY);
-  const f1 = { x: node.x + nE.x * half, y: node.y + nE.y * half };
-  const f2 = { x: node.x - nE.x * half, y: node.y - nE.y * half };
+  const f1 = { x: o.x + nE.x * half, y: o.y + nE.y * half };
+  const f2 = { x: o.x - nE.x * half, y: o.y - nE.y * half };
   const c1 = intersectLines(f1.x, f1.y, end.dirX, end.dirY, faceX, faceY, host.dirX, host.dirY) ?? f1;
   const c2 = intersectLines(f2.x, f2.y, end.dirX, end.dirY, faceX, faceY, host.dirX, host.dirY) ?? f2;
   return splitBySide(c1, c2, node, nWall);

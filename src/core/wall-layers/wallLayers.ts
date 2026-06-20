@@ -109,18 +109,21 @@ export const buildWallLayerBands = (wall: WallShape, outline: WallOutline): Wall
   const len = Math.hypot(dx, dy) || 1;
   const px = -dy / len; // +n perpendicular unit (left-hand normal)
   const py = dx / len;
+  const off = wall.offset ?? 0; // eccentric body shift along +n
 
   // End-cut lines: through each end's inner & outer body corners. All bands at
   // an end are cut by the same line, so they share the corner's mitre angle.
   const cut1 = { ox: outline.p1Inner.x, oy: outline.p1Inner.y, dx: outline.p1Outer.x - outline.p1Inner.x, dy: outline.p1Outer.y - outline.p1Inner.y };
   const cut2 = { ox: outline.p2Inner.x, oy: outline.p2Inner.y, dx: outline.p2Outer.x - outline.p2Inner.x, dy: outline.p2Outer.y - outline.p2Inner.y };
 
-  /** Where the offset line (at distance `o` on side `dir`) meets an end-cut line. */
+  /** Where the offset line (at distance `o` on side `dir`) meets an end-cut line.
+   *  The eccentric body shift `off` moves every band line along +n. */
   const cornerAt = (o: number, dir: number, cut: { ox: number; oy: number; dx: number; dy: number }, fallbackX: number, fallbackY: number) => {
-    const lx = wall.x1 + px * dir * o;
-    const ly = wall.y1 + py * dir * o;
+    const s = off + dir * o;
+    const lx = wall.x1 + px * s;
+    const ly = wall.y1 + py * s;
     const hit = intersectLines(lx, ly, dx / len, dy / len, cut.ox, cut.oy, cut.dx, cut.dy);
-    return hit ?? { x: fallbackX + px * dir * o, y: fallbackY + py * dir * o };
+    return hit ?? { x: fallbackX + px * s, y: fallbackY + py * s };
   };
 
   const bands: WallLayerBand[] = [];
