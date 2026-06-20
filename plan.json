@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-4",
-      "title": "Render mitred wall outlines (L-junction) + mitred layer bands",
-      "covers": ["#2", "#6"],
-      "detail": "Add computeWallOutline.ts; switch ShapeRenderer wall case from a stroked Line to a filled polygon from computeWallJunctions. Move wallLayers bands onto the mitred outline (fixes the noted corner-gap limitation).",
-      "dimensions": "measurementReference inner/outer now uses true mitred face intersections; recompute per-segment face endpoints from the outline."
-    },
-    {
       "id": "wj-5",
       "title": "Free-end caps",
       "covers": ["#1"],
