@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-10",
-      "title": "Collinear continuation + thickness-mismatch alignment",
-      "covers": ["#11", "#12"],
-      "detail": "Collinear ends pass straight through (no mitre). On thickness mismatch, align faces per junctionAlign (flush-left/centered/flush-right) and build the transition.",
-      "dimensions": "Continuous run reads as one span when thickness matches; transition offset reflected in inner/outer chains."
-    },
-    {
       "id": "wj-11",
       "title": "Mid-span connection (split host)",
       "covers": ["#16"],
