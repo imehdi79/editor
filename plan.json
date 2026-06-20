@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-13",
-      "title": "Eccentric / offset joins",
-      "covers": ["#15"],
-      "detail": "Add a per-wall lateral centreline offset; compute faces from the offset centreline so walls can join off-centre (e.g. wall on one side of a column).",
-      "dimensions": "Faces and chains derive from the offset centreline."
-    },
-    {
       "id": "wj-14",
       "title": "Composite multi-layer junction matching (BIM)",
       "covers": ["#19"],
