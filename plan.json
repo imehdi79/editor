@@ -9,7 +9,128 @@
     "After a successful commit, remove the completed step from the plan.",
     "Follow DRY principles.",
     "Reuse existing components and patterns whenever possible.",
-    "Avoid overengineering. Build the simplest scalable solution that meets current requirements. Do not add abstractions, optimizations, or features without a clear need."
+    "Avoid overengineering. Build the simplest scalable solution that meets current requirements. Do not add abstractions, optimizations, or features without a clear need.",
+    "Wall junctions: adding or removing any junction type or join style must be trivial — classify junction kinds in one classifier and keep join styles in a registry (Record<JoinStyle, JoinResolver>); no junction switch-ladders in the renderer.",
+    "Wall junctions: any value an architect may need to change manually (join style, miter limit, end cap, thickness-mismatch alignment) must be a configurable setting in editor.store with a UI control — never hard-coded. Geometric-truth constants (SNAP_EPSILON, collinear tolerance) stay as module constants.",
+    "Reuse existing code first (computeTopology, wallAngles, wallGeometry, dimensionChains, wallLayers); create new files only when no existing one can host the concern.",
+    "Curved/arc walls are a separate shape variant and tool (a distinct option alongside the straight wall), not a flag bolted onto the straight wall.",
+    "No temporary, partial, or construction-incompatible solutions; every junction must be a geometrically correct solid suitable for takeoff, consistent with the construction purpose of the project.",
+    "Every junction step must update dimensions and dimension display in the same step (measurementReference faces, per-segment dimensions, and dimensionChains break-points), never as a later patch.",
+    "Wall height (WallShape.height) is carried in 2D now for future 3D: set it on creation, keep it editable in 2D, and preserve/propagate it through every junction and edit path — never drop it.",
+    "See .claude/skills/wall-junctions for the authoritative geometry/computation reference for all 20 junction types."
   ],
-  "steps": []
+  "steps": [
+    {
+      "id": "wj-1",
+      "title": "Scaffold core/wall-junctions module (types + classifier)",
+      "covers": ["#1", "#2", "#3", "#4", "#5", "#11"],
+      "detail": "Add junction.types.ts (JunctionKind, JoinStyle, EndCap, WallNode, WallEnd, JunctionConfig, WallOutline) and classifyJunction.ts that turns a computeTopology node + the ends meeting there into a JunctionKind (free/L/T/X/star/collinear), ends sorted by absoluteAngleDeg. Add index.ts computeWallJunctions(shapes, config), WeakMap-cached by `shapes` like computeRoomAreas. Pure, no React/Konva/store. No visual change yet.",
+      "dimensions": "None yet (no geometry rendered)."
+    },
+    {
+      "id": "wj-2",
+      "title": "Add configurable junction settings to editor.store + wall-defaults UI",
+      "covers": ["#6", "#7", "#8", "#9", "#1", "#12"],
+      "detail": "Add wallJoinStyle (miter|butt|bevel|round, default miter), miterLimit (number), wallEndCap (butt|round|square), junctionAlign (flush-left|centered|flush-right) with setters, and expose controls in the wall-defaults panel. Feed them into junctionConfig.ts.",
+      "dimensions": "None (settings only)."
+    },
+    {
+      "id": "wj-3",
+      "title": "Join-style registry + miter resolver",
+      "covers": ["#6"],
+      "detail": "Add joinStyles/index.ts (Record<JoinStyle, JoinResolver>) and joinStyles/miter.ts. JoinResolver: given two adjacent face rays + included angle, return join vertices. Mirror the determinant line-intersection from dimensionChains.ts for the apex. butt/bevel/round added in later steps.",
+      "dimensions": "None yet."
+    },
+    {
+      "id": "wj-4",
+      "title": "Render mitred wall outlines (L-junction) + mitred layer bands",
+      "covers": ["#2", "#6"],
+      "detail": "Add computeWallOutline.ts; switch ShapeRenderer wall case from a stroked Line to a filled polygon from computeWallJunctions. Move wallLayers bands onto the mitred outline (fixes the noted corner-gap limitation).",
+      "dimensions": "measurementReference inner/outer now uses true mitred face intersections; recompute per-segment face endpoints from the outline."
+    },
+    {
+      "id": "wj-5",
+      "title": "Free-end caps",
+      "covers": ["#1"],
+      "detail": "At any wall end with no topology node, close the two face points per wallEndCap (butt/round/square).",
+      "dimensions": "Outer measurement at a free end reflects the cap (square adds half-thickness; butt/round do not)."
+    },
+    {
+      "id": "wj-6",
+      "title": "T-junction + butt join",
+      "covers": ["#3", "#7"],
+      "detail": "Detect the collinear through-wall pair at a 3-wall node; keep it continuous and clip the abutting wall to the through-wall's near face (butt resolver).",
+      "dimensions": "Chain break-points already handle T (dimensionChains.ts) — verify the break uses the resolved face, and the abutting wall's clear length stops at the host face."
+    },
+    {
+      "id": "wj-7",
+      "title": "X / cross + star multi-way junctions",
+      "covers": ["#4", "#5"],
+      "detail": "Generalise the angular-sort mitre to N ends (4 = cross, 5+ = star): mitre each adjacent neighbour pair around the node.",
+      "dimensions": "Each arm's face-to-face length measured to its mitre apex."
+    },
+    {
+      "id": "wj-8",
+      "title": "Miter limit -> bevel (incl. acute-angle spike clamp)",
+      "covers": ["#8", "#10"],
+      "detail": "Add joinStyles/bevel.ts; when mitre length exceeds miterLimit×half-thickness (sharp/acute angles), substitute a straight chamfer between the two face points.",
+      "dimensions": "Face endpoints follow the chamfer, not the clamped spike."
+    },
+    {
+      "id": "wj-9",
+      "title": "Round join",
+      "covers": ["#9"],
+      "detail": "Add joinStyles/round.ts: fillet arc tangent to both faces, radius from setting. Registry entry only; renderer unchanged.",
+      "dimensions": "Measure to the arc's tangent points."
+    },
+    {
+      "id": "wj-10",
+      "title": "Collinear continuation + thickness-mismatch alignment",
+      "covers": ["#11", "#12"],
+      "detail": "Collinear ends pass straight through (no mitre). On thickness mismatch, align faces per junctionAlign (flush-left/centered/flush-right) and build the transition.",
+      "dimensions": "Continuous run reads as one span when thickness matches; transition offset reflected in inner/outer chains."
+    },
+    {
+      "id": "wj-11",
+      "title": "Mid-span connection (split host)",
+      "covers": ["#16"],
+      "detail": "When a wall end lands on another wall's body, project onto the host (wallGeometry.projectOntoWall) and split the host at that t into two segments sharing a node, producing a real T. Preserve height/layers/category on both halves.",
+      "dimensions": "Re-trace computeRoomAreas (centreline graph changed); chain break appears at the split."
+    },
+    {
+      "id": "wj-12",
+      "title": "Validation hints: overlap + touching-not-joined",
+      "covers": ["#13", "#14"],
+      "detail": "Detect collinear overlapping spans (#13) and near-coincident faces with no shared node (#14); surface as non-destructive warnings / offer-to-join. Never auto-delete.",
+      "dimensions": "No geometry change; warnings only."
+    },
+    {
+      "id": "wj-13",
+      "title": "Eccentric / offset joins",
+      "covers": ["#15"],
+      "detail": "Add a per-wall lateral centreline offset; compute faces from the offset centreline so walls can join off-centre (e.g. wall on one side of a column).",
+      "dimensions": "Faces and chains derive from the offset centreline."
+    },
+    {
+      "id": "wj-14",
+      "title": "Composite multi-layer junction matching (BIM)",
+      "covers": ["#19"],
+      "detail": "Match each wallLayers band to its counterpart across the junction so layers wrap/meet correctly, not only the structural core.",
+      "dimensions": "Layer takeoff lengths follow matched joins."
+    },
+    {
+      "id": "wj-15",
+      "title": "Curved / arc walls (separate shape + tool)",
+      "covers": ["#17"],
+      "detail": "Add an arc-wall shape variant and its own tool (distinct option alongside the straight wall). Join a straight wall to an arc using the arc tangent at the contact node.",
+      "dimensions": "Arc-length-aware dimensions; tangent-based face joins."
+    },
+    {
+      "id": "wj-16",
+      "title": "3D height consumption",
+      "covers": ["#18"],
+      "detail": "Extrude each wall to its own WallShape.height in the lazy-loaded 3D scene; handle height-mismatch junctions in 3D. Keep height editing in 2D.",
+      "dimensions": "2D unaffected; 3D respects per-wall height."
+    }
+  ]
 }
