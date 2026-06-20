@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-6",
-      "title": "T-junction + butt join",
-      "covers": ["#3", "#7"],
-      "detail": "Detect the collinear through-wall pair at a 3-wall node; keep it continuous and clip the abutting wall to the through-wall's near face (butt resolver).",
-      "dimensions": "Chain break-points already handle T (dimensionChains.ts) — verify the break uses the resolved face, and the abutting wall's clear length stops at the host face."
-    },
-    {
       "id": "wj-7",
       "title": "X / cross + star multi-way junctions",
       "covers": ["#4", "#5"],
