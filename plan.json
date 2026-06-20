@@ -21,13 +21,6 @@
   ],
   "steps": [
     {
-      "id": "wj-5",
-      "title": "Free-end caps",
-      "covers": ["#1"],
-      "detail": "At any wall end with no topology node, close the two face points per wallEndCap (butt/round/square).",
-      "dimensions": "Outer measurement at a free end reflects the cap (square adds half-thickness; butt/round do not)."
-    },
-    {
       "id": "wj-6",
       "title": "T-junction + butt join",
       "covers": ["#3", "#7"],
