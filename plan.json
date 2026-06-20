@@ -1,6 +1,7 @@
 {
   "type": "frontend",
   "rules": [
+    "Understand what i need, if task is not clear ask me question if its clear no need",
     "Implementation must be scalable and maintainable.",
     "Maintain consistency with the existing architecture, folder structure, naming conventions, and coding patterns.",
     "Do not introduce runtime errors.",
@@ -17,7 +18,7 @@
     "No temporary, partial, or construction-incompatible solutions; every junction must be a geometrically correct solid suitable for takeoff, consistent with the construction purpose of the project.",
     "Every junction step must update dimensions and dimension display in the same step (measurementReference faces, per-segment dimensions, and dimensionChains break-points), never as a later patch.",
     "Wall height (WallShape.height) is carried in 2D now for future 3D: set it on creation, keep it editable in 2D, and preserve/propagate it through every junction and edit path — never drop it.",
-    "See .claude/skills/wall-junctions for the authoritative geometry/computation reference for all 20 junction types.",
+    "If current task related to juctions or dimentions, See .claude/skills/wall-junctions for the authoritative geometry/computation reference for all 20 junction types.",
     "All user-facing terminology must be localized in Italian (it), Persian (fa), English (en), and German (de). Use professional construction, architecture, and building-design terminology rather than generic translations. Wall types, junctions, join styles, dimensions, layers, structural elements, editor controls, validation messages, and all future features must follow the existing i18n system. Translation keys must be scalable and maintainable. The implementer is responsible for choosing the appropriate industry-standard terminology in each language."
   ],
   "steps": []
