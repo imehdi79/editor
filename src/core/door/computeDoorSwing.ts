@@ -89,7 +89,16 @@ export const computeDoorSwing = (shape: DoorShape | Omit<DoorShape, "id">): Door
   // Determine arc sweep direction from the signed angular distance
   // closed → open, wrapped to (−π, π].
   // Negative diff → must travel counter-clockwise (ccw=true on canvas).
-  const diff = ((openAngleRad - closedAngleRad + Math.PI) % (2 * Math.PI)) - Math.PI;
+  //
+  // JS '%' keeps the sign of the dividend, so the naive
+  // ((d + π) % 2π) − π fails to wrap when d < −π (e.g. a wall pointing toward
+  // the lower-left with an inward swing yields d = −3π/2). That produced a
+  // −3π/2 "distance", flipping the sweep so the arc rendered as a 3/4 circle
+  // on the wrong side. Normalise explicitly into (−π, π] instead.
+  const TWO_PI = 2 * Math.PI;
+  let diff = (openAngleRad - closedAngleRad) % TWO_PI;
+  if (diff <= -Math.PI) diff += TWO_PI;
+  else if (diff > Math.PI) diff -= TWO_PI;
   const counterClockwise = diff < 0;
 
   return {
