@@ -14,14 +14,16 @@
  * Pure types — no React, no Konva, no store.
  */
 
-import type { ShapeId } from "@/core/drawing-engine/drawing.types";
+import type { ShapeId, JoinStyle } from "@/core/drawing-engine/drawing.types";
 
 // ---------------------------------------------------------------------------
 // Configurable choices (mirrored in editor.store)
 // ---------------------------------------------------------------------------
 
-/** How two wall faces resolve at a corner. Registry-backed (joinStyles/). */
-export type JoinStyle = "miter" | "butt" | "bevel" | "round";
+/** How two wall faces resolve at a corner. Registry-backed (joinStyles/).
+ *  Canonical definition lives in drawing.types so a WallShape can carry a
+ *  per-node override without an import cycle; re-exported here for the module. */
+export type { JoinStyle };
 
 /** How a free (unconnected) wall end is closed. */
 export type EndCap = "butt" | "round" | "square";
@@ -82,6 +84,9 @@ export interface ClassifiedJunction {
   kind: JunctionKind;
   /** Wall ends at this node, sorted by ascending bearing. */
   ends: WallEnd[];
+  /** Per-node join-style override (from the walls' joinP1/joinP2). Undefined →
+   *  the consumer falls back to the global `wallJoinStyle` default. */
+  joinStyle?: JoinStyle;
 }
 
 /** Map from node key → classified junction. */

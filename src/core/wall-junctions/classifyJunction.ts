@@ -9,7 +9,7 @@
  * Pure — no React, no Konva, no store.
  */
 
-import type { Shape, WallShape } from "@/core/drawing-engine/drawing.types";
+import type { JoinStyle, Shape, WallShape } from "@/core/drawing-engine/drawing.types";
 import type { TopologyNode } from "@/core/topology/computeTopology";
 import { absoluteAngleDeg } from "@/core/wall-utils/wallAngles";
 import { endThickness } from "@/core/wall-utils/wallThickness";
@@ -81,6 +81,21 @@ const classifyKind = (ends: WallEnd[]): JunctionKind => {
 };
 
 /**
+ * The node's per-node join override, read from the walls meeting there. All
+ * endpoints at a node are kept in sync (useSetNodeJoin), so the first defined
+ * override is the node's choice; undefined → fall back to the global default.
+ */
+const nodeJoinOverride = (node: TopologyNode, shapes: Record<string, Shape>): JoinStyle | undefined => {
+  for (const ref of node.refs) {
+    const wall = shapes[ref.shapeId];
+    if (wall?.type !== "wall") continue;
+    const join = ref.handle === "p1" ? wall.joinP1 : wall.joinP2;
+    if (join) return join;
+  }
+  return undefined;
+};
+
+/**
  * Classify a single topology node. Returns null when no wall end lives there
  * (e.g. a node formed only by lines / dimension geometry).
  */
@@ -90,5 +105,12 @@ export const classifyJunction = (
 ): ClassifiedJunction | null => {
   const ends = wallEndsAt(node, shapes);
   if (ends.length === 0) return null;
-  return { key: node.key, x: node.x, y: node.y, kind: classifyKind(ends), ends };
+  return {
+    key: node.key,
+    x: node.x,
+    y: node.y,
+    kind: classifyKind(ends),
+    ends,
+    joinStyle: nodeJoinOverride(node, shapes),
+  };
 };

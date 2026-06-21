@@ -1,23 +1,38 @@
 /**
- * NodeThicknessPopover — on-canvas editor for a wall's thickness, opened by
- * tapping one of the wall's endpoint node handles (see useTransformEngine's
- * onNodeTap). It is a DOM overlay (not a Konva node) anchored at the tapped
- * node's screen position, computed from the viewport transform so it tracks
- * pan/zoom.
+ * NodeThicknessPopover — on-canvas editor for a wall node, opened by tapping one
+ * of the wall's endpoint node handles (see useTransformEngine's onNodeTap). It is
+ * a DOM overlay (not a Konva node) anchored at the tapped node's screen position,
+ * computed from the viewport transform so it tracks pan/zoom.
  *
- * Edits the selected wall only; hosted openings stay in sync via
- * useSetWallThickness. Closes on outside-click, Escape, or when the target
- * stops being a wall (deleted / deselected elsewhere).
+ * Edits:
+ *   - the wall's thickness at this node (tapering the wall; openings stay in sync)
+ *   - the node's JOIN style — shown only when 2+ walls meet here. The join is a
+ *     property of the node, so the change propagates to every connected wall
+ *     (useSetNodeJoin); the global default applies when unset.
+ *
+ * Closes on outside-click, Escape, or when the target stops being a wall.
  */
 
 import { useEffect, useRef } from "react";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useEditorStore } from "@/store/editor.store";
 import { useViewportStore } from "@/store/viewport.store";
+import { Button } from "@/components/ui/button";
 import { toPx, toUnit, stepFor } from "@/core/dimensions/dimensionUnits";
 import { endThickness } from "@/core/wall-utils/wallThickness";
+import { computeWallJunctions, junctionAt } from "@/core/wall-junctions";
+import type { JoinStyle } from "@/core/drawing-engine/drawing.types";
 import { useSetWallThickness, useSetWallEndThickness } from "@/features/wall-tool/useWallThickness";
-import { useTranslation } from "@/i18n";
+import { useSetNodeJoin } from "@/features/wall-tool/useNodeJoin";
+import { useTranslation, type TranslationKey } from "@/i18n";
+
+/** Join styles offered at a node — labels resolved via i18n. */
+const JOIN_STYLES = [
+  { value: "miter", key: "joinStyle.miter" },
+  { value: "butt", key: "joinStyle.butt" },
+  { value: "bevel", key: "joinStyle.bevel" },
+  { value: "round", key: "joinStyle.round" },
+] satisfies { value: JoinStyle; key: TranslationKey }[];
 
 interface Props {
   shapeId: string;
@@ -27,14 +42,17 @@ interface Props {
 
 const NodeThicknessPopover = ({ shapeId, handle, onClose }: Props) => {
   const { t } = useTranslation();
-  const shape = useFloorPlanStore((s) => s.shapes[shapeId]);
+  const shapes = useFloorPlanStore((s) => s.shapes);
+  const shape = shapes[shapeId];
   const unit = useEditorStore((s) => s.dimensionUnit);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
+  const wallJoinStyle = useEditorStore((s) => s.wallJoinStyle);
   const vx = useViewportStore((s) => s.x);
   const vy = useViewportStore((s) => s.y);
   const scale = useViewportStore((s) => s.scale);
   const setWallThickness = useSetWallThickness();
   const setWallEndThickness = useSetWallEndThickness();
+  const setNodeJoin = useSetNodeJoin();
   const cardRef = useRef<HTMLDivElement>(null);
 
   const isWall = !!shape && (shape.type === "wall" || shape.type === "arc-wall");
@@ -76,30 +94,56 @@ const NodeThicknessPopover = ({ shapeId, handle, onClose }: Props) => {
   const commit = (px: number) =>
     tapered ? setWallEndThickness(shapeId, handle, px) : setWallThickness(shapeId, px);
 
+  // Join is only meaningful where two or more walls meet at this node.
+  const junction = junctionAt(nodeX, nodeY, computeWallJunctions(shapes));
+  const isJunction = !!junction && junction.ends.length >= 2;
+  const currentJoin = junction?.joinStyle ?? wallJoinStyle;
+
   return (
     <div
       ref={cardRef}
-      className="fixed z-40 flex -translate-x-1/2 -translate-y-full items-center gap-1 rounded-lg border bg-popover p-1.5 text-xs shadow-2xl"
+      className="fixed z-40 flex -translate-x-1/2 -translate-y-full flex-col gap-1.5 rounded-lg border bg-popover p-1.5 text-xs shadow-2xl"
       style={{ left, top: top - 14 }}
     >
-      <span className="text-muted-foreground">{t("wall.thickness")}</span>
-      <input
-        type="number"
-        autoFocus
-        min={stepFor(unit)}
-        step={stepFor(unit)}
-        value={toUnit(valuePx, unit, ppm)}
-        onFocus={(e) => e.target.select()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onClose();
-        }}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          if (!Number.isNaN(v) && v >= stepFor(unit)) commit(toPx(v, unit, ppm));
-        }}
-        className="h-7 w-16 rounded-md border bg-background px-2 text-right outline-none focus-visible:border-ring"
-      />
-      <span className="w-5 text-muted-foreground">{unit}</span>
+      <div className="flex items-center gap-1">
+        <span className="text-muted-foreground">{t("wall.thickness")}</span>
+        <input
+          type="number"
+          autoFocus
+          min={stepFor(unit)}
+          step={stepFor(unit)}
+          value={toUnit(valuePx, unit, ppm)}
+          onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onClose();
+          }}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            if (!Number.isNaN(v) && v >= stepFor(unit)) commit(toPx(v, unit, ppm));
+          }}
+          className="h-7 w-16 rounded-md border bg-background px-2 text-right outline-none focus-visible:border-ring"
+        />
+        <span className="w-5 text-muted-foreground">{unit}</span>
+      </div>
+
+      {isJunction && (
+        <div className="flex flex-col gap-1 border-t pt-1.5">
+          <span className="text-[11px] text-muted-foreground">{t("settings.wallJoin")}</span>
+          <div className="flex gap-1">
+            {JOIN_STYLES.map((opt) => (
+              <Button
+                key={opt.value}
+                size="xs"
+                variant={currentJoin === opt.value ? "default" : "outline"}
+                className="flex-1 px-1"
+                onClick={() => setNodeJoin(shapeId, handle, opt.value)}
+              >
+                {t(opt.key)}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

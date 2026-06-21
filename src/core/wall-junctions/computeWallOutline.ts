@@ -94,9 +94,12 @@ const cornersAtEnd = (
     return splitBySide(butt1, butt2, node, nWall);
   }
 
+  // The node's own join style (set per node) wins over the global default.
+  const joinStyle = junction.joinStyle ?? config.joinStyle;
+
   // Butt is asymmetric (one wall runs through, others clip to its face), so it is
   // resolved at the node, not via the symmetric per-wedge registry.
-  if (config.joinStyle === "butt") {
+  if (joinStyle === "butt") {
     return buttCornersForEnd(junction, end, node, nWall);
   }
 
@@ -106,7 +109,7 @@ const cornersAtEnd = (
 
   const ccwNeighbor = ends[(i + 1) % ends.length];
   const cwNeighbor = ends[(i - 1 + ends.length) % ends.length];
-  const resolve = getJoinResolver(config.joinStyle);
+  const resolve = getJoinResolver(joinStyle);
 
   // CCW corner: this end is the a-side of the wedge with its CCW neighbour.
   const ccwWedge = wedgeBetween(node, end, ccwNeighbor, config.miterLimit);
@@ -239,12 +242,14 @@ const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: Ju
  * they emit no patches.
  */
 const buildPatches = (shapes: Record<string, Shape>, config: JunctionConfig): Vec2[][] => {
-  if (config.joinStyle === "butt") return [];
   const junctions = computeWallJunctions(shapes);
-  const resolve = getJoinResolver(config.joinStyle);
   const patches: Vec2[][] = [];
   for (const j of junctions.values()) {
     if (j.ends.length < 2) continue;
+    // Per-node style: butt clips/extends instead of patching, so it emits none.
+    const style = j.joinStyle ?? config.joinStyle;
+    if (style === "butt") continue;
+    const resolve = getJoinResolver(style);
     const node: Vec2 = { x: j.x, y: j.y };
     for (let i = 0; i < j.ends.length; i++) {
       const wedge = wedgeBetween(node, j.ends[i], j.ends[(i + 1) % j.ends.length], config.miterLimit);

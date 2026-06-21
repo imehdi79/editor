@@ -17,6 +17,11 @@ export interface BaseShape {
  *  so which face is which is purely a construction/takeoff bookkeeping concern. */
 export type WallSide = "inner" | "outer";
 
+/** How two wall bodies resolve where they meet at a corner. Registry-backed by
+ *  core/wall-junctions/joinStyles. Canonical here (re-exported by junction.types)
+ *  so a WallShape can carry a per-node override without an import cycle. */
+export type JoinStyle = "miter" | "butt" | "bevel" | "round";
+
 /**
  * A construction layer's BIM function — its role in the assembly and, crucially,
  * its **junction priority**. Where two composite walls meet, a layer continues
@@ -95,6 +100,14 @@ export interface WallShape extends BaseShape {
   assembly?: WallLayer[];
   coreStart?: number;
   coreEnd?: number;
+  /**
+   * Per-node join-style override at each endpoint. Absent → the node uses the
+   * global `wallJoinStyle` default. A node is shared by every wall meeting there,
+   * so these are kept in sync across the node's walls (see useSetNodeJoin); the
+   * junction geometry reads the node's override, falling back to the default.
+   */
+  joinP1?: JoinStyle;
+  joinP2?: JoinStyle;
 }
 
 /**
