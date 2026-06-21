@@ -21,6 +21,8 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
   const snapGrid = useEditorStore((s) => s.snapGrid);
   const axisAngleThreshold = useEditorStore((s) => s.axisAngleThreshold);
   const snapRadius = useEditorStore((s) => s.snapRadius);
+  const guideThreshold = useEditorStore((s) => s.guideThreshold);
+  const perpThreshold = useEditorStore((s) => s.perpThreshold);
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
   const shapes = useFloorPlanStore((s) => s.shapes);
@@ -43,11 +45,13 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
       snapGrid,
       axisAngleThreshold,
       snapRadius,
+      guideThreshold,
+      perpThreshold,
       dimensionUnit,
       pixelsPerMeter,
       shapes,
     }),
-    [snapGrid, axisAngleThreshold, snapRadius, dimensionUnit, pixelsPerMeter, shapes],
+    [snapGrid, axisAngleThreshold, snapRadius, guideThreshold, perpThreshold, dimensionUnit, pixelsPerMeter, shapes],
   );
 
   const onMouseDown = useCallback(

@@ -191,6 +191,8 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
   const snapGrid = useEditorStore((s) => s.snapGrid);
   const axisAngleThreshold = useEditorStore((s) => s.axisAngleThreshold);
   const snapRadius = useEditorStore((s) => s.snapRadius);
+  const guideThreshold = useEditorStore((s) => s.guideThreshold);
+  const perpThreshold = useEditorStore((s) => s.perpThreshold);
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
   const linkConnectedNodes = useEditorStore((s) => s.linkConnectedNodes);
@@ -218,16 +220,16 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
   const [hints, setHints] = useState<DrawingHints>(EMPTY_HINTS);
 
   const makeConfig = useCallback(
-    (): ResolveConfig => ({ snapGrid, axisAngleThreshold, snapRadius, dimensionUnit, pixelsPerMeter, shapes }),
-    [snapGrid, axisAngleThreshold, snapRadius, dimensionUnit, pixelsPerMeter, shapes],
+    (): ResolveConfig => ({ snapGrid, axisAngleThreshold, snapRadius, guideThreshold, perpThreshold, dimensionUnit, pixelsPerMeter, shapes }),
+    [snapGrid, axisAngleThreshold, snapRadius, guideThreshold, perpThreshold, dimensionUnit, pixelsPerMeter, shapes],
   );
 
   const makeConfigExcluding = useCallback(
     (excludeId: string): ResolveConfig => {
       const { [excludeId]: _, ...rest } = shapes;
-      return { snapGrid, axisAngleThreshold, snapRadius, dimensionUnit, pixelsPerMeter, shapes: rest };
+      return { snapGrid, axisAngleThreshold, snapRadius, guideThreshold, perpThreshold, dimensionUnit, pixelsPerMeter, shapes: rest };
     },
-    [snapGrid, axisAngleThreshold, snapRadius, dimensionUnit, pixelsPerMeter, shapes],
+    [snapGrid, axisAngleThreshold, snapRadius, guideThreshold, perpThreshold, dimensionUnit, pixelsPerMeter, shapes],
   );
 
   // -------------------------------------------------------------------------

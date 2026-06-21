@@ -87,12 +87,14 @@ export const useSelectionEngine = () => {
   const snapGrid = useEditorStore((s) => s.snapGrid);
   const axisAngleThreshold = useEditorStore((s) => s.axisAngleThreshold);
   const snapRadius = useEditorStore((s) => s.snapRadius);
+  const guideThreshold = useEditorStore((s) => s.guideThreshold);
+  const perpThreshold = useEditorStore((s) => s.perpThreshold);
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
 
   const makeConfig = useCallback(
-    (): ResolveConfig => ({ snapGrid, axisAngleThreshold, snapRadius, dimensionUnit, pixelsPerMeter, shapes }),
-    [snapGrid, axisAngleThreshold, snapRadius, dimensionUnit, pixelsPerMeter, shapes],
+    (): ResolveConfig => ({ snapGrid, axisAngleThreshold, snapRadius, guideThreshold, perpThreshold, dimensionUnit, pixelsPerMeter, shapes }),
+    [snapGrid, axisAngleThreshold, snapRadius, guideThreshold, perpThreshold, dimensionUnit, pixelsPerMeter, shapes],
   );
 
   /** Click — resolve pointer then hit-test. */

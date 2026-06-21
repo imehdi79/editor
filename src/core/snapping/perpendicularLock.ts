@@ -3,8 +3,6 @@
 
 import type { Shape } from "@/core/drawing-engine/drawing.types";
 
-const PERP_THRESHOLD = 8; // degrees
-
 interface PerpResult {
   x: number;
   y: number;
@@ -21,7 +19,7 @@ export const applyPerpendicularLock = (
   currentX: number,
   currentY: number,
   shapes: Record<string, Shape>,
-  threshold = PERP_THRESHOLD,
+  threshold: number,
 ): PerpResult => {
   const currentAngle = Math.atan2(currentY - startY, currentX - startX);
 

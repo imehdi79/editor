@@ -34,6 +34,10 @@ import type { DimensionUnit } from "@/store/editor.store";
 export interface ResolveConfig {
   snapGrid: number;
   snapRadius: number;
+  /** Alignment-guide snap distance (px) — see editor.store `guideThreshold`. */
+  guideThreshold: number;
+  /** Perpendicular-lock tolerance (degrees) — see editor.store `perpThreshold`. */
+  perpThreshold: number;
   axisAngleThreshold: number;
   dimensionUnit: DimensionUnit;
   pixelsPerMeter: number;
@@ -80,7 +84,7 @@ export const resolvePoint = (
   startX?: number,
   startY?: number,
 ): ResolveResult => {
-  const { snapGrid, snapRadius, axisAngleThreshold, dimensionUnit, pixelsPerMeter, shapes } = config;
+  const { snapGrid, snapRadius, guideThreshold, perpThreshold, axisAngleThreshold, dimensionUnit, pixelsPerMeter, shapes } = config;
   const hasDragOrigin = startX !== undefined && startY !== undefined;
 
   // 1. Grid snap
@@ -93,7 +97,7 @@ export const resolvePoint = (
   // 3. Perpendicular lock — only while dragging and not yet point-snapped
   let perpLocked = false;
   if (hasDragOrigin && !pointSnap.snapped) {
-    const perp = applyPerpendicularLock(startX!, startY!, x, y, shapes);
+    const perp = applyPerpendicularLock(startX!, startY!, x, y, shapes, perpThreshold);
     if (perp.locked) {
       x = perp.x;
       y = perp.y;
@@ -115,7 +119,7 @@ export const resolvePoint = (
   }
 
   // 5. Alignment guides — computed from the final coordinate
-  const { guides, snappedX, snappedY } = computeAlignmentGuides(x, y, shapes);
+  const { guides, snappedX, snappedY } = computeAlignmentGuides(x, y, shapes, guideThreshold);
   if (!pointSnap.snapped && !axisLocked) {
     if (snappedX !== null) x = snappedX;
     if (snappedY !== null) y = snappedY;

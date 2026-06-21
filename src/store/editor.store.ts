@@ -40,6 +40,12 @@ interface EditorStore {
   snapGrid: number;
   axisAngleThreshold: number;
   snapRadius: number;
+  /** Alignment-guide snap distance (px): how close a point must be to another
+   *  shape's x/y to latch onto it. Separate from `snapRadius` (point snapping). */
+  guideThreshold: number;
+  /** Perpendicular-lock tolerance (degrees): how near 90° to another shape a
+   *  drag must be before it snaps perpendicular. */
+  perpThreshold: number;
   dimensionUnit: DimensionUnit;
   pixelsPerMeter: number;
 
@@ -74,6 +80,8 @@ interface EditorStore {
   dimensionDisplay: DimensionDisplay;
 
   setViewMode: (mode: "2d" | "3d") => void;
+  setGuideThreshold: (threshold: number) => void;
+  setPerpThreshold: (threshold: number) => void;
   setDimensionUnit: (unit: DimensionUnit) => void;
   setMeasurementReference: (ref: MeasurementReference) => void;
   setDefaultWallThickness: (thickness: number) => void;
@@ -88,13 +96,18 @@ interface EditorStore {
 
 export const useEditorStore = create<EditorStore>((set) => ({
   viewMode: "2d",
-  snapGrid: 0.5,
-  axisAngleThreshold: 3,
-  snapRadius: window.matchMedia("(pointer: coarse)").matches ? 16 : 6,
+  snapGrid: 0.2,
+  axisAngleThreshold: 1,
+  snapRadius: window.matchMedia("(pointer: coarse)").matches ? 16 : 2,
+  guideThreshold: 6,
+  perpThreshold: 1,
   dimensionUnit: "m",
+  // Professional scale: 1px = 1cm, so the wall-material build-ups (≈cm) and the
+  // 12cm/2.8m wall defaults below read to real-world size. Keep in sync with the
+  // WALL_MATERIALS thickness assumption in core/wall-layers.
   pixelsPerMeter: 100,
 
-  measurementReference: "centerline",
+  measurementReference: "outer",
   defaultWallThickness: 12,
   defaultWallHeight: 280,
   linkConnectedNodes: true,
@@ -106,6 +119,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
   junctionAlign: DEFAULT_JUNCTION_CONFIG.align,
 
   setViewMode: (mode) => set({ viewMode: mode }),
+  setGuideThreshold: (threshold) => set({ guideThreshold: threshold }),
+  setPerpThreshold: (threshold) => set({ perpThreshold: threshold }),
   setDimensionUnit: (unit) => set({ dimensionUnit: unit }),
   setMeasurementReference: (ref) => set({ measurementReference: ref }),
   setDefaultWallThickness: (thickness) => set({ defaultWallThickness: thickness }),

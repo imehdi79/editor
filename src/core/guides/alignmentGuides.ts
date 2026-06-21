@@ -1,7 +1,6 @@
 import type { Shape, GuideLine } from "@/core/drawing-engine/drawing.types";
 
-const GUIDE_THRESHOLD = 6; // px — چقدر نزدیک باشه guide فعال بشه
-const GUIDE_EXTEND = 600; // px — خط guide چقدر کشیده بشه
+const GUIDE_EXTEND = 1000; // px — خط guide چقدر کشیده بشه
 
 // همه x و y قابل توجه از شکل‌های موجود
 const extractKeyCoords = (shapes: Record<string, Shape>) => {
@@ -35,9 +34,10 @@ export const computeAlignmentGuides = (
   x: number,
   y: number,
   shapes: Record<string, Shape>,
+  guideThreshold: number,
   scale: number = 1,
 ): GuideResult => {
-  const threshold = GUIDE_THRESHOLD / scale;
+  const threshold = guideThreshold / scale;
   const { xs, ys } = extractKeyCoords(shapes);
   const guides: GuideLine[] = [];
   let snappedX: number | null = null;
