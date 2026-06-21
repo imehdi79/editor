@@ -226,6 +226,7 @@ const DrawingInfoCanvas = () => {
 
   const cellText = (i: number, top: number, text: string, color: string, indent = 0) => (
     <Text
+      key={i}
       x={colLeft[i] + PAD_X + indent}
       y={top + (ROW_H - FONT) / 2}
       width={colW[i] - PAD_X * 2 - indent}
