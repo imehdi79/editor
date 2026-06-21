@@ -25,14 +25,17 @@ import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import { useViewportStore } from "@/store/viewport.store";
 import type { Shape, GhostShape } from "@/core/drawing-engine/drawing.types";
-import { rotationHandlePos, ROTATE_HANDLE_OFFSET } from "@/features/select-tool/useTransformEngine";
+import { rotationHandlePos } from "@/features/select-tool/useTransformEngine";
+import { HANDLE_VISUAL_RADIUS, HANDLE_STROKE, ROTATE_HANDLE_OFFSET } from "@/features/select-tool/handleMetrics";
 import { computeTopology, nodeKey } from "@/core/topology/computeTopology";
 import { absoluteAngleDeg, formatAngle } from "@/core/wall-utils/wallAngles";
 import { LABEL_FONT_SIZE, LABEL_FONT_FAMILY, LABEL_PADDING, dimensionPxScale } from "@/core/dimensions/dimensionLayout";
 
 const SELECTION_COLOR = "#3b82f6";
-const HANDLE_RADIUS = 5;
-const ROTATE_HANDLE_RADIUS = 5;
+
+// Handle sizes/strokes are authored in screen px (handleMetrics) and multiplied
+// by `inv = 1 / scale` (world px per screen px) so they stay a constant,
+// finger-friendly size on screen at every zoom level — matching the hit-test.
 
 // Absolute-angle readout for the selected wall.
 const ANGLE_COLOR = "#0ea5e9";
@@ -60,10 +63,13 @@ const PreviewLine = ({ shape }: { shape: Exclude<GhostShape, null | { type: "tex
 // Endpoint handle circles are rendered separately by NodeHandles below.
 // ---------------------------------------------------------------------------
 
-const SegmentHandles = ({ shape }: { shape: Exclude<Shape, { type: "text" }> }) => {
-  const rh = rotationHandlePos(shape);
+const SegmentHandles = ({ shape, inv }: { shape: Exclude<Shape, { type: "text" }>; inv: number }) => {
+  const offset = ROTATE_HANDLE_OFFSET * inv;
+  const rh = rotationHandlePos(shape, offset);
   const mx = (shape.x1 + shape.x2) / 2;
   const my = (shape.y1 + shape.y2) / 2;
+  const r = HANDLE_VISUAL_RADIUS * inv;
+  const stroke = HANDLE_STROKE * inv;
 
   return (
     <Group listening={false}>
@@ -71,45 +77,43 @@ const SegmentHandles = ({ shape }: { shape: Exclude<Shape, { type: "text" }> }) 
       <Line
         points={[shape.x1, shape.y1, shape.x2, shape.y2]}
         stroke={SELECTION_COLOR}
-        strokeWidth={1}
-        dash={[4, 3]}
+        strokeWidth={inv}
+        dash={[4 * inv, 3 * inv]}
         opacity={0.6}
         listening={false}
       />
       {/* Midpoint move indicator */}
-      <Circle x={mx} y={my} radius={HANDLE_RADIUS - 1} fill={SELECTION_COLOR} opacity={0.75} listening={false} />
+      <Circle x={mx} y={my} radius={r * 0.7} fill={SELECTION_COLOR} opacity={0.75} listening={false} />
       {/* Rotation arm */}
-      <Line points={[mx, my, rh.x, rh.y]} stroke={SELECTION_COLOR} strokeWidth={1} opacity={0.5} listening={false} />
+      <Line points={[mx, my, rh.x, rh.y]} stroke={SELECTION_COLOR} strokeWidth={inv} opacity={0.5} listening={false} />
       {/* Rotation/flip handle — amber for walls/lines, blue for door swing toggle */}
       <Circle
         x={rh.x}
         y={rh.y}
-        radius={ROTATE_HANDLE_RADIUS}
+        radius={r}
         fill="white"
         stroke={shape.type === "door" || shape.type === "window" ? "#3b82f6" : "#f59e0b"}
-        strokeWidth={1.5}
+        strokeWidth={stroke}
         listening={false}
       />
       {/* Door: second handle at midpoint for hingeSide toggle */}
       {shape.type === "door" &&
         (() => {
-          const mx = (shape.x1 + shape.x2) / 2;
-          const my = (shape.y1 + shape.y2) / 2;
           const dx = shape.x2 - shape.x1;
           const dy = shape.y2 - shape.y1;
           const len = Math.hypot(dx, dy) || 1;
           // Place hinge toggle handle on the opposite side of the body handle
-          const hingeHandleX = mx - (-dy / len) * ROTATE_HANDLE_OFFSET;
-          const hingeHandleY = my - (dx / len) * ROTATE_HANDLE_OFFSET;
+          const hingeHandleX = mx - (-dy / len) * offset;
+          const hingeHandleY = my - (dx / len) * offset;
           return (
             <Circle
               key="hinge-handle"
               x={hingeHandleX}
               y={hingeHandleY}
-              radius={ROTATE_HANDLE_RADIUS}
+              radius={r}
               fill="white"
               stroke="#10b981"
-              strokeWidth={1.5}
+              strokeWidth={stroke}
               listening={false}
             />
           );
@@ -165,14 +169,14 @@ const WallAngleLabel = ({ shape }: { shape: { x1: number; y1: number; x2: number
   );
 };
 
-const TextHandles = ({ shape }: { shape: Extract<Shape, { type: "text" }> }) => (
+const TextHandles = ({ shape, inv }: { shape: Extract<Shape, { type: "text" }>; inv: number }) => (
   <Group listening={false}>
     <Circle
       x={shape.x}
       y={shape.y}
-      radius={HANDLE_RADIUS + 2}
+      radius={(HANDLE_VISUAL_RADIUS + 2) * inv}
       stroke={SELECTION_COLOR}
-      strokeWidth={1.5}
+      strokeWidth={HANDLE_STROKE * inv}
       fill={`${SELECTION_COLOR}20`}
       listening={false}
     />
@@ -194,9 +198,11 @@ const TextHandles = ({ shape }: { shape: Extract<Shape, { type: "text" }> }) => 
 const NodeHandles = ({
   selectedShape,
   shapes,
+  inv,
 }: {
   selectedShape: Exclude<Shape, { type: "text" }>;
   shapes: Record<string, Shape>;
+  inv: number;
 }) => {
   const topology = computeTopology(shapes);
 
@@ -218,10 +224,10 @@ const NodeHandles = ({
             key={key}
             x={x}
             y={y}
-            radius={HANDLE_RADIUS}
+            radius={HANDLE_VISUAL_RADIUS * inv}
             fill={isShared ? SELECTION_COLOR : "white"}
             stroke={SELECTION_COLOR}
-            strokeWidth={1.5}
+            strokeWidth={HANDLE_STROKE * inv}
             opacity={isShared ? 0.9 : 1}
             listening={false}
           />
@@ -244,6 +250,8 @@ interface Props {
 const SelectionRenderer = ({ previewShape, connectedPreviews }: Props) => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const selectedId = useSelectionStore((s) => s.selectedId);
+  // World px per screen px — counter-scales all handle sizes so they stay constant.
+  const inv = useViewportStore((s) => 1 / s.scale);
 
   if (!selectedId) return null;
   const committedShape = shapes[selectedId];
@@ -274,12 +282,12 @@ const SelectionRenderer = ({ previewShape, connectedPreviews }: Props) => {
 
       {/* Selection handles on the current display shape */}
       {displayShape.type === "text" ? (
-        <TextHandles shape={displayShape as Extract<Shape, { type: "text" }>} />
+        <TextHandles shape={displayShape as Extract<Shape, { type: "text" }>} inv={inv} />
       ) : (
         <>
-          <SegmentHandles shape={displayShape as Exclude<Shape, { type: "text" }>} />
+          <SegmentHandles shape={displayShape as Exclude<Shape, { type: "text" }>} inv={inv} />
           {/* One endpoint handle circle per unique node position */}
-          <NodeHandles selectedShape={displayShape as Exclude<Shape, { type: "text" }>} shapes={shapes} />
+          <NodeHandles selectedShape={displayShape as Exclude<Shape, { type: "text" }>} shapes={shapes} inv={inv} />
           {/* Absolute bearing readout for walls */}
           {displayShape.type === "wall" && <WallAngleLabel shape={displayShape} />}
         </>

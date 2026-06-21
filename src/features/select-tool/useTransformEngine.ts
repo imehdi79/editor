@@ -37,16 +37,17 @@ import { findWallById, slideOpening, resizeOpeningEndpoint, tOnWall } from "@/co
 import { arcPolyline } from "@/core/arc/arcGeometry";
 import { useLayersStore } from "@/store/layers.store";
 import { categoryOf } from "@/core/layers/systemCategories";
+import { HANDLE_HIT_RADIUS, BODY_HIT_RADIUS, ROTATE_HANDLE_OFFSET } from "./handleMetrics";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const HANDLE_HIT_RADIUS = 12;
-export const ROTATE_HANDLE_OFFSET = 28;
-const BODY_HIT_RADIUS = 8;
+// HANDLE_HIT_RADIUS / BODY_HIT_RADIUS / ROTATE_HANDLE_OFFSET are screen-px sizes
+// from handleMetrics; the hit-test divides them by the viewport scale so targets
+// stay finger-sized at every zoom level.
 /** Pointer travel (screen px) under which a node press-release counts as a tap. */
-const NODE_TAP_MAX_TRAVEL = 5;
+const NODE_TAP_MAX_TRAVEL = 6;
 
 const EMPTY_HINTS: DrawingHints = {
   snapResult: null,
@@ -72,15 +73,17 @@ const pointToSegmentDistSq = (px: number, py: number, ax: number, ay: number, bx
   return distSq(px, py, ax + t * dx, ay + t * dy);
 };
 
-// Rotation handle position: perpendicular above midpoint
-const rotationHandlePos = (shape: Exclude<Shape, { type: "text" }>) => {
+// Rotation handle position: perpendicular above midpoint. `offset` is in world
+// px — callers pass ROTATE_HANDLE_OFFSET / scale so the arm is a constant screen
+// length at every zoom.
+const rotationHandlePos = (shape: Exclude<Shape, { type: "text" }>, offset: number = ROTATE_HANDLE_OFFSET) => {
   const mx = (shape.x1 + shape.x2) / 2;
   const my = (shape.y1 + shape.y2) / 2;
   const dx = shape.x2 - shape.x1;
   const dy = shape.y2 - shape.y1;
   const len = Math.hypot(dx, dy) || 1;
   // Perpendicular direction (rotated -90°)
-  return { x: mx + (-dy / len) * ROTATE_HANDLE_OFFSET, y: my + (dx / len) * ROTATE_HANDLE_OFFSET };
+  return { x: mx + (-dy / len) * offset, y: my + (dx / len) * offset };
 };
 
 // Snap angle to nearest N degrees (for 0, 45, 90, 135, 180)
@@ -112,19 +115,25 @@ type TransformMode =
 // Hit test — what did the pointer land on?
 // ---------------------------------------------------------------------------
 
-const hitTestShape = (x: number, y: number, shape: Shape): "p1" | "p2" | "rotate" | "hinge" | "body" | null => {
+// `scale` is the viewport zoom; screen-px hit sizes are divided by it so the
+// world-space tolerance grows as you zoom out, keeping a constant touch target.
+const hitTestShape = (x: number, y: number, shape: Shape, scale: number): "p1" | "p2" | "rotate" | "hinge" | "body" | null => {
+  const handleR = HANDLE_HIT_RADIUS / scale;
+  const bodyR = BODY_HIT_RADIUS / scale;
+  const rotateOffset = ROTATE_HANDLE_OFFSET / scale;
+
   if (shape.type === "text") {
-    return distSq(x, y, shape.x, shape.y) < (HANDLE_HIT_RADIUS * 2) ** 2 ? "body" : null;
+    return distSq(x, y, shape.x, shape.y) < (handleR * 2) ** 2 ? "body" : null;
   }
 
-  const rSq = HANDLE_HIT_RADIUS ** 2;
+  const rSq = handleR ** 2;
 
   // Endpoint handles
   if (distSq(x, y, shape.x1, shape.y1) < rSq) return "p1";
   if (distSq(x, y, shape.x2, shape.y2) < rSq) return "p2";
 
   // Rotation handle (above midpoint)
-  const rh = rotationHandlePos(shape);
+  const rh = rotationHandlePos(shape, rotateOffset);
   if (distSq(x, y, rh.x, rh.y) < rSq) return "rotate";
 
   // Door: second handle below midpoint for hingeSide toggle
@@ -134,14 +143,14 @@ const hitTestShape = (x: number, y: number, shape: Shape): "p1" | "p2" | "rotate
     const dx = shape.x2 - shape.x1;
     const dy = shape.y2 - shape.y1;
     const len = Math.hypot(dx, dy) || 1;
-    const hx = mx - (-dy / len) * ROTATE_HANDLE_OFFSET;
-    const hy = my - (dx / len) * ROTATE_HANDLE_OFFSET;
+    const hx = mx - (-dy / len) * rotateOffset;
+    const hy = my - (dx / len) * rotateOffset;
     if (distSq(x, y, hx, hy) < rSq) return "hinge";
   }
 
   // Body — arc walls test the curve, not the chord.
   if (shape.type === "arc-wall") {
-    const effRSq = Math.max(BODY_HIT_RADIUS ** 2, (shape.thickness / 2) ** 2);
+    const effRSq = Math.max(bodyR ** 2, (shape.thickness / 2) ** 2);
     const pts = arcPolyline(shape.x1, shape.y1, shape.x2, shape.y2, shape.bulge, 24);
     for (let i = 0; i + 3 < pts.length; i += 2) {
       if (pointToSegmentDistSq(x, y, pts[i], pts[i + 1], pts[i + 2], pts[i + 3]) <= effRSq) return "body";
@@ -150,7 +159,7 @@ const hitTestShape = (x: number, y: number, shape: Shape): "p1" | "p2" | "rotate
   }
 
   const thick = shape.type === "wall" || shape.type === "window" || shape.type === "door" ? shape.thickness / 2 : 0;
-  const effectiveRSq = Math.max(BODY_HIT_RADIUS ** 2, thick ** 2);
+  const effectiveRSq = Math.max(bodyR ** 2, thick ** 2);
   if (pointToSegmentDistSq(x, y, shape.x1, shape.y1, shape.x2, shape.y2) <= effectiveRSq) return "body";
 
   return null;
@@ -160,11 +169,12 @@ const hitTestShapes = (
   x: number,
   y: number,
   shapes: Record<string, Shape>,
+  scale: number,
   isSelectable: (shape: Shape) => boolean = () => true,
 ): { shapeId: string; zone: "p1" | "p2" | "rotate" | "hinge" | "body" } | null => {
   for (const shape of Object.values(shapes).reverse()) {
     if (!isSelectable(shape)) continue; // shapes on hidden layers aren't pickable
-    const zone = hitTestShape(x, y, shape);
+    const zone = hitTestShape(x, y, shape, scale);
     if (zone) return { shapeId: shape.id, zone };
   }
   return null;
@@ -240,7 +250,7 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
     (rawX: number, rawY: number) => {
       pressRef.current = { x: rawX, y: rawY, moved: false };
       const { x, y } = resolvePoint(rawX, rawY, makeConfig());
-      const hit = hitTestShapes(x, y, shapes, (s) => categoryVisibility[categoryOf(s)]);
+      const hit = hitTestShapes(x, y, shapes, scale, (s) => categoryVisibility[categoryOf(s)]);
 
       if (!hit) {
         selectShape(null);
@@ -320,7 +330,7 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
         modeRef.current = { kind: "idle" };
       }
     },
-    [shapes, selectShape, updateShape, makeConfig, makeConfigExcluding, linkConnectedNodes, categoryVisibility],
+    [shapes, selectShape, updateShape, makeConfig, makeConfigExcluding, linkConnectedNodes, categoryVisibility, scale],
   );
 
   // -------------------------------------------------------------------------

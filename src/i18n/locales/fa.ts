@@ -84,6 +84,10 @@ export const fa: Dictionary = {
     delete: "حذف انتخاب",
     structure: "سازه",
     drawing: "ترسیم",
+    title: "ابزارها",
+    navigation: "ناوبری",
+    actions: "کنش‌ها",
+    view: "نمایش",
   },
 
   settings: {
@@ -138,6 +142,8 @@ export const fa: Dictionary = {
     actions: "عملیات دیوار",
     properties: "ویژگی‌ها",
     layers: "لایه‌ها",
+    length: "طول",
+    angle: "زاویه",
     thickness: "ضخامت",
     height: "ارتفاع",
     offset: "انحراف",

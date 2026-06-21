@@ -20,6 +20,7 @@ import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useToolsStore } from "@/store/tools.store";
 import { useEditorStore } from "@/store/editor.store";
 import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
+import { absoluteAngleDeg } from "@/core/wall-utils/wallAngles";
 import type { Shape, WallShape, ArcWallShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { useTranslation } from "@/i18n";
 import { useSetWallThickness } from "@/features/wall-tool/useWallThickness";
@@ -101,6 +102,37 @@ const WallActions = () => {
   ) as (DoorShape | Extract<Shape, { type: "window" }>)[];
   const doors = openings.filter((s): s is DoorShape => s.type === "door");
 
+  // Length / angle (touch-friendly numeric alternatives to dragging the handles).
+  const lengthPx = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+  const bearingDeg = absoluteAngleDeg(wall.x1, wall.y1, wall.x2, wall.y2);
+
+  // Resize by length — anchor p1, keep the current direction (default East if
+  // the wall is degenerate), move p2.
+  const setLength = (lenUnit: number) => {
+    const lenPx = toPx(lenUnit, unit, ppm);
+    const cur = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+    const ux = cur > 1e-6 ? (wall.x2 - wall.x1) / cur : 1;
+    const uy = cur > 1e-6 ? (wall.y2 - wall.y1) / cur : 0;
+    updateShape(wall.id, { x2: wall.x1 + ux * lenPx, y2: wall.y1 + uy * lenPx });
+  };
+
+  // Rotate to an absolute bearing — pivot the midpoint, preserve length. Bearing
+  // is CCW from East (canvas Y is down, so the y component is negated).
+  const setAngle = (deg: number) => {
+    const mx = (wall.x1 + wall.x2) / 2;
+    const my = (wall.y1 + wall.y2) / 2;
+    const half = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1) / 2;
+    const rad = (deg * Math.PI) / 180;
+    const ux = Math.cos(rad);
+    const uy = -Math.sin(rad);
+    updateShape(wall.id, {
+      x1: mx - ux * half,
+      y1: my - uy * half,
+      x2: mx + ux * half,
+      y2: my + uy * half,
+    });
+  };
+
   // Keep hosted openings visually consistent with the wall they cut.
   const setThickness = (thickness: number) => setWallThickness(wall.id, thickness);
 
@@ -120,17 +152,16 @@ const WallActions = () => {
 
   return (
     <>
-      {/* Fixed-corner button — bottom-right, clear of the left sidebar and of
-          on-canvas dimensions which hug the walls. */}
-      <div className="fixed bottom-4 right-4 z-40">
+      {/* Fixed-corner button — stacked above the tools FAB (bottom-right), clear
+          of on-canvas dimensions which hug the walls. */}
+      <div className="fixed bottom-22 right-4 z-40">
         <Button
-          size="icon"
-          variant="default"
+          variant="secondary"
           title={t("wall.actions")}
-          className="shadow-2xl"
+          className="size-12 rounded-full shadow-2xl"
           onClick={() => setOpen(true)}
         >
-          <SlidersHorizontal size={16} />
+          <SlidersHorizontal className="size-5" />
         </Button>
       </div>
 
@@ -176,6 +207,23 @@ const WallActions = () => {
               <>
             {/* Dimensions — shown/entered in the active measurement unit */}
             <div className="flex flex-col gap-2">
+              {/* Length / angle — numeric resize & rotate (no precise dragging) */}
+              <NumberField
+                label={t("wall.length")}
+                value={toUnit(lengthPx, unit, ppm)}
+                min={stepFor(unit)}
+                step={stepFor(unit)}
+                suffix={unit}
+                onChange={(v) => setLength(v)}
+              />
+              <NumberField
+                label={t("wall.angle")}
+                value={Math.round(bearingDeg * 10) / 10}
+                min={0}
+                step={1}
+                suffix="°"
+                onChange={(v) => setAngle(v)}
+              />
               <NumberField
                 label={t("wall.thickness")}
                 value={toUnit(wall.thickness, unit, ppm)}

@@ -119,8 +119,18 @@ const NumberField = ({
   </label>
 );
 
-const SettingsPanel = () => {
-  const [open, setOpen] = useState(false);
+interface SettingsPanelProps {
+  /** Controlled open state. Omit to use the internal state + icon trigger. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Hide the built-in icon trigger (when an external control opens the panel). */
+  hideTrigger?: boolean;
+}
+
+const SettingsPanel = ({ open: openProp, onOpenChange, hideTrigger }: SettingsPanelProps) => {
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = onOpenChange ?? setOpenState;
   const { t } = useTranslation();
 
   const locale = useI18nStore((s) => s.locale);
@@ -156,16 +166,18 @@ const SettingsPanel = () => {
 
   return (
     <>
-      <Button
-        size="icon"
-        variant={open ? "default" : "ghost"}
-        title={t("settings.title")}
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-      >
-        <Settings2 size={16} />
-      </Button>
+      {!hideTrigger && (
+        <Button
+          size="icon"
+          variant={open ? "default" : "ghost"}
+          title={t("settings.title")}
+          onClick={() => setOpen(!open)}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+        >
+          <Settings2 size={16} />
+        </Button>
+      )}
 
       {/* Modal — same centered-overlay pattern as WallActions */}
       {open && (

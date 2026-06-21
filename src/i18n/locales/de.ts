@@ -84,6 +84,10 @@ export const de: Dictionary = {
     delete: "Auswahl löschen",
     structure: "Struktur",
     drawing: "Zeichnung",
+    title: "Werkzeuge",
+    navigation: "Navigation",
+    actions: "Aktionen",
+    view: "Ansicht",
   },
 
   settings: {
@@ -138,6 +142,8 @@ export const de: Dictionary = {
     actions: "Wandaktionen",
     properties: "Eigenschaften",
     layers: "Schichten",
+    length: "Länge",
+    angle: "Winkel",
     thickness: "Stärke",
     height: "Höhe",
     offset: "Versatz",

@@ -83,6 +83,10 @@ export const it: Dictionary = {
     delete: "Elimina selezione",
     structure: "Struttura",
     drawing: "Disegno",
+    title: "Strumenti",
+    navigation: "Navigazione",
+    actions: "Azioni",
+    view: "Vista",
   },
 
   settings: {
@@ -137,6 +141,8 @@ export const it: Dictionary = {
     actions: "Azioni parete",
     properties: "Proprietà",
     layers: "Stratigrafia",
+    length: "Lunghezza",
+    angle: "Angolo",
     thickness: "Spessore",
     height: "Altezza",
     offset: "Scostamento",

@@ -85,6 +85,10 @@ export const en = {
     delete: "Delete selected",
     structure: "Structure",
     drawing: "Drawing",
+    title: "Tools",
+    navigation: "Navigation",
+    actions: "Actions",
+    view: "View",
   },
 
   settings: {
@@ -144,6 +148,8 @@ export const en = {
     actions: "Wall actions",
     properties: "Properties",
     layers: "Layers",
+    length: "Length",
+    angle: "Angle",
     thickness: "Thickness",
     height: "Height",
     offset: "Offset",

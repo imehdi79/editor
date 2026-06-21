@@ -1,8 +1,8 @@
-import Sidebar from "./sidebar";
 import GlobalCursor from "./sidebar/GlobalCursor";
 import WallActions from "./WallActions";
 import Header from "./header";
 import SubPageBar from "./header/SubPageBar";
+import MobileToolbar from "./MobileToolbar";
 
 const Layout = () => {
   return (
@@ -12,9 +12,9 @@ const Layout = () => {
       <Header />
       <SubPageBar />
 
-      <Sidebar />
-
       <WallActions />
+
+      <MobileToolbar />
     </>
   );
 };
