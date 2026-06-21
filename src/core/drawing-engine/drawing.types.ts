@@ -247,6 +247,9 @@ export interface SnapResult {
   snapped: boolean;
   snapType: "grid" | "node" | "midpoint" | "intersection" | "edge" | null;
   snappedTo: { x: number; y: number } | null; // نقطه‌ای که snap شدیم بهش
+  /** Host shape id for an `edge` (wall-body) snap, so the resolver can intersect
+   *  a lock line with that wall. null for node/midpoint/intersection/no snap. */
+  snappedShapeId?: ShapeId | null;
 }
 
 export interface GuideLine {

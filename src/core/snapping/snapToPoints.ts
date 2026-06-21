@@ -1,4 +1,4 @@
-import type { Shape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, ShapeId } from "@/core/drawing-engine/drawing.types";
 import type { SnapResult } from "@/core/drawing-engine/drawing.types";
 import { projectOntoWall } from "@/core/wall-utils/wallGeometry";
 
@@ -84,6 +84,7 @@ export const snapToPoints = (
   let nearest: SnapResult["snappedTo"] = null;
   let nearestDist = Infinity;
   let nearestType: SnapResult["snapType"] = null;
+  let nearestShapeId: ShapeId | null = null;
 
   // node + midpoint
   for (const pt of extractSnapPoints(shapes)) {
@@ -123,13 +124,14 @@ export const snapToPoints = (
         nearestDist = proj.dist;
         nearest = { x: proj.x, y: proj.y };
         nearestType = "edge";
+        nearestShapeId = shape.id;
       }
     }
   }
 
   if (nearest) {
-    return { x: nearest.x, y: nearest.y, snapped: true, snapType: nearestType, snappedTo: nearest };
+    return { x: nearest.x, y: nearest.y, snapped: true, snapType: nearestType, snappedTo: nearest, snappedShapeId: nearestShapeId };
   }
 
-  return { x, y, snapped: false, snapType: null, snappedTo: null };
+  return { x, y, snapped: false, snapType: null, snappedTo: null, snappedShapeId: null };
 };
