@@ -18,7 +18,6 @@ import { Line, Text, Group, Rect } from "react-konva";
 import { useDimensionLayout } from "@/core/dimensions/useDimensionLayout";
 import { useViewportStore } from "@/store/viewport.store";
 import { useEditorStore } from "@/store/editor.store";
-import { useSelectionStore } from "@/store/selection.store";
 import type { DimensionCandidate } from "@/core/dimensions/dimensionCollision";
 import { TICK_HALF } from "@/core/dimensions/dimensionGeometry";
 import { LABEL_FONT_FAMILY, dimensionPxScale } from "@/core/dimensions/dimensionLayout";
@@ -259,17 +258,10 @@ const DimensionLayerRenderer = () => {
   const candidates = useDimensionLayout();
   const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
   const mode = useEditorStore((s) => s.dimensionDisplay);
-  const selectedId = useSelectionStore((s) => s.selectedId);
 
-  // Per-segment dimensions own the "segments" and "selection" modes; in "chains"
-  // mode they yield entirely to DimensionChainsRenderer (never both at once).
-  // Each candidate's id is its shape id, so selection filtering is a direct match.
-  const visible =
-    mode === "segments"
-      ? candidates
-      : mode === "selection"
-        ? candidates.filter((c) => c.id === selectedId)
-        : [];
+  // Per-segment dimensions draw in "segments" and "both" modes; in "chains" mode
+  // they yield entirely to DimensionChainsRenderer.
+  const visible = mode === "segments" || mode === "both" ? candidates : [];
   if (visible.length === 0) return null;
 
   return (

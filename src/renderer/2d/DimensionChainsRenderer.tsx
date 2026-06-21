@@ -130,9 +130,8 @@ const DimensionChainsRenderer = () => {
   const mode = useEditorStore((s) => s.dimensionDisplay);
   const chains = useDimensionChains();
   const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
-  // Running chains are the densest annotation; they own the "chains" mode
-  // exclusively and never draw alongside the per-segment layer.
-  if (mode !== "chains" || chains.length === 0) return null;
+  // Running chains draw in "chains" and "both" modes.
+  if ((mode !== "chains" && mode !== "both") || chains.length === 0) return null;
 
   return (
     <Group listening={false}>

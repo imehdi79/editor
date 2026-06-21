@@ -109,9 +109,9 @@ export const fa: Dictionary = {
   },
 
   dimensionDisplay: {
-    selection: "انتخاب",
     segments: "قطعات",
     chains: "زنجیره",
+    both: "هر دو",
   },
 
   joinStyle: {

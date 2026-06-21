@@ -109,9 +109,9 @@ export const de: Dictionary = {
   },
 
   dimensionDisplay: {
-    selection: "Auswahl",
     segments: "Segmente",
     chains: "Ketten",
+    both: "Beide",
   },
 
   joinStyle: {

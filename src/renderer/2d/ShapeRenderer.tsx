@@ -2,7 +2,6 @@ import { Line, Text, Shape as KonvaShape, Group } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useLayersStore } from "@/store/layers.store";
 import { useEditorStore, type DimensionUnit } from "@/store/editor.store";
-import { useSelectionStore } from "@/store/selection.store";
 import { categoryOf } from "@/core/layers/systemCategories";
 import type { Shape, WallShape, ArcWallShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeDoorSwing } from "@/core/door/computeDoorSwing";
@@ -206,7 +205,7 @@ const ArcWallRenderer = ({ shape, showLabel, unit, ppm }: { shape: ArcWallShape;
   );
 };
 
-const renderShape = (shape: Shape, outlines: ReturnType<typeof computeWallOutlines>, arcLabel: { show: boolean; unit: DimensionUnit; ppm: number; selectedId: string | null }) => {
+const renderShape = (shape: Shape, outlines: ReturnType<typeof computeWallOutlines>, arcLabel: { show: boolean; unit: DimensionUnit; ppm: number }) => {
   switch (shape.type) {
     case "wall":
       return <WallRenderer key={shape.id} shape={shape} outline={outlines.get(shape.id)} />;
@@ -216,7 +215,7 @@ const renderShape = (shape: Shape, outlines: ReturnType<typeof computeWallOutlin
         <ArcWallRenderer
           key={shape.id}
           shape={shape}
-          showLabel={arcLabel.show || arcLabel.selectedId === shape.id}
+          showLabel={arcLabel.show}
           unit={arcLabel.unit}
           ppm={arcLabel.ppm}
         />
@@ -278,12 +277,10 @@ const ShapeRenderer = () => {
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
   const dimensionDisplay = useEditorStore((s) => s.dimensionDisplay);
-  const selectedId = useSelectionStore((s) => s.selectedId);
   const arcLabel = {
-    show: dimensionDisplay === "segments",
+    show: dimensionDisplay === "segments" || dimensionDisplay === "both",
     unit: dimensionUnit,
     ppm,
-    selectedId: dimensionDisplay === "selection" ? selectedId : null,
   };
 
   const sorted = Object.values(shapes)

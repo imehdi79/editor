@@ -31,9 +31,9 @@ const UNIT_OPTIONS: { value: DimensionUnit; label: string }[] = [
 ];
 
 const DIMENSION_OPTIONS = [
-  { value: "selection", key: "dimensionDisplay.selection" },
   { value: "segments", key: "dimensionDisplay.segments" },
   { value: "chains", key: "dimensionDisplay.chains" },
+  { value: "both", key: "dimensionDisplay.both" },
 ] satisfies { value: DimensionDisplay; key: TranslationKey }[];
 
 const JOIN_OPTIONS = [
@@ -203,8 +203,7 @@ const SettingsPanel = () => {
               onChange={setMeasurementReference}
             />
 
-            {/* Dimensions display — exactly one system (segments OR chains, or just
-                the selected shape). Never both, to avoid overlapping annotations. */}
+            {/* Dimensions display — per-segment, running chains, or both together. */}
             <div className="border-t pt-2">
               <OptionRow
                 label={t("settings.dimensions")}

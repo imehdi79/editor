@@ -112,9 +112,9 @@ export const en = {
 
   // Which dimension system is drawn.
   dimensionDisplay: {
-    selection: "Select",
     segments: "Segments",
     chains: "Chains",
+    both: "Both",
   },
 
   // How wall bodies resolve where they meet at a corner.

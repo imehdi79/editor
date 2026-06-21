@@ -108,9 +108,9 @@ export const it: Dictionary = {
   },
 
   dimensionDisplay: {
-    selection: "Selez.",
     segments: "Segmenti",
     chains: "Catene",
+    both: "Entrambi",
   },
 
   joinStyle: {

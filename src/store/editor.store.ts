@@ -25,15 +25,13 @@ export type DimensionUnit = "mm" | "cm" | "m" | "px";
 export type MeasurementReference = "centerline" | "inner" | "outer";
 
 /**
- * DimensionDisplay — which dimension system is drawn. Exclusive by design so
- * the per-segment layer and the running chains never overlap into "spaghetti".
+ * DimensionDisplay — which dimension system is drawn.
  *
- *   "selection" → only the selected shape's per-segment dimension (clean default
- *                 for mobile; nothing shown until you tap a shape)
- *   "segments"  → every shape's per-segment dimension (DimensionLayerRenderer)
- *   "chains"    → inner/outer running chains only (DimensionChainsRenderer)
+ *   "segments" → every shape's per-segment dimension (DimensionLayerRenderer)
+ *   "chains"   → inner/outer running chains only (DimensionChainsRenderer)
+ *   "both"     → per-segment dimensions and running chains together
  */
-export type DimensionDisplay = "selection" | "segments" | "chains";
+export type DimensionDisplay = "segments" | "chains" | "both";
 
 interface EditorStore {
   viewMode: "2d" | "3d";
