@@ -23,7 +23,6 @@ import {
   Trash2,
   DoorOpen,
   AppWindowMac,
-  Hand,
   Layers3,
   Settings2,
   PencilRuler,
@@ -42,7 +41,6 @@ import SettingsPanel from "./sidebar/SettingsPanel";
 /** Mode tools — selecting one sets the active tool and closes the sheet. */
 const MODE_TOOLS: { tool: NoOneClickTools; Icon: LucideIcon; labelKey: TranslationKey }[] = [
   { tool: "select", Icon: SplinePointer, labelKey: "tools.select" },
-  { tool: "pan", Icon: Hand, labelKey: "tools.pan" },
   { tool: "wall", Icon: BrickWallIcon, labelKey: "tools.wall" },
   { tool: "arc-wall", Icon: Spline, labelKey: "tools.arcWall" },
   { tool: "window", Icon: AppWindowMac, labelKey: "tools.window" },

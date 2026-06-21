@@ -30,10 +30,10 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
   const tool = useToolsStore((s) => s.tool);
   const { width, height } = useStageSize();
   const { x, y, scale } = useViewportStore();
-  const { screenToWorld, viewportEvents } = useStageViewport(stageRef);
 
-  const isPanMode = tool === null || tool === "pan";
-  const isDrawingTool = tool !== null && tool !== "select" && tool !== "pan";
+  // pan-only mode = no tool selected; `select` is the merged select+pan tool.
+  const isPanMode = tool === null;
+  const isDrawingTool = tool !== null && tool !== "select";
   const toolDef = isDrawingTool ? (TOOL_REGISTRY[tool] ?? null) : null;
 
   // On-canvas wall thickness editor — opened by tapping a wall node handle.
@@ -55,7 +55,13 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
     onMouseMove: selectMove,
     onMouseUp: selectUp,
     cancel: selectCancel,
+    hitTest,
   } = useTransformEngine((shapeId, handle) => setThicknessNode({ shapeId, handle }));
+
+  // Merged select+pan: a single-pointer drag pans only when it starts on empty
+  // space (nothing selectable under the pointer); on a shape it transforms.
+  const shouldPanAtWorld = (wx: number, wy: number) => (tool === "select" ? !hitTest(wx, wy) : false);
+  const { screenToWorld, viewportEvents } = useStageViewport(stageRef, shouldPanAtWorld);
 
   const noop = () => {};
   const activeDown = tool === "select" ? selectDown : isDrawingTool ? drawDown : noop;
@@ -129,7 +135,7 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
           <DrawingInfoCanvas />
           {isDrawingTool && <GhostRenderer ghost={ghost} />}
           {tool === "select" && <SelectionRenderer previewShape={previewShape} connectedPreviews={connectedPreviews} />}
-          {tool !== null && tool !== "pan" && (
+          {tool !== null && (
             <>
               <HintsRenderer hints={activeHints} />
               <DimensionRenderer hints={activeHints} />
@@ -157,8 +163,9 @@ const C2D = () => {
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
-    const isPanMode = tool === null || tool === "pan";
-    stage.container().style.cursor = isPanMode ? "grab" : (TOOL_CURSORS[tool!] ?? "crosshair");
+    // No tool = pan-only (grab cursor); any tool (incl. merged select) uses its
+    // own cursor — the grabbing cursor during an empty-space pan is set in useStageViewport.
+    stage.container().style.cursor = tool === null ? "grab" : (TOOL_CURSORS[tool] ?? "crosshair");
   }, [tool]);
 
   return (

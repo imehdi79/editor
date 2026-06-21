@@ -8,7 +8,6 @@ export type Tools =
   | "dashed-line"
   | "text"
   | "select"
-  | "pan"
   | "redo"
   | "undo"
   | "delete"

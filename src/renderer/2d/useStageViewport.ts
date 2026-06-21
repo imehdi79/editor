@@ -12,7 +12,16 @@ const getTouchMidpoint = (t1: Touch, t2: Touch) => ({
 });
 const getTouchDistance = (t1: Touch, t2: Touch) => Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
 
-export const useStageViewport = (stageRef: React.RefObject<Konva.Stage>) => {
+/**
+ * @param shouldPanAtWorld  For the merged select+pan tool: returns true when a
+ *   single-pointer drag starting at this world point should pan (i.e. nothing
+ *   selectable is under the pointer). Omitted/false ⇒ that gesture goes to the
+ *   active tool instead. Ignored when no tool is selected (always pans).
+ */
+export const useStageViewport = (
+  stageRef: React.RefObject<Konva.Stage>,
+  shouldPanAtWorld?: (worldX: number, worldY: number) => boolean,
+) => {
   const tool = useToolsStore((s) => s.tool);
   const setViewport = useViewportStore((s) => s.setViewport);
 
@@ -22,8 +31,8 @@ export const useStageViewport = (stageRef: React.RefObject<Konva.Stage>) => {
   const lastPinchDist = useRef<number | null>(null);
   const lastPinchMid = useRef<{ x: number; y: number } | null>(null);
 
-  /** pan mode = explicit pan tool OR no tool selected */
-  const isPanMode = tool === null || tool === "pan";
+  /** pan-only mode = no tool selected (single pointer always pans) */
+  const isPanMode = tool === null;
 
   const syncToStore = useCallback(() => {
     const stage = stageRef.current;
@@ -39,6 +48,17 @@ export const useStageViewport = (stageRef: React.RefObject<Konva.Stage>) => {
       return { x: (sx - stage.x()) / scale, y: (sy - stage.y()) / scale };
     },
     [stageRef],
+  );
+
+  /** Should a single-pointer drag from this *screen* point start a pan? */
+  const allowSinglePan = useCallback(
+    (screenX: number, screenY: number): boolean => {
+      if (isPanMode) return true; // no tool — always pan
+      if (!shouldPanAtWorld) return false; // drawing tools never single-pan
+      const w = screenToWorld(screenX, screenY);
+      return shouldPanAtWorld(w.x, w.y);
+    },
+    [isPanMode, shouldPanAtWorld, screenToWorld],
   );
 
   const startPan = useCallback(
@@ -80,12 +100,17 @@ export const useStageViewport = (stageRef: React.RefObject<Konva.Stage>) => {
   // Mouse
   const handleMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      const isMiddle = e.evt.button === 1;
-      const isLeftPan = e.evt.button === 0 && isPanMode;
-      if (!isMiddle && !isLeftPan) return;
-      startPan(e.evt.clientX, e.evt.clientY);
+      // Middle button always pans.
+      if (e.evt.button === 1) {
+        startPan(e.evt.clientX, e.evt.clientY);
+        return;
+      }
+      // Left button pans only on empty space (merged tool) or in pan-only mode.
+      if (e.evt.button !== 0) return;
+      const pos = stageRef.current?.getPointerPosition();
+      if (pos && allowSinglePan(pos.x, pos.y)) startPan(e.evt.clientX, e.evt.clientY);
     },
-    [isPanMode, startPan],
+    [allowSinglePan, startPan, stageRef],
   );
 
   const handleMouseMove = useCallback(
@@ -128,15 +153,21 @@ export const useStageViewport = (stageRef: React.RefObject<Konva.Stage>) => {
     [stageRef, syncToStore],
   );
 
-  // Touch — single touch pans when isPanMode, two fingers always pinch-zoom
+  // Touch — single touch pans on empty space (or in pan-only mode); two fingers
+  // always pinch-zoom.
   const handleTouchStart = useCallback(
     (e: Konva.KonvaEventObject<TouchEvent>) => {
-      if (e.evt.touches.length === 1 && isPanMode) {
+      if (e.evt.touches.length !== 1) return;
+      const stage = stageRef.current;
+      if (!stage) return;
+      const t = e.evt.touches[0];
+      const rect = stage.container().getBoundingClientRect();
+      if (allowSinglePan(t.clientX - rect.left, t.clientY - rect.top)) {
         e.evt.preventDefault();
-        startPan(e.evt.touches[0].clientX, e.evt.touches[0].clientY);
+        startPan(t.clientX, t.clientY);
       }
     },
-    [isPanMode, startPan],
+    [allowSinglePan, startPan, stageRef],
   );
 
   const handleTouchMove = useCallback(
@@ -171,7 +202,7 @@ export const useStageViewport = (stageRef: React.RefObject<Konva.Stage>) => {
         movePan(touches[0].clientX, touches[0].clientY);
       }
     },
-    [stageRef, movePan, isPanMode],
+    [stageRef, movePan],
   );
 
   const handleTouchEnd = useCallback(

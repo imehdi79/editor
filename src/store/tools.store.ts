@@ -7,8 +7,9 @@ export const TOOL_CURSORS: Record<NoOneClickTools, string> = {
   line: "crosshair",
   "dashed-line": "crosshair",
   text: "text",
+  // `select` is the merged select+pan tool: it selects/transforms shapes and
+  // pans the canvas when an empty-space drag begins (see useStageViewport).
   select: "default",
-  pan: "grab",
   door: "crosshair",
   window: "crosshair",
 };
@@ -18,6 +19,7 @@ interface ToolsStore {
 }
 
 export const useToolsStore = create<ToolsStore>((set, get) => ({
-  tool: null,
+  // Start in the merged select+pan tool so the canvas is interactive on load.
+  tool: "select",
   setTool: (tool) => set({ tool: get().tool === tool ? null : tool }),
 }));

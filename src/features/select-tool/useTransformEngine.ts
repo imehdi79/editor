@@ -234,6 +234,17 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
     [snapGrid, axisAngleThreshold, snapRadius, guideThreshold, perpThreshold, dimensionUnit, pixelsPerMeter, shapes],
   );
 
+  /**
+   * Would a press at this world point grab a (selectable) shape? Used by the
+   * merged select+pan tool to decide whether an empty-space drag should pan the
+   * canvas instead of selecting. Mirrors the hit-test used on mousedown.
+   */
+  const hitTest = useCallback(
+    (worldX: number, worldY: number): boolean =>
+      hitTestShapes(worldX, worldY, shapes, scale, (s) => categoryVisibility[categoryOf(s)]) !== null,
+    [shapes, scale, categoryVisibility],
+  );
+
   const makeConfigExcluding = useCallback(
     (excludeId: string): ResolveConfig => {
       const { [excludeId]: _, ...rest } = shapes;
@@ -586,7 +597,7 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
 
   const transformingId = modeRef.current.kind !== "idle" ? modeRef.current.shapeId : null;
 
-  return { previewShape, connectedPreviews, hints, onMouseDown, onMouseMove, onMouseUp, cancel, transformingId, selectedId };
+  return { previewShape, connectedPreviews, hints, onMouseDown, onMouseMove, onMouseUp, cancel, transformingId, selectedId, hitTest };
 };
 
 // ---------------------------------------------------------------------------
