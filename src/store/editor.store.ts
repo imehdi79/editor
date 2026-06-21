@@ -94,9 +94,9 @@ interface EditorStore {
 
 export const useEditorStore = create<EditorStore>((set) => ({
   viewMode: "2d",
-  snapGrid: 0.2,
+  snapGrid: 0.5,
   axisAngleThreshold: 1,
-  snapRadius: window.matchMedia("(pointer: coarse)").matches ? 16 : 2,
+  snapRadius: window.matchMedia("(pointer: coarse)").matches ? 8 : 2,
   guideThreshold: 6,
   perpThreshold: 1,
   dimensionUnit: "m",
