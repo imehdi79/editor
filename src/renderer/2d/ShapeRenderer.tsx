@@ -6,12 +6,15 @@ import { useSelectionStore } from "@/store/selection.store";
 import { categoryOf } from "@/core/layers/systemCategories";
 import type { Shape, WallShape, ArcWallShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeDoorSwing } from "@/core/door/computeDoorSwing";
-import { buildWallLayerBands, layersOf, materialColor, WALL_SIDES } from "@/core/wall-layers/wallLayers";
+import { layersOf, materialColor, WALL_SIDES } from "@/core/wall-layers/wallLayers";
+import { buildWallAssemblyBands } from "@/core/wall-layers/buildWallAssemblyBands";
 import { computeWallOutlines, computeJunctionPatches, type WallOutline } from "@/core/wall-junctions";
 import { arcFromChordBulge, arcPolyline } from "@/core/arc/arcGeometry";
 import { formatDimension } from "@/core/dimensions/dimensionUnits";
 
 const WALL_FILL = "#1e293b"; // slate-800 — structural body
+const LAYER_SEPARATOR = "#475569"; // slate-600 — thin line between adjacent layers
+const CORE_BOUNDARY = "#0f172a"; // slate-950 — heavier structural-core boundary
 
 /** Flatten a Vec2[] ring to a Konva points array. */
 const flatRing = (ring: { x: number; y: number }[]): number[] => ring.flatMap((p) => [p.x, p.y]);
@@ -135,22 +138,28 @@ const DoorRenderer = ({ shape }: { shape: DoorShape }) => {
 // Shape dispatch
 // ---------------------------------------------------------------------------
 
-/** Wall body: filled mitred polygon from the junction outline, with layer bands.
- *  Falls back to a butt-capped stroke if no outline (degenerate wall). */
+/** Wall body: the full-width BIM composite assembly — every construction layer
+ *  as a mitred band, with thin separators and a heavier structural-core boundary
+ *  (the professional CAD read). Falls back to a butt-capped stroke if no outline
+ *  (degenerate wall). */
 const WallRenderer = ({ shape, outline }: { shape: WallShape; outline: WallOutline | undefined }) => {
   if (!outline) {
     return (
       <Line points={[shape.x1, shape.y1, shape.x2, shape.y2]} stroke={WALL_FILL} strokeWidth={shape.thickness} lineCap="butt" />
     );
   }
-  const bands = buildWallLayerBands(shape, outline);
+  const { bands, separators, coreLines } = buildWallAssemblyBands(shape, outline);
   return (
     <Group>
-      {/* Construction layers as coloured build-up beside the structural core */}
       {bands.map((b, i) => (
-        <Line key={i} points={b.polygon} closed fill={b.color} />
+        <Line key={`b${i}`} points={b.polygon} closed fill={b.color || WALL_FILL} />
       ))}
-      <Line points={flatRing(outline.polygon)} closed fill={WALL_FILL} />
+      {separators.map((s, i) => (
+        <Line key={`s${i}`} points={s} stroke={LAYER_SEPARATOR} strokeWidth={0.75} strokeScaleEnabled={false} listening={false} />
+      ))}
+      {coreLines.map((c, i) => (
+        <Line key={`c${i}`} points={c} stroke={CORE_BOUNDARY} strokeWidth={1.25} strokeScaleEnabled={false} listening={false} />
+      ))}
     </Group>
   );
 };

@@ -12,7 +12,6 @@
 
 import { uid } from "@/lib/uid";
 import type { WallLayer, WallShape, WallSide } from "@/core/drawing-engine/drawing.types";
-import { intersectLines, type WallOutline } from "@/core/wall-junctions";
 
 /** Wall faces in display order. */
 export const WALL_SIDES = ["inner", "outer"] as const satisfies readonly WallSide[];
@@ -80,65 +79,6 @@ export const withSideLayers = (
   outer: side === "outer" ? next : layersOf(wall, "outer"),
 });
 
-/** A coloured construction band to fill along the wall, in canvas px. */
-export interface WallLayerBand {
-  /** Closed quad polygon as a flat [x,y,x,y,...] list (Konva points). */
-  polygon: number[];
-  color: string;
-}
-
-/** Which perpendicular direction each face stacks toward (inner = +n). */
-const SIDE_DIR: Record<WallSide, number> = { inner: 1, outer: -1 };
-
-/**
- * Geometry for drawing a wall's construction layers on the canvas: each layer is
- * a filled quad offset perpendicular from the centerline, stacking outward from
- * the structural face (thickness/2) so it reads as build-up added to the wall.
- *
- * Band ends follow the wall body's mitred corners: each end is cut along the
- * line through that end's inner+outer outline corners, so adjacent walls' bands
- * meet at the joint with no gap (matching the structural body). Per-layer
- * matching across the junction (different stacks meeting) is wj-14's concern.
- */
-export const buildWallLayerBands = (wall: WallShape, outline: WallOutline): WallLayerBand[] => {
-  const dx = wall.x2 - wall.x1;
-  const dy = wall.y2 - wall.y1;
-  const len = Math.hypot(dx, dy) || 1;
-  const px = -dy / len; // +n perpendicular unit (left-hand normal)
-  const py = dx / len;
-  const off = wall.offset ?? 0; // eccentric body shift along +n
-
-  // End-cut lines: through each end's inner & outer body corners. All bands at
-  // an end are cut by the same line, so they share the corner's mitre angle.
-  const cut1 = { ox: outline.p1Inner.x, oy: outline.p1Inner.y, dx: outline.p1Outer.x - outline.p1Inner.x, dy: outline.p1Outer.y - outline.p1Inner.y };
-  const cut2 = { ox: outline.p2Inner.x, oy: outline.p2Inner.y, dx: outline.p2Outer.x - outline.p2Inner.x, dy: outline.p2Outer.y - outline.p2Inner.y };
-
-  /** Where the offset line (at distance `o` on side `dir`) meets an end-cut line.
-   *  The eccentric body shift `off` moves every band line along +n. */
-  const cornerAt = (o: number, dir: number, cut: { ox: number; oy: number; dx: number; dy: number }, fallbackX: number, fallbackY: number) => {
-    const s = off + dir * o;
-    const lx = wall.x1 + px * s;
-    const ly = wall.y1 + py * s;
-    const hit = intersectLines(lx, ly, dx / len, dy / len, cut.ox, cut.oy, cut.dx, cut.dy);
-    return hit ?? { x: fallbackX + px * s, y: fallbackY + py * s };
-  };
-
-  const bands: WallLayerBand[] = [];
-  for (const side of WALL_SIDES) {
-    const dir = SIDE_DIR[side];
-    let offset = wall.thickness / 2; // start at the structural face
-    for (const layer of layersOf(wall, side)) {
-      const o2 = offset + layer.thickness; // outer edge of this band
-      const a = cornerAt(offset, dir, cut1, wall.x1, wall.y1);
-      const b = cornerAt(offset, dir, cut2, wall.x2, wall.y2);
-      const c = cornerAt(o2, dir, cut2, wall.x2, wall.y2);
-      const d = cornerAt(o2, dir, cut1, wall.x1, wall.y1);
-      bands.push({
-        polygon: [a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y],
-        color: materialColor(layer.material),
-      });
-      offset = o2;
-    }
-  }
-  return bands;
-};
+// The full-width composite band/separator/core-line geometry for the canvas now
+// lives in `buildWallAssemblyBands.ts`, driven by `wallAssembly`. This module
+// stays the per-side layer data model (create / read / write a face's stack).

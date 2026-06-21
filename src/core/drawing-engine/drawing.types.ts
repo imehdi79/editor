@@ -18,10 +18,25 @@ export interface BaseShape {
 export type WallSide = "inner" | "outer";
 
 /**
- * WallLayer — a single construction layer on one face of a wall (e.g. brick,
- * plaster). Purely a takeoff/specification concern: layers carry no canvas
- * geometry and are never drawn or dimensioned in 2D. `thickness` is the layer's
- * own build-up thickness in px, independent of the wall's structural thickness.
+ * A construction layer's BIM function — its role in the assembly and, crucially,
+ * its **junction priority**. Where two composite walls meet, a layer continues
+ * (cleans up) through the joint against a neighbour layer of equal-or-higher
+ * priority and a lower-priority layer stops at it. `structure` is the
+ * load-bearing core (highest priority); `membrane` a thin barrier (lowest).
+ * Mirrors Revit's layer Function / ArchiCAD's skin priorities.
+ */
+export type LayerFunction =
+  | "structure"
+  | "substrate"
+  | "thermal"
+  | "finish1"
+  | "finish2"
+  | "membrane";
+
+/**
+ * WallLayer — a single construction layer of a wall (e.g. brick, plaster).
+ * `thickness` is the layer's own build-up thickness in px. `function` is its BIM
+ * role / junction priority (optional for back-compat — see `LayerFunction`).
  */
 export interface WallLayer {
   id: string;
@@ -29,6 +44,8 @@ export interface WallLayer {
   material: string;
   /** Layer build-up thickness in px. */
   thickness: number;
+  /** BIM function / junction priority. Absent → defaulted by position. */
+  function?: LayerFunction;
 }
 
 export interface WallShape extends BaseShape {
@@ -63,8 +80,21 @@ export interface WallShape extends BaseShape {
   /**
    * Per-side construction layers (brick, plaster, ...). Each wall face carries
    * an independent stack. Optional for back-compat; absent = no layers defined.
+   * Legacy model — superseded by `assembly` when present (the assembly is
+   * derived from these when absent, so old documents keep working).
    */
   layers?: Record<WallSide, WallLayer[]>;
+  /**
+   * BIM composite assembly: the full-width ordered layer stack, exterior(−n /
+   * "outer") → interior(+n / "inner"). When present it is the source of truth for
+   * rendering / takeoff / junction matching. `coreStart`/`coreEnd` are inclusive
+   * indices marking the structural-core slice; `thickness` stays the core width
+   * (the location / dimension reference). Absent = derive from `thickness` +
+   * `layers` (see `core/wall-layers/wallAssembly`).
+   */
+  assembly?: WallLayer[];
+  coreStart?: number;
+  coreEnd?: number;
 }
 
 /**
