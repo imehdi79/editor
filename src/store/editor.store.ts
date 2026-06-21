@@ -109,7 +109,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   defaultWallThickness: 12,
   defaultWallHeight: 280,
   linkConnectedNodes: true,
-  dimensionDisplay: "segments",
+  dimensionDisplay: "both",
 
   wallJoinStyle: DEFAULT_JUNCTION_CONFIG.joinStyle,
   miterLimit: DEFAULT_JUNCTION_CONFIG.miterLimit,
