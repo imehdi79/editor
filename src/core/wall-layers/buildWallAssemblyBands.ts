@@ -17,6 +17,7 @@
 
 import type { WallShape } from "@/core/drawing-engine/drawing.types";
 import { intersectLines, type WallOutline } from "@/core/wall-junctions";
+import { endThickness } from "@/core/wall-utils/wallThickness";
 import { materialColor } from "./wallLayers";
 import { wallAssembly } from "./wallAssembly";
 
@@ -79,8 +80,16 @@ export const buildWallAssemblyBands = (wall: WallShape, outline: WallOutline): A
     return hit ?? { x: fx + px * t, y: fy + py * t };
   };
 
-  const p1At = (s: number) => cornerAt(s, cut1, wall.x1, wall.y1);
-  const p2At = (s: number) => cornerAt(s, cut2, wall.x2, wall.y2);
+  // Per-node taper: a wall may be thinner/thicker at each end (thicknessP1/P2).
+  // `wallAssembly` lays the layers out at the nominal (mean) thickness, so scale
+  // each end's +n face offsets by its own end/nominal ratio. The structural core
+  // (±thickness/2) then lands exactly on the mitred outline corners, and every
+  // layer + separator tapers with the body. Uniform walls keep k = 1 (no-op).
+  const baseThk = wall.thickness > EPS ? wall.thickness : 1;
+  const k1 = endThickness(wall, "p1") / baseThk;
+  const k2 = endThickness(wall, "p2") / baseThk;
+  const p1At = (s: number) => cornerAt(s * k1, cut1, wall.x1, wall.y1);
+  const p2At = (s: number) => cornerAt(s * k2, cut2, wall.x2, wall.y2);
   /** A full cross-wall line at offset `s`, from the p1-cut to the p2-cut. */
   const crossAt = (s: number): number[] => {
     const a = p1At(s);

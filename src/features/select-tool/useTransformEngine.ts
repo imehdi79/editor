@@ -218,6 +218,12 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
   const dragSnapshotRef = useRef<{ topology: TopologyMap | null; config: ResolveConfig } | null>(null);
   /** Pointer-down point + whether the pointer has travelled — for node tap vs drag. */
   const pressRef = useRef<{ x: number; y: number; moved: boolean }>({ x: 0, y: 0, moved: false });
+  /**
+   * Set when a press lands on empty space. Deselection is deferred to mouseup so
+   * an empty-space *drag* (which pans the canvas in the merged select+pan tool)
+   * keeps the current selection — only an empty *tap* clears it.
+   */
+  const pendingDeselectRef = useRef(false);
   const [previewShape, setPreviewShape] = useState<GhostShape>(null);
   /**
    * During a shared-node resize, every shape that shares the dragged node
@@ -260,11 +266,14 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
   const onMouseDown = useCallback(
     (rawX: number, rawY: number) => {
       pressRef.current = { x: rawX, y: rawY, moved: false };
+      pendingDeselectRef.current = false;
       const { x, y } = resolvePoint(rawX, rawY, makeConfig());
       const hit = hitTestShapes(x, y, shapes, scale, (s) => categoryVisibility[categoryOf(s)]);
 
       if (!hit) {
-        selectShape(null);
+        // Defer the deselect to mouseup: a drag from here pans (keep selection),
+        // a tap clears it.
+        pendingDeselectRef.current = true;
         modeRef.current = { kind: "idle" };
         return;
       }
@@ -351,17 +360,19 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
   const onMouseMove = useCallback(
     (rawX: number, rawY: number) => {
       const mode = modeRef.current;
-      if (mode.kind === "idle") return;
 
-      const shape = shapes[mode.shapeId];
-      if (!shape) return;
-
-      // Track pointer travel (screen px) so a node press-release with no drag
-      // can be treated as a tap on mouseup.
+      // Track pointer travel (screen px) so a press-release with no drag counts
+      // as a tap on mouseup — used for the node-tap editor and the empty-space
+      // tap-to-deselect (which must not fire when an empty drag pans the canvas).
       if (!pressRef.current.moved) {
         const travel = Math.hypot(rawX - pressRef.current.x, rawY - pressRef.current.y) * scale;
         if (travel > NODE_TAP_MAX_TRAVEL) pressRef.current.moved = true;
       }
+
+      if (mode.kind === "idle") return;
+
+      const shape = shapes[mode.shapeId];
+      if (!shape) return;
 
       // ---- MOVE ----
       if (mode.kind === "move") {
@@ -548,7 +559,12 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
   const onMouseUp = useCallback(
     (_rawX: number, _rawY: number) => {
       const mode = modeRef.current;
-      if (mode.kind === "idle") return;
+      if (mode.kind === "idle") {
+        // Empty-space tap (no drag) clears the selection; an empty drag panned.
+        if (pendingDeselectRef.current && !pressRef.current.moved) selectShape(null);
+        pendingDeselectRef.current = false;
+        return;
+      }
 
       // Tap on a wall node (pressed and released without dragging): open the
       // thickness editor instead of committing the no-op endpoint "resize".
@@ -583,13 +599,14 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
       setConnectedPreviews({});
       setHints(EMPTY_HINTS);
     },
-    [shapes, previewShape, connectedPreviews, updateShape, onNodeTap],
+    [shapes, previewShape, connectedPreviews, updateShape, onNodeTap, selectShape],
   );
 
   /** Abort an in-progress move/resize/rotate without committing it. */
   const cancel = useCallback(() => {
     modeRef.current = { kind: "idle" };
     dragSnapshotRef.current = null;
+    pendingDeselectRef.current = false;
     setPreviewShape(null);
     setConnectedPreviews({});
     setHints(EMPTY_HINTS);

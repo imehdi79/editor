@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useEditorStore, type DimensionUnit, type MeasurementReference, type DimensionDisplay } from "@/store/editor.store";
 import type { JoinStyle, EndCap, JunctionAlign } from "@/core/wall-junctions";
 import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
+import { NumberField } from "@/components/ui/number-field";
 import { useTranslation, type TranslationKey } from "@/i18n";
 import { useI18nStore } from "@/store/i18n.store";
 import { LOCALES, LOCALE_META } from "@/i18n/config";
@@ -83,40 +84,6 @@ const OptionRow = <T extends string>({
       ))}
     </div>
   </div>
-);
-
-const NumberField = ({
-  label,
-  value,
-  min,
-  step,
-  suffix,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  step: number;
-  suffix: string;
-  onChange: (v: number) => void;
-}) => (
-  <label className="flex items-center justify-between gap-2 text-xs">
-    <span className="text-muted-foreground">{label}</span>
-    <span className="flex items-center gap-1">
-      <input
-        type="number"
-        min={min}
-        step={step}
-        value={value}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          if (!Number.isNaN(v) && v >= min) onChange(v);
-        }}
-        className="h-7 w-16 rounded-md border bg-background px-2 text-right text-xs outline-none focus-visible:border-ring"
-      />
-      <span className="w-5 text-muted-foreground">{suffix}</span>
-    </span>
-  </label>
 );
 
 interface SettingsPanelProps {

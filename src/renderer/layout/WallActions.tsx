@@ -24,6 +24,7 @@ import { absoluteAngleDeg } from "@/core/wall-utils/wallAngles";
 import type { Shape, WallShape, ArcWallShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { useTranslation } from "@/i18n";
 import { useSetWallThickness } from "@/features/wall-tool/useWallThickness";
+import { NumberField } from "@/components/ui/number-field";
 import WallLayersPanel from "./WallLayersPanel";
 
 /** Wall or arc wall — both carry thickness/height/offset and editable properties. */
@@ -31,40 +32,6 @@ const isWallLike = (s: Shape | undefined): s is WallShape | ArcWallShape =>
   !!s && (s.type === "wall" || s.type === "arc-wall");
 
 type WallTab = "properties" | "layers";
-
-const NumberField = ({
-  label,
-  value,
-  min,
-  step,
-  suffix,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  step: number;
-  suffix: string;
-  onChange: (v: number) => void;
-}) => (
-  <label className="flex items-center justify-between gap-2 text-xs">
-    <span className="text-muted-foreground">{label}</span>
-    <span className="flex items-center gap-1">
-      <input
-        type="number"
-        min={min}
-        step={step}
-        value={value}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          if (!Number.isNaN(v) && v >= min) onChange(v);
-        }}
-        className="h-7 w-16 rounded-md border bg-background px-2 text-right text-xs outline-none focus-visible:border-ring"
-      />
-      <span className="w-5 text-muted-foreground">{suffix}</span>
-    </span>
-  </label>
-);
 
 const WallActions = () => {
   const { t } = useTranslation();
