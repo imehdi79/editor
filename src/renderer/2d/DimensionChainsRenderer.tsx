@@ -97,7 +97,7 @@ const ChainDimLine = ({ seg, pxScale }: { seg: ChainSegment; pxScale: number }) 
   );
 };
 
-const ChainLabel = ({ seg, pxScale }: { seg: ChainSegment; pxScale: number }) => {
+const ChainLabel = ({ seg }: { seg: ChainSegment }) => {
   const c = colors(seg.kind);
   const { labelAnchor, angleDeg } = seg.geom;
   const { boxWidth, boxHeight, offsetX, offsetY, fontSize, padding } = seg.metrics;
@@ -105,8 +105,7 @@ const ChainLabel = ({ seg, pxScale }: { seg: ChainSegment; pxScale: number }) =>
     <Group x={labelAnchor.x} y={labelAnchor.y}
       offsetX={offsetX} offsetY={offsetY} rotation={angleDeg} listening={false}>
       <Rect x={0} y={0} width={boxWidth} height={boxHeight}
-        fill={c.labelBg} stroke={c.dim} strokeWidth={0.5 * pxScale}
-        cornerRadius={LABEL_BG_RADIUS} listening={false} />
+        fill={c.labelBg} cornerRadius={LABEL_BG_RADIUS} listening={false} />
       <Text x={padding} y={padding} text={seg.text}
         fontSize={fontSize} fontFamily={LABEL_FONT_FAMILY}
         fill={c.labelFg} listening={false} />
@@ -118,7 +117,7 @@ const ChainAnnotation = ({ seg, pxScale }: { seg: ChainSegment; pxScale: number 
   <Group listening={false}>
     <ChainExtLines seg={seg} pxScale={pxScale} />
     <ChainDimLine seg={seg} pxScale={pxScale} />
-    <ChainLabel seg={seg} pxScale={pxScale} />
+    <ChainLabel seg={seg} />
   </Group>
 );
 

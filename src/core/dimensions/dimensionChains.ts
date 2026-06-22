@@ -36,7 +36,7 @@ import { SNAP_EPSILON } from "@/core/topology/computeTopology";
 import type { DimensionUnit } from "@/store/editor.store";
 import { formatDimension } from "./dimensionUnits";
 import { computeSegmentDimension, DIM_OFFSET, type DimensionGeometry } from "./dimensionGeometry";
-import { metricsFromGeometry } from "./dimensionLayout";
+import { metricsFromGeometry, isDimensionLegible } from "./dimensionLayout";
 import { finishBuildup } from "@/core/wall-layers/finishedWall";
 import { arcTangentAtEnd } from "@/core/arc/arcGeometry";
 
@@ -350,6 +350,7 @@ const buildSideSegments = (
   pixelsPerMeter: number,
   runId: string,
   pxScale: number,
+  zoom: number,
 ): ChainSegment[] => {
   const { ox, oy, ux, uy, tMin, tMax } = geom;
   const offset = CHAIN_OFFSET * pxScale;
@@ -379,6 +380,9 @@ const buildSideSegments = (
     const p1 = at(b);
     const len = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     if (len < MIN_CHAIN_SEG_PX) continue;
+    // Level-of-detail cull: drop spans too small on screen to read at this zoom
+    // (reappear on zoom-in), so dense runs don't stack unreadable labels.
+    if (!isDimensionLegible(len, zoom)) continue;
     const text = formatDimension(len, dimensionUnit, pixelsPerMeter);
     const g = computeSegmentDimension(p0.x, p0.y, p1.x, p1.y, side, offset, pxScale);
     segs.push({
@@ -411,6 +415,7 @@ export const buildDimensionChains = (
   dimensionUnit: DimensionUnit,
   pixelsPerMeter: number,
   pxScale: number = 1,
+  zoom: number = 1,
 ): ChainSegment[] => {
   const walls = Object.values(shapes).filter(isWall);
   if (walls.length === 0) return [];
@@ -430,7 +435,7 @@ export const buildDimensionChains = (
     for (const side of [1, -1] as const) {
       if (!geom.junctions.some((j) => j.side === side)) continue;
       result.push(
-        ...buildSideSegments(geom, side, dimensionUnit, pixelsPerMeter, runId, pxScale),
+        ...buildSideSegments(geom, side, dimensionUnit, pixelsPerMeter, runId, pxScale, zoom),
       );
     }
   }

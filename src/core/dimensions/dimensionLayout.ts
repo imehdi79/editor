@@ -126,6 +126,25 @@ export interface LabelMetrics {
 export const dimensionPxScale = (zoom: number): number => (zoom > 0 ? Math.max(1, 1 / zoom) : 1);
 
 /**
+ * Minimum on-screen length (px) a segment must have for its dimension to be worth
+ * drawing. Below this the number can't be read or fitted between its witness
+ * lines, so the annotation is culled — it reappears as the user zooms in and the
+ * segment grows past the threshold. This is the level-of-detail rule that keeps
+ * small / dense plans legible instead of a wall of overlapping labels. A
+ * legibility-truth constant (like the collinear tolerance), not a user setting.
+ */
+export const MIN_DIM_SCREEN_PX = 48;
+
+/**
+ * Level-of-detail gate: is a segment of world length `lengthPx`, viewed at the
+ * given stage `zoom`, long enough on screen to carry a readable dimension? Shared
+ * by every dimension producer (per-segment, chains, arc) so the cull threshold is
+ * defined once.
+ */
+export const isDimensionLegible = (lengthPx: number, zoom: number): boolean =>
+  lengthPx * (zoom > 0 ? zoom : 1) >= MIN_DIM_SCREEN_PX;
+
+/**
  * Measure a label string and produce all metrics needed for precise rendering
  * and collision detection.
  *

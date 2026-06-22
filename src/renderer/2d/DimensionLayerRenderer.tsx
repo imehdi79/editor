@@ -30,7 +30,6 @@ const DIM_LINE_COLOR = "#475569";      // slate-600 — restrained, professional
 const EXT_LINE_COLOR = "#94a3b8";      // slate-400 — lighter than dim line
 const LABEL_TEXT_COLOR = "#1e293b";    // slate-900
 const LABEL_BG_COLOR = "#ffffff";
-const LABEL_BG_STROKE = "#cbd5e1";    // slate-300
 const CONFLICT_COLOR = "#f97316";      // orange-500 — visible but not alarming
 
 const DIM_LINE_WIDTH = 0.75;
@@ -180,19 +179,12 @@ const DimLine = ({
  *
  * This is the correct pattern for rotation-about-center in Konva.
  */
-const DimLabel = ({
-  candidate,
-  pxScale,
-}: {
-  candidate: DimensionCandidate;
-  pxScale: number;
-}) => {
+const DimLabel = ({ candidate }: { candidate: DimensionCandidate }) => {
   const { geom, text, metrics, conflicted } = candidate;
   const { labelAnchor, angleDeg } = geom;
   const { boxWidth, boxHeight, offsetX, offsetY, fontSize, padding } = metrics;
 
   const textColor = conflicted ? CONFLICT_COLOR : LABEL_TEXT_COLOR;
-  const bgStroke = conflicted ? CONFLICT_COLOR : LABEL_BG_STROKE;
 
   return (
     <Group
@@ -203,15 +195,14 @@ const DimLabel = ({
       rotation={angleDeg}
       listening={false}
     >
-      {/* Background pill */}
+      {/* Background pill — borderless white halo so the number reads cleanly over
+          the line work without boxing every dimension in. */}
       <Rect
         x={0}
         y={0}
         width={boxWidth}
         height={boxHeight}
         fill={LABEL_BG_COLOR}
-        stroke={bgStroke}
-        strokeWidth={0.5 * pxScale}
         cornerRadius={LABEL_BG_RADIUS}
         listening={false}
       />
@@ -245,7 +236,7 @@ const DimensionAnnotation = ({ candidate, pxScale }: { candidate: DimensionCandi
         conflicted={conflicted}
         pxScale={pxScale}
       />
-      <DimLabel candidate={candidate} pxScale={pxScale} />
+      <DimLabel candidate={candidate} />
     </Group>
   );
 };

@@ -35,6 +35,7 @@ import {
   measureLabel,
   LABEL_FONT_FAMILY,
   dimensionPxScale,
+  isDimensionLegible,
   type LabelMetrics,
 } from "@/core/dimensions/dimensionLayout";
 
@@ -70,7 +71,7 @@ const LabelBox = ({
   const { boxWidth, boxHeight, offsetX, offsetY, fontSize, padding } = metrics;
   return (
     <Group x={anchor.x} y={anchor.y} offsetX={offsetX} offsetY={offsetY} rotation={angleDeg} listening={false}>
-      <Rect x={0} y={0} width={boxWidth} height={boxHeight} fill={LABEL_BG} stroke={DIM_COLOR} strokeWidth={0.5} cornerRadius={LABEL_BG_RADIUS} />
+      <Rect x={0} y={0} width={boxWidth} height={boxHeight} fill={LABEL_BG} cornerRadius={LABEL_BG_RADIUS} />
       <Text x={padding} y={padding} text={text} fontSize={fontSize} fontFamily={LABEL_FONT_FAMILY} fill={LABEL_FG} />
     </Group>
   );
@@ -117,7 +118,7 @@ const Annotation = ({
 // Per-arc dimensions
 // ---------------------------------------------------------------------------
 
-const ArcDims = ({ shape, unit, ppm, pxScale }: { shape: ArcWallShape; unit: DimensionUnit; ppm: number; pxScale: number }) => {
+const ArcDims = ({ shape, unit, ppm, pxScale, zoom }: { shape: ArcWallShape; unit: DimensionUnit; ppm: number; pxScale: number; zoom: number }) => {
   const { x1, y1, x2, y2, bulge } = shape;
   const offset = DIM_OFFSET * pxScale;
 
@@ -127,9 +128,12 @@ const ArcDims = ({ shape, unit, ppm, pxScale }: { shape: ArcWallShape; unit: Dim
   const chordSide: 1 | -1 = bulge >= 0 ? -1 : 1;
   const chordGeom = computeSegmentDimension(x1, y1, x2, y2, chordSide, offset, pxScale);
   const chordMetrics = metricsFromGeometry(chordGeom, chordText, pxScale);
+  // Level-of-detail cull: each arc dimension hides when too small on screen to
+  // read at this zoom, and reappears on zoom-in (matches the linear dim system).
+  const showChord = isDimensionLegible(chordLen, zoom);
 
   const arc = arcFromChordBulge(x1, y1, x2, y2, bulge);
-  if (!arc) return <Annotation geom={chordGeom} metrics={chordMetrics} text={chordText} pxScale={pxScale} />;
+  if (!arc) return showChord ? <Annotation geom={chordGeom} metrics={chordMetrics} text={chordText} pxScale={pxScale} /> : null;
 
   // Depth (rise / sagitta) — along the chord-midpoint → apex line, inside the cap.
   const mx = (x1 + x2) / 2;
@@ -137,6 +141,7 @@ const ArcDims = ({ shape, unit, ppm, pxScale }: { shape: ArcWallShape; unit: Dim
   const depthText = formatDimension(Math.abs(bulge), unit, ppm);
   const depthGeom = computeSegmentDimension(mx, my, arc.apex.x, arc.apex.y, 1, 0, pxScale);
   const depthMetrics = metricsFromGeometry(depthGeom, depthText, pxScale);
+  const showDepth = isDimensionLegible(Math.abs(bulge), zoom);
 
   // Arc length — just outside the apex on the convex side.
   const ox = (arc.apex.x - arc.cx) / arc.radius;
@@ -145,12 +150,15 @@ const ArcDims = ({ shape, unit, ppm, pxScale }: { shape: ArcWallShape; unit: Dim
   const arcAnchor = { x: arc.apex.x + ox * gap, y: arc.apex.y + oy * gap };
   const arcText = `⌒ ${formatDimension(arc.length, unit, ppm)}`;
   const arcMetrics = measureLabel(arcText, arcAnchor, 0, pxScale);
+  const showArc = isDimensionLegible(arc.length, zoom);
+
+  if (!showChord && !showDepth && !showArc) return null;
 
   return (
     <Group listening={false}>
-      <Annotation geom={chordGeom} metrics={chordMetrics} text={chordText} pxScale={pxScale} />
-      <Annotation geom={depthGeom} metrics={depthMetrics} text={depthText} pxScale={pxScale} showExt={false} />
-      <LabelBox metrics={arcMetrics} text={arcText} angleDeg={0} anchor={arcAnchor} />
+      {showChord && <Annotation geom={chordGeom} metrics={chordMetrics} text={chordText} pxScale={pxScale} />}
+      {showDepth && <Annotation geom={depthGeom} metrics={depthMetrics} text={depthText} pxScale={pxScale} showExt={false} />}
+      {showArc && <LabelBox metrics={arcMetrics} text={arcText} angleDeg={0} anchor={arcAnchor} />}
     </Group>
   );
 };
@@ -165,7 +173,8 @@ const ArcDimensionRenderer = () => {
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
   const mode = useEditorStore((s) => s.dimensionDisplay);
   const archVisible = useLayersStore((s) => s.visibility.architectural);
-  const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
+  const zoom = useViewportStore((s) => s.scale);
+  const pxScale = dimensionPxScale(zoom);
 
   if (!archVisible || (mode !== "segments" && mode !== "both")) return null;
 
@@ -175,7 +184,7 @@ const ArcDimensionRenderer = () => {
   return (
     <Group listening={false}>
       {arcs.map((s) => (
-        <ArcDims key={s.id} shape={s} unit={unit} ppm={ppm} pxScale={pxScale} />
+        <ArcDims key={s.id} shape={s} unit={unit} ppm={ppm} pxScale={pxScale} zoom={zoom} />
       ))}
     </Group>
   );

@@ -22,10 +22,5 @@
     "All user-facing terminology must be localized in Italian (it), Persian (fa), English (en), and German (de). Use professional construction, architecture, and building-design terminology rather than generic translations. Wall types, junctions, join styles, dimensions, layers, structural elements, editor controls, validation messages, and all future features must follow the existing i18n system. Translation keys must be scalable and maintainable. The implementer is responsible for choosing the appropriate industry-standard terminology in each language.",
     "use /compact to reduce token usage on every step complete"
   ],
-  "steps": [
-    {
-      "id": "dimention-rendering",
-      "title": "dimentions were to ugly and not undertandable on small or heavy maps"
-    }
-  ]
+  "steps": []
 }

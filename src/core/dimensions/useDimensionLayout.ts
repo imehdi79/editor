@@ -26,7 +26,8 @@ export const useDimensionLayout = (): DimensionCandidate[] => {
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
   const measurementReference = useEditorStore((s) => s.measurementReference);
-  const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
+  const zoom = useViewportStore((s) => s.scale);
+  const pxScale = dimensionPxScale(zoom);
   // Inner/outer references measure to the true mitred faces — share the cached
   // wall outlines so the dimension matches what is drawn.
   const joinStyle = useEditorStore((s) => s.wallJoinStyle);
@@ -45,7 +46,10 @@ export const useDimensionLayout = (): DimensionCandidate[] => {
         : measurementReference === "core"
           ? computeWallOutlines(shapes, config)
           : computeWallOutlines(finishedWallShapes(shapes), config);
-    const candidates = buildCandidates(shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale, outlines);
-    return resolveCollisions(candidates, pxScale);
-  }, [shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale, joinStyle, miterLimit, endCap, align]);
+    const candidates = buildCandidates(shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale, outlines, zoom);
+    // Hide labels that still overlap after every resolution pass instead of
+    // drawing them faded — overlapping numbers are the main source of "spaghetti"
+    // on dense plans, and they reappear as the user zooms in (fewer collisions).
+    return resolveCollisions(candidates, pxScale).filter((c) => !c.conflicted);
+  }, [shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale, zoom, joinStyle, miterLimit, endCap, align]);
 };

@@ -33,7 +33,7 @@ import {
   DIM_OFFSET,
   type DimensionGeometry,
 } from "./dimensionGeometry";
-import { metricsFromGeometry } from "./dimensionLayout";
+import { metricsFromGeometry, isDimensionLegible } from "./dimensionLayout";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -277,6 +277,7 @@ export const buildCandidates = (
   reference: MeasurementReference = "centerline",
   pxScale: number = 1,
   outlines?: WallOutlineMap,
+  zoom: number = 1,
 ): DimensionCandidate[] => {
   // Resolve measured segments first so we can derive a centroid for side-choice.
   type Seg = { id: string; x1: number; y1: number; x2: number; y2: number };
@@ -292,7 +293,11 @@ export const buildCandidates = (
       x2 = m.x2;
       y2 = m.y2;
     }
-    if (Math.hypot(x2 - x1, y2 - y1) < MIN_LENGTH_PX) continue;
+    const lengthPx = Math.hypot(x2 - x1, y2 - y1);
+    if (lengthPx < MIN_LENGTH_PX) continue;
+    // Level-of-detail cull: skip segments too small on screen to read at this
+    // zoom. They reappear as the user zooms in (declutters small / dense plans).
+    if (!isDimensionLegible(lengthPx, zoom)) continue;
     segs.push({ id: shape.id, x1, y1, x2, y2 });
   }
 

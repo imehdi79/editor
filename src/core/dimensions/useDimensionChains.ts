@@ -16,10 +16,11 @@ export const useDimensionChains = (): ChainSegment[] => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
-  const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
+  const zoom = useViewportStore((s) => s.scale);
+  const pxScale = dimensionPxScale(zoom);
 
   return useMemo(
-    () => buildDimensionChains(shapes, dimensionUnit, pixelsPerMeter, pxScale),
-    [shapes, dimensionUnit, pixelsPerMeter, pxScale],
+    () => buildDimensionChains(shapes, dimensionUnit, pixelsPerMeter, pxScale, zoom),
+    [shapes, dimensionUnit, pixelsPerMeter, pxScale, zoom],
   );
 };
