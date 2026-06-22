@@ -13,6 +13,7 @@ import { useEditorStore, type DimensionUnit, type MeasurementReference, type Dim
 import type { JoinStyle, EndCap, JunctionAlign } from "@/core/wall-junctions";
 import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
 import { NumberField } from "@/components/ui/number-field";
+import { ASSEMBLY_PRESETS } from "@/core/wall-layers/wallAssemblyPresets";
 import { useTranslation, type TranslationKey } from "@/i18n";
 import { useI18nStore } from "@/store/i18n.store";
 import { LOCALES, LOCALE_META } from "@/i18n/config";
@@ -98,7 +99,7 @@ const SettingsPanel = ({ open: openProp, onOpenChange, hideTrigger }: SettingsPa
   const [openState, setOpenState] = useState(false);
   const open = openProp ?? openState;
   const setOpen = onOpenChange ?? setOpenState;
-  const { t } = useTranslation();
+  const { t, tf } = useTranslation();
 
   const locale = useI18nStore((s) => s.locale);
   const setLocale = useI18nStore((s) => s.setLocale);
@@ -112,6 +113,8 @@ const SettingsPanel = ({ open: openProp, onOpenChange, hideTrigger }: SettingsPa
   const setDefaultWallThickness = useEditorStore((s) => s.setDefaultWallThickness);
   const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
   const setDefaultWallHeight = useEditorStore((s) => s.setDefaultWallHeight);
+  const defaultAssemblyPreset = useEditorStore((s) => s.defaultAssemblyPreset);
+  const setDefaultAssemblyPreset = useEditorStore((s) => s.setDefaultAssemblyPreset);
   const linkConnectedNodes = useEditorStore((s) => s.linkConnectedNodes);
   const setLinkConnectedNodes = useEditorStore((s) => s.setLinkConnectedNodes);
   const dimensionDisplay = useEditorStore((s) => s.dimensionDisplay);
@@ -233,6 +236,22 @@ const SettingsPanel = ({ open: openProp, onOpenChange, hideTrigger }: SettingsPa
                 suffix={dimensionUnit}
                 onChange={(v) => setDefaultWallHeight(pxToCm(toPx(v, dimensionUnit, ppm), ppm))}
               />
+              {/* Default composite assembly applied to newly drawn walls. */}
+              <label className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-muted-foreground">{t("settings.defaultAssembly")}</span>
+                <select
+                  value={defaultAssemblyPreset ?? "none"}
+                  onChange={(e) => setDefaultAssemblyPreset(e.target.value === "none" ? null : e.target.value)}
+                  className="h-7 rounded-md border bg-background px-1.5 text-xs outline-none focus-visible:border-ring"
+                >
+                  <option value="none">{tf("assemblyPresets.none", "Single layer")}</option>
+                  {ASSEMBLY_PRESETS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {tf(`assemblyPresets.${p.id}`, p.id)}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             {/* Wall joins — how wall bodies resolve where they meet. */}

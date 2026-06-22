@@ -100,6 +100,7 @@ export const fa: Dictionary = {
     separate: "جدا",
     wallThickness: "ضخامت دیوار",
     wallHeight: "ارتفاع دیوار",
+    defaultAssembly: "لایه‌بندی پیش‌فرض",
     wallJoin: "اتصال دیوار",
     freeEnd: "انتهای آزاد",
     thicknessAlign: "تراز ضخامت",
@@ -198,6 +199,7 @@ export const fa: Dictionary = {
   },
 
   assemblyPresets: {
+    none: "تک‌لایه",
     singleLeaf: "تک‌جداره اندودشده",
     insulatedBlock: "بلوک عایق‌دار",
     cavityWall: "دیوار دوجداره",

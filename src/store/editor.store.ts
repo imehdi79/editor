@@ -54,6 +54,13 @@ interface EditorStore {
   /** Default height (px-equivalent, real units) for walls — not drawn in 2D,
    *  reserved for future area/volume (surface) calculations */
   defaultWallHeight: number;
+  /**
+   * Preset id (see `ASSEMBLY_PRESETS`) applied to newly drawn walls so they are
+   * real composite walls. `null` = a plain single-thickness wall using
+   * `defaultWallThickness`. The preset's structural-core width becomes the wall's
+   * `thickness` (the dimension reference).
+   */
+  defaultAssemblyPreset: string | null;
 
   /** How wall faces resolve at a corner (mitre/butt/bevel/round). */
   wallJoinStyle: JoinStyle;
@@ -84,6 +91,7 @@ interface EditorStore {
   setMeasurementReference: (ref: MeasurementReference) => void;
   setDefaultWallThickness: (thickness: number) => void;
   setDefaultWallHeight: (height: number) => void;
+  setDefaultAssemblyPreset: (id: string | null) => void;
   setLinkConnectedNodes: (link: boolean) => void;
   setDimensionDisplay: (mode: DimensionDisplay) => void;
   setWallJoinStyle: (style: JoinStyle) => void;
@@ -108,6 +116,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   measurementReference: "outer",
   defaultWallThickness: 12,
   defaultWallHeight: 280,
+  defaultAssemblyPreset: "singleLeaf",
   linkConnectedNodes: true,
   dimensionDisplay: "both",
 
@@ -123,6 +132,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setMeasurementReference: (ref) => set({ measurementReference: ref }),
   setDefaultWallThickness: (thickness) => set({ defaultWallThickness: thickness }),
   setDefaultWallHeight: (height) => set({ defaultWallHeight: height }),
+  setDefaultAssemblyPreset: (id) => set({ defaultAssemblyPreset: id }),
   setLinkConnectedNodes: (link) => set({ linkConnectedNodes: link }),
   setDimensionDisplay: (mode) => set({ dimensionDisplay: mode }),
   setWallJoinStyle: (style) => set({ wallJoinStyle: style }),

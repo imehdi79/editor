@@ -30,13 +30,6 @@
       "dimensions": "Structural-core faces (outline corners) are unchanged, so per-segment dims & chains are unaffected; only finish bands re-clip per priority."
     },
     {
-      "id": "bim-5",
-      "title": "Professional default wall configuration (pro config)",
-      "covers": ["#19"],
-      "detail": "Add a professional default composite assembly + pro junction defaults to editor.store (e.g. defaultWallAssembly/defaultWallCoreStart/End or a named preset id), applied when a wall is created so new walls are real composite walls. Values must be consistent with the editor's current scale (pixelsPerMeter / unit semantics — layer thicknesses in px-as-cm). Surface the default-assembly picker in SettingsPanel alongside the existing wall defaults.",
-      "dimensions": "New walls' core thickness drives dims exactly as today."
-    },
-    {
       "id": "bim-6",
       "title": "Core measurement reference + per-layer takeoff + 3D",
       "covers": ["#18", "#19"],

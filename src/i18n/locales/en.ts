@@ -101,6 +101,7 @@ export const en = {
     separate: "Separate",
     wallThickness: "Wall thickness",
     wallHeight: "Wall height",
+    defaultAssembly: "Default wall assembly",
     wallJoin: "Wall join",
     freeEnd: "Free end",
     thicknessAlign: "Thickness align",
@@ -209,6 +210,7 @@ export const en = {
 
   // Composite-wall preset names.
   assemblyPresets: {
+    none: "Single layer",
     singleLeaf: "Plastered single leaf",
     insulatedBlock: "Insulated block",
     cavityWall: "Cavity wall",

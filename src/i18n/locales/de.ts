@@ -100,6 +100,7 @@ export const de: Dictionary = {
     separate: "Getrennt",
     wallThickness: "Wandstärke",
     wallHeight: "Wandhöhe",
+    defaultAssembly: "Standard-Wandaufbau",
     wallJoin: "Wandverbindung",
     freeEnd: "Freies Ende",
     thicknessAlign: "Stärkenausrichtung",
@@ -198,6 +199,7 @@ export const de: Dictionary = {
   },
 
   assemblyPresets: {
+    none: "Einschicht",
     singleLeaf: "Einschalig verputzt",
     insulatedBlock: "Gedämmtes Mauerwerk",
     cavityWall: "Zweischaliges Mauerwerk",

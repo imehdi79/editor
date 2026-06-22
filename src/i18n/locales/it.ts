@@ -99,6 +99,7 @@ export const it: Dictionary = {
     separate: "Separati",
     wallThickness: "Spessore parete",
     wallHeight: "Altezza parete",
+    defaultAssembly: "Stratigrafia predefinita",
     wallJoin: "Giunzione parete",
     freeEnd: "Estremità libera",
     thicknessAlign: "Allineamento spessore",
@@ -197,6 +198,7 @@ export const it: Dictionary = {
   },
 
   assemblyPresets: {
+    none: "Strato singolo",
     singleLeaf: "Muratura intonacata",
     insulatedBlock: "Blocco isolato",
     cavityWall: "Muro a cassa vuota",
