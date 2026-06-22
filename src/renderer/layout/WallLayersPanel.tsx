@@ -1,143 +1,191 @@
 /**
- * WallLayersPanel — the "Layers" tab of the wall panel.
+ * WallLayersPanel — the "Layers" tab of the wall panel: a composite assembly
+ * editor.
  *
- * Lets a wall be described the way it's actually built: a stack of construction
- * layers (brick, plaster, ...) on each face. Both faces are independent, so the
- * inner and outer build-ups can differ. Layers are takeoff data only — they are
- * never drawn or dimensioned on the canvas; here they're shown as a compact
- * table mirroring the drawing-info columns (Type / Length / Width / Height /
- * Area). Length & Height are inherited from the wall (read-only); Type and Width
- * (the layer's own thickness) are editable; Area is the covered wall surface.
+ * A wall is described as one ordered exterior→interior stack of construction
+ * layers. Each row carries a material, its build-up thickness, and a BIM
+ * function (its junction priority), plus a marker for the structural-core slice.
+ * Layers can be added, removed, reordered (outward/inward) and seeded from a
+ * professional preset. Edits write `wall.assembly` / `coreStart` / `coreEnd`
+ * (and `thickness` = the core width that dimensions reference) via `updateShape`.
  */
 
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEditorStore } from "@/store/editor.store";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
-import { toPx, stepFor } from "@/core/dimensions/dimensionUnits";
-import type { WallLayer, WallShape, WallSide } from "@/core/drawing-engine/drawing.types";
-import { buildWallLayerRows } from "@/core/wall-layers/buildWallLayerRows";
-import {
-  WALL_SIDES,
-  WALL_MATERIALS,
-  materialColor,
-  createWallLayer,
-  layersOf,
-  withSideLayers,
-} from "@/core/wall-layers/wallLayers";
+import { toPx, toUnit, stepFor } from "@/core/dimensions/dimensionUnits";
+import { NumericInput } from "@/components/ui/number-field";
+import type { LayerFunction, WallLayer, WallShape } from "@/core/drawing-engine/drawing.types";
+import { WALL_MATERIALS, materialColor } from "@/core/wall-layers/wallLayers";
+import { wallAssembly, LAYER_FUNCTIONS } from "@/core/wall-layers/wallAssembly";
+import { ASSEMBLY_PRESETS, presetToPatch, coreWidth } from "@/core/wall-layers/wallAssemblyPresets";
+import { uid } from "@/lib/uid";
 import { useTranslation } from "@/i18n";
 
-/** Localized material name (storage keeps the English key). */
-const useMaterialLabel = () => {
-  const { tf } = useTranslation();
-  return (name: string) => tf(`materials.${name.toLowerCase()}`, name);
-};
+const INPUT = "h-7 rounded border bg-background px-1.5 outline-none focus-visible:border-ring";
 
-const SideTable = ({ wall, side }: { wall: WallShape; side: WallSide }) => {
-  const { t } = useTranslation();
-  const materialLabel = useMaterialLabel();
+type Row = WallLayer & { isCore: boolean };
+
+const WallLayersPanel = ({ wall }: { wall: WallShape }) => {
+  const { t, tf } = useTranslation();
   const unit = useEditorStore((s) => s.dimensionUnit);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
-  const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
   const updateShape = useFloorPlanStore((s) => s.updateShape);
 
-  const rows = buildWallLayerRows(wall, side, unit, ppm, defaultWallHeight);
+  const materialLabel = (name: string) => tf(`materials.${name.toLowerCase()}`, name);
 
-  const commit = (next: WallLayer[]) =>
-    updateShape(wall.id, { layers: withSideLayers(wall, side, next) });
+  // Current stack exterior→interior (from explicit assembly or derived legacy).
+  const { layers } = wallAssembly(wall);
+  const rows: Row[] = layers.map((l) => ({
+    id: l.id,
+    material: l.material,
+    thickness: l.thickness,
+    function: l.function,
+    isCore: l.isCore,
+  }));
 
-  const addLayer = () => commit([...layersOf(wall, side), createWallLayer()]);
-  const removeLayer = (id: string) => commit(layersOf(wall, side).filter((l) => l.id !== id));
-  const patchLayer = (id: string, patch: Partial<WallLayer>) =>
-    commit(layersOf(wall, side).map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  // Commit edited rows → explicit assembly + contiguous core slice + core width.
+  const commit = (next: Row[]) => {
+    const coreIdx = next.flatMap((r, i) => (r.isCore ? [i] : []));
+    const coreStart = coreIdx.length ? Math.min(...coreIdx) : 0;
+    const coreEnd = coreIdx.length ? Math.max(...coreIdx) : next.length - 1;
+    const assembly: WallLayer[] = next.map((r) => ({
+      id: r.id,
+      material: r.material,
+      thickness: r.thickness,
+      function: r.function,
+    }));
+    updateShape(wall.id, { assembly, coreStart, coreEnd, thickness: coreWidth(assembly, coreStart, coreEnd) });
+  };
+
+  const patchRow = (i: number, patch: Partial<Row>) => commit(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const addLayer = () =>
+    commit([...rows, { id: uid(), material: WALL_MATERIALS[0].name, thickness: 1.5, function: "finish1", isCore: false }]);
+  const removeRow = (i: number) => rows.length > 1 && commit(rows.filter((_, j) => j !== i));
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= rows.length) return;
+    const next = [...rows];
+    [next[i], next[j]] = [next[j], next[i]];
+    commit(next);
+  };
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium text-muted-foreground">{t(`wallSides.${side}`)}</span>
+    <div className="flex flex-col gap-2">
+      {/* Preset picker + add */}
+      <div className="flex items-center gap-1.5">
+        <select
+          value=""
+          onChange={(e) => {
+            const preset = ASSEMBLY_PRESETS.find((p) => p.id === e.target.value);
+            if (preset) updateShape(wall.id, presetToPatch(preset));
+          }}
+          className={`${INPUT} flex-1 text-xs`}
+          title={t("wallAssembly.preset")}
+        >
+          <option value="" disabled>
+            {t("wallAssembly.presetPlaceholder")}
+          </option>
+          {ASSEMBLY_PRESETS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {tf(`assemblyPresets.${p.id}`, p.id)}
+            </option>
+          ))}
+        </select>
         <Button size="xs" variant="outline" onClick={addLayer}>
-          <Plus /> {t("wallLayers.addLayer")}
+          <Plus /> {t("wallAssembly.addLayer")}
         </Button>
       </div>
 
-      {rows.length === 0 ? (
-        <p className="rounded-md border border-dashed py-2 text-center text-[11px] text-muted-foreground">
-          {t("wallLayers.noLayers")}
-        </p>
-      ) : (
-        <div className="overflow-hidden rounded-md border text-[11px]">
-          {/* Header — mirrors the drawing-info table columns */}
-          <div className="grid grid-cols-[1fr_3rem_3.25rem_3rem_3.5rem_1.25rem] gap-1 border-b bg-muted/50 px-1.5 py-1 font-medium text-muted-foreground">
-            <span>{t("wallLayers.type")}</span>
-            <span className="text-right">{t("wallLayers.length")}</span>
-            <span className="text-right">{t("wallLayers.width")}</span>
-            <span className="text-right">{t("wallLayers.height")}</span>
-            <span className="text-right">{t("wallLayers.area")}</span>
-            <span />
-          </div>
+      <span className="px-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+        {t("wallAssembly.exterior")} ↓ {t("wallAssembly.interior")}
+      </span>
 
-          {rows.map((row) => (
-            <div
-              key={row.id}
-              className="grid grid-cols-[1fr_3rem_3.25rem_3rem_3.5rem_1.25rem] items-center gap-1 border-b px-1.5 py-1 last:border-b-0"
-            >
-              <div className="flex min-w-0 items-center gap-1.5">
-                <span
-                  className="size-3 shrink-0 rounded-sm border border-black/10"
-                  style={{ backgroundColor: materialColor(row.material) }}
-                />
-                <select
-                  value={row.material}
-                  onChange={(e) => patchLayer(row.id, { material: e.target.value })}
-                  className="h-6 w-full min-w-0 rounded border bg-background px-1 outline-none focus-visible:border-ring"
-                >
-                  {!WALL_MATERIALS.some((m) => m.name === row.material) && (
-                    <option value={row.material}>{materialLabel(row.material)}</option>
-                  )}
-                  {WALL_MATERIALS.map((m) => (
-                    <option key={m.name} value={m.name}>
-                      {materialLabel(m.name)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <span className="truncate text-right text-muted-foreground">{row.lengthDisplay}</span>
-              <input
-                type="number"
-                min={0}
-                step={stepFor(unit)}
-                value={row.thicknessValue}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  if (!Number.isNaN(v) && v >= 0) patchLayer(row.id, { thickness: toPx(v, unit, ppm) });
-                }}
-                className="h-6 w-full rounded border bg-background px-1 text-right outline-none focus-visible:border-ring"
+      {/* Layer cards, exterior (top) → interior (bottom) */}
+      <div className="flex flex-col gap-1.5">
+        {rows.map((row, i) => (
+          <div key={row.id} className="flex flex-col gap-1.5 rounded-md border p-1.5 text-[11px]">
+            {/* Material + thickness + remove */}
+            <div className="flex items-center gap-1.5">
+              <span
+                className="size-3 shrink-0 rounded-sm border border-black/10"
+                style={{ backgroundColor: materialColor(row.material) }}
               />
-              <span className="truncate text-right text-muted-foreground">{row.heightDisplay}</span>
-              <span className="truncate text-right text-muted-foreground">{row.areaDisplay}</span>
+              <select
+                value={row.material}
+                onChange={(e) => patchRow(i, { material: e.target.value })}
+                className={`${INPUT} min-w-0 flex-1`}
+              >
+                {!WALL_MATERIALS.some((m) => m.name === row.material) && (
+                  <option value={row.material}>{materialLabel(row.material)}</option>
+                )}
+                {WALL_MATERIALS.map((m) => (
+                  <option key={m.name} value={m.name}>
+                    {materialLabel(m.name)}
+                  </option>
+                ))}
+              </select>
+              <NumericInput
+                value={toUnit(row.thickness, unit, ppm)}
+                min={stepFor(unit)}
+                onChange={(v) => patchRow(i, { thickness: toPx(v, unit, ppm) })}
+                className={`${INPUT} w-14 text-right`}
+              />
+              <span className="w-4 text-muted-foreground">{unit}</span>
               <Button
                 size="icon-xs"
                 variant="ghost"
                 title={t("wallLayers.removeLayer")}
                 className="text-muted-foreground hover:text-destructive"
-                onClick={() => removeLayer(row.id)}
+                onClick={() => removeRow(i)}
               >
                 <Trash2 />
               </Button>
             </div>
-          ))}
-        </div>
-      )}
+
+            {/* Function + core marker + reorder */}
+            <div className="flex items-center gap-1.5">
+              <select
+                value={row.function}
+                onChange={(e) => patchRow(i, { function: e.target.value as LayerFunction })}
+                className={`${INPUT} min-w-0 flex-1`}
+                title={t("wallAssembly.function")}
+              >
+                {LAYER_FUNCTIONS.map((fn) => (
+                  <option key={fn} value={fn}>
+                    {t(`layerFunction.${fn}`)}
+                  </option>
+                ))}
+              </select>
+              <label className="flex items-center gap-1 text-muted-foreground" title={t("wallAssembly.core")}>
+                <input type="checkbox" checked={row.isCore} onChange={(e) => patchRow(i, { isCore: e.target.checked })} />
+                {t("wallAssembly.core")}
+              </label>
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                disabled={i === 0}
+                title={t("wallAssembly.moveOut")}
+                onClick={() => move(i, -1)}
+              >
+                <ChevronUp />
+              </Button>
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                disabled={i === rows.length - 1}
+                title={t("wallAssembly.moveIn")}
+                onClick={() => move(i, 1)}
+              >
+                <ChevronDown />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
-
-const WallLayersPanel = ({ wall }: { wall: WallShape }) => (
-  <div className="flex flex-col gap-3">
-    {WALL_SIDES.map((side) => (
-      <SideTable key={side} wall={wall} side={side} />
-    ))}
-  </div>
-);
 
 export default WallLayersPanel;

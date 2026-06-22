@@ -183,6 +183,38 @@ export const en = {
     area: "Area",
   },
 
+  // Composite assembly editor (ordered exterior → interior layer stack).
+  wallAssembly: {
+    exterior: "Exterior",
+    interior: "Interior",
+    function: "Function",
+    core: "Core",
+    thickness: "Thickness",
+    addLayer: "Add layer",
+    moveOut: "Move outward",
+    moveIn: "Move inward",
+    preset: "Preset",
+    presetPlaceholder: "Apply preset…",
+  },
+
+  // BIM layer function / junction priority.
+  layerFunction: {
+    structure: "Structure",
+    substrate: "Substrate",
+    thermal: "Thermal insulation",
+    finish1: "Finish",
+    finish2: "Outer finish",
+    membrane: "Membrane",
+  },
+
+  // Composite-wall preset names.
+  assemblyPresets: {
+    singleLeaf: "Plastered single leaf",
+    insulatedBlock: "Insulated block",
+    cavityWall: "Cavity wall",
+    studPartition: "Stud partition",
+  },
+
   // Construction materials a layer can be (storage keys stay English).
   materials: {
     concrete: "Concrete",

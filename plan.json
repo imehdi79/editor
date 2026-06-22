@@ -30,13 +30,6 @@
       "dimensions": "Structural-core faces (outline corners) are unchanged, so per-segment dims & chains are unaffected; only finish bands re-clip per priority."
     },
     {
-      "id": "bim-4",
-      "title": "Composite assembly editor UI + presets",
-      "covers": ["#19"],
-      "detail": "Replace WallLayersPanel's two per-side tables with one ordered exterior→interior assembly table: rows carry material + thickness + a Function dropdown, with a core-boundary marker (set coreStart/coreEnd) and add/remove/reorder. Ship professional presets (e.g. brick veneer + stud, CMU + insulation + finish, single-leaf plastered, cavity wall). Writes wall.assembly/coreStart/coreEnd via updateShape (ShapePatch). i18n: layer-function labels + preset + control names in en/it/de/fa using industry terminology (e.g. struttura/Tragschicht/سازه‌ای).",
-      "dimensions": "None directly; editing the core layers updates wall.thickness (the core width) that dims reference."
-    },
-    {
       "id": "bim-5",
       "title": "Professional default wall configuration (pro config)",
       "covers": ["#19"],

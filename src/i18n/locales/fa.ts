@@ -175,6 +175,35 @@ export const fa: Dictionary = {
     area: "مساحت",
   },
 
+  wallAssembly: {
+    exterior: "بیرونی",
+    interior: "داخلی",
+    function: "عملکرد",
+    core: "هسته",
+    thickness: "ضخامت",
+    addLayer: "افزودن لایه",
+    moveOut: "به بیرون",
+    moveIn: "به داخل",
+    preset: "لایه‌بندی",
+    presetPlaceholder: "اعمال لایه‌بندی…",
+  },
+
+  layerFunction: {
+    structure: "سازه‌ای",
+    substrate: "زیرسازی",
+    thermal: "عایق حرارتی",
+    finish1: "نازک‌کاری",
+    finish2: "نازک‌کاری بیرونی",
+    membrane: "غشاء",
+  },
+
+  assemblyPresets: {
+    singleLeaf: "تک‌جداره اندودشده",
+    insulatedBlock: "بلوک عایق‌دار",
+    cavityWall: "دیوار دوجداره",
+    studPartition: "دیوار قاب‌بندی",
+  },
+
   materials: {
     concrete: "بتن",
     block: "بلوک",

@@ -175,6 +175,35 @@ export const de: Dictionary = {
     area: "Fläche",
   },
 
+  wallAssembly: {
+    exterior: "Außen",
+    interior: "Innen",
+    function: "Funktion",
+    core: "Kern",
+    thickness: "Stärke",
+    addLayer: "Schicht hinzufügen",
+    moveOut: "Nach außen",
+    moveIn: "Nach innen",
+    preset: "Wandaufbau",
+    presetPlaceholder: "Aufbau anwenden…",
+  },
+
+  layerFunction: {
+    structure: "Tragschicht",
+    substrate: "Trägerschicht",
+    thermal: "Wärmedämmung",
+    finish1: "Deckschicht",
+    finish2: "Außenputz",
+    membrane: "Sperrschicht",
+  },
+
+  assemblyPresets: {
+    singleLeaf: "Einschalig verputzt",
+    insulatedBlock: "Gedämmtes Mauerwerk",
+    cavityWall: "Zweischaliges Mauerwerk",
+    studPartition: "Ständerwand",
+  },
+
   materials: {
     concrete: "Beton",
     block: "Mauerstein",

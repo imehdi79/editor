@@ -174,6 +174,35 @@ export const it: Dictionary = {
     area: "Area",
   },
 
+  wallAssembly: {
+    exterior: "Esterno",
+    interior: "Interno",
+    function: "Funzione",
+    core: "Nucleo",
+    thickness: "Spessore",
+    addLayer: "Aggiungi strato",
+    moveOut: "Verso l'esterno",
+    moveIn: "Verso l'interno",
+    preset: "Stratigrafia",
+    presetPlaceholder: "Applica stratigrafia…",
+  },
+
+  layerFunction: {
+    structure: "Struttura",
+    substrate: "Supporto",
+    thermal: "Isolamento termico",
+    finish1: "Finitura",
+    finish2: "Finitura esterna",
+    membrane: "Membrana",
+  },
+
+  assemblyPresets: {
+    singleLeaf: "Muratura intonacata",
+    insulatedBlock: "Blocco isolato",
+    cavityWall: "Muro a cassa vuota",
+    studPartition: "Parete a telaio",
+  },
+
   materials: {
     concrete: "Calcestruzzo",
     block: "Blocco",
