@@ -269,6 +269,9 @@ export const en = {
       "dashed-line": "Dashed Line",
       text: "Text",
       room: "Room",
+      space: "Space",
+      floor: "Floor",
+      ceiling: "Ceiling",
     },
   },
 

@@ -256,6 +256,9 @@ export const de: Dictionary = {
       "dashed-line": "Strichlinie",
       text: "Text",
       room: "Raum",
+      space: "Raum",
+      floor: "Boden",
+      ceiling: "Decke",
     },
   },
 

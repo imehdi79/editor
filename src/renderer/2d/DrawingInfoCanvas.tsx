@@ -149,8 +149,8 @@ const DrawingInfoCanvas = () => {
   let roomOrdinal = 0;
   for (const row of rows) {
     const typeLabel =
-      row.kind === "room"
-        ? `${t("drawingInfo.types.room")} ${++roomOrdinal}`
+      row.kind === "space"
+        ? `${t("drawingInfo.types.space")} ${++roomOrdinal}`
         : row.existing
           ? `${t(`drawingInfo.types.${row.kind}`)} · ${t("drawingInfo.existing")}`
           : t(`drawingInfo.types.${row.kind}`);
@@ -268,7 +268,8 @@ const DrawingInfoCanvas = () => {
         if (item.kind === "shape") {
           const { row } = item;
           const isSel = row.id === selectedId;
-          const selectable = row.kind !== "room";
+          // Derived rows (space + its floor/ceiling surfaces) have no shape to select.
+          const selectable = row.kind !== "space" && row.kind !== "floor" && row.kind !== "ceiling";
           const cells = cellsOf(row, item.typeLabel);
           return (
             <Group key={`row-${row.id}`}>

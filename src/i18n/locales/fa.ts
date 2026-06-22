@@ -256,6 +256,9 @@ export const fa: Dictionary = {
       "dashed-line": "خط‌چین",
       text: "متن",
       room: "اتاق",
+      space: "فضا",
+      floor: "کف",
+      ceiling: "سقف",
     },
   },
 

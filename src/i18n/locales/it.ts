@@ -255,6 +255,9 @@ export const it: Dictionary = {
       "dashed-line": "Linea tratteggiata",
       text: "Testo",
       room: "Locale",
+      space: "Spazio",
+      floor: "Pavimento",
+      ceiling: "Soffitto",
     },
   },
 

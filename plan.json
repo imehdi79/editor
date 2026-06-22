@@ -21,11 +21,5 @@
     "If current task related to juctions or dimentions, See .claude/skills/wall-junctions for the authoritative geometry/computation reference for all 20 junction types.",
     "All user-facing terminology must be localized in Italian (it), Persian (fa), English (en), and German (de). Use professional construction, architecture, and building-design terminology rather than generic translations. Wall types, junctions, join styles, dimensions, layers, structural elements, editor controls, validation messages, and all future features must follow the existing i18n system. Translation keys must be scalable and maintainable. The implementer is responsible for choosing the appropriate industry-standard terminology in each language."
   ],
-  "steps": [
-    {
-      "id": "space-detector",
-      "title": "Detect enclosed spaces, floors, and ceilings from room boundaries",
-      "detail": "Replace the current room detector with a space detection system that identifies enclosed areas based on wall boundaries. Each detected space should automatically generate floor and ceiling surfaces, calculate net area and perimeter, and update when walls or wall layers change."
-    }
-  ]
+  "steps": []
 }

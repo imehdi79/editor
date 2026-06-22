@@ -13,16 +13,16 @@
 import type { Shape } from "@/core/drawing-engine/drawing.types";
 import type { DimensionUnit } from "@/store/editor.store";
 import { formatDimension, formatArea, cmToPx } from "@/core/dimensions/dimensionUnits";
-import { computeRoomAreas } from "./computeRoomAreas";
+import { computeSpaces } from "@/core/spaces/computeSpaces";
 
 export interface DrawingCell {
   display: string;
 }
 
 export interface DrawingRow {
-  /** Shape id, or room cycle id for room rows */
+  /** Shape id, or space id (+ surface suffix) for space / floor / ceiling rows */
   id: string;
-  kind: "wall" | "window" | "door" | "line" | "dashed-line" | "text" | "room";
+  kind: "wall" | "window" | "door" | "line" | "dashed-line" | "text" | "space" | "floor" | "ceiling";
   type: string;
   length: DrawingCell;
   width: DrawingCell;
@@ -95,22 +95,44 @@ export const buildDrawingInfo = (
     line: 3,
     "dashed-line": 4,
     text: 5,
-    room: 6,
+    space: 6,
+    floor: 7,
+    ceiling: 8,
   };
   rows.sort((a, b) => ORDER[a.kind] - ORDER[b.kind]);
 
-  // Enclosed rooms — appended as a summary section with floor area.
-  // computeRoomAreas returns a shared, pre-sorted (largest-first) array; iterate
-  // without re-sorting so we don't mutate the cached result.
-  computeRoomAreas(shapes).forEach((room, i) => {
+  // Enclosed spaces — appended as a summary section. Each space reports its net
+  // (clear) floor area + net perimeter, followed by its generated floor and
+  // ceiling surfaces. computeSpaces returns a shared, pre-sorted (largest-first)
+  // array; iterate without re-sorting so we don't mutate the cached result.
+  const areaCell = (px2: number): DrawingCell => ({ display: formatArea(px2 / (pixelsPerMeter * pixelsPerMeter)) });
+  computeSpaces(shapes).forEach((space) => {
     rows.push({
-      id: room.id,
-      kind: "room",
-      type: `Room ${i + 1}`,
+      id: space.id,
+      kind: "space",
+      type: "Space",
+      length: lenCell(space.perimeterPx),
+      width: EMPTY,
+      height: EMPTY,
+      area: areaCell(space.netAreaPx),
+    });
+    rows.push({
+      id: `${space.id}-floor`,
+      kind: "floor",
+      type: "Floor",
       length: EMPTY,
       width: EMPTY,
       height: EMPTY,
-      area: { display: formatArea(room.areaPx / (pixelsPerMeter * pixelsPerMeter)) },
+      area: areaCell(space.floor.areaPx),
+    });
+    rows.push({
+      id: `${space.id}-ceiling`,
+      kind: "ceiling",
+      type: "Ceiling",
+      length: EMPTY,
+      width: EMPTY,
+      height: EMPTY,
+      area: areaCell(space.ceiling.areaPx),
     });
   });
 

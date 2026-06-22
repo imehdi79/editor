@@ -55,6 +55,7 @@ src/
     dimensions/        # dimension chains, layout, units, collision
     wall-layers/       # construction layer model + bands + takeoff rows
     drawing-info/      # buildDrawingInfo (takeoff table), computeRoomAreas
+    spaces/            # computeSpaces — enclosed spaces + net area/perimeter, floor/ceiling
   features/            # one folder per tool (wall/door/window/line/text/select)
     tool-registry.ts   # maps tool id -> tool definition
     select-tool/       # useTransformEngine (move/resize/rotate), useSelectionEngine
@@ -107,6 +108,10 @@ Key derived computations (all pure, in `core/`):
 - **computeRoomAreas(shapes)** — builds a planar arrangement of wall centerlines,
   traces minimal faces = rooms. **WeakMap-cached by the shapes object** (shared
   across consumers; returns a pre-sorted, read-only array — don't mutate/sort it).
+- **computeSpaces(shapes)** (`core/spaces/`) — enriches each enclosed face
+  (reuses computeRoomAreas) into a Space: net (clear) floor polygon inset to the
+  bounding walls' finished faces, net area + perimeter, and floor/ceiling
+  surfaces. WeakMap-cached; feeds SpaceRenderer + the takeoff.
 - **dimension chains** (`core/dimensions/`) — running inner/outer dimensions for
   collinear wall runs.
 
