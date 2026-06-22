@@ -13,7 +13,7 @@
  * Closes on outside-click, Escape, or when the target stops being a wall.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useEditorStore } from "@/store/editor.store";
 import { useViewportStore } from "@/store/viewport.store";
@@ -33,6 +33,62 @@ const JOIN_STYLES = [
   { value: "bevel", key: "joinStyle.bevel" },
   { value: "round", key: "joinStyle.round" },
 ] satisfies { value: JoinStyle; key: TranslationKey }[];
+
+/** Allow only an in-progress positive decimal (incl. "" and "."). */
+const NUMERIC_DRAFT = /^\d*\.?\d*$/;
+
+/**
+ * Thickness text input with a local draft so it can be cleared and retyped (a
+ * `type="number"` controlled input snaps back on clear). Own component so its
+ * hooks sit below the popover's early returns. Commits valid values live.
+ */
+const ThicknessInput = ({
+  valueUnit,
+  min,
+  onCommit,
+  onClose,
+}: {
+  valueUnit: number;
+  min: number;
+  onCommit: (v: number) => void;
+  onClose: () => void;
+}) => {
+  const [draft, setDraft] = useState(() => String(valueUnit));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(String(valueUnit));
+  }, [valueUnit, editing]);
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      autoFocus
+      value={draft}
+      onFocus={(e) => {
+        setEditing(true);
+        e.target.select();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onClose();
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        if (raw !== "" && !NUMERIC_DRAFT.test(raw)) return;
+        setDraft(raw);
+        const v = Number(raw);
+        if (raw.trim() !== "" && !Number.isNaN(v) && v >= min) onCommit(v);
+      }}
+      onBlur={(e) => {
+        setEditing(false);
+        const v = Number(e.target.value);
+        if (e.target.value.trim() === "" || Number.isNaN(v) || v < min) setDraft(String(valueUnit));
+      }}
+      className="h-7 w-16 rounded-md border bg-background px-2 text-right outline-none focus-visible:border-ring"
+    />
+  );
+};
 
 interface Props {
   shapeId: string;
@@ -107,21 +163,11 @@ const NodeThicknessPopover = ({ shapeId, handle, onClose }: Props) => {
     >
       <div className="flex items-center gap-1">
         <span className="text-muted-foreground">{t("wall.thickness")}</span>
-        <input
-          type="number"
-          autoFocus
+        <ThicknessInput
+          valueUnit={toUnit(valuePx, unit, ppm)}
           min={stepFor(unit)}
-          step={stepFor(unit)}
-          value={toUnit(valuePx, unit, ppm)}
-          onFocus={(e) => e.target.select()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onClose();
-          }}
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            if (!Number.isNaN(v) && v >= stepFor(unit)) commit(toPx(v, unit, ppm));
-          }}
-          className="h-7 w-16 rounded-md border bg-background px-2 text-right outline-none focus-visible:border-ring"
+          onCommit={(v) => commit(toPx(v, unit, ppm))}
+          onClose={onClose}
         />
         <span className="w-5 text-muted-foreground">{unit}</span>
       </div>

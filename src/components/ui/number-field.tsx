@@ -1,12 +1,13 @@
 /**
  * NumberField — a labelled numeric input used across the wall/settings panels.
  *
- * It keeps a local *draft* string so the field can be emptied and retyped. A
- * naively-controlled `value={number}` input rejects the empty/intermediate state
- * (clearing it snaps straight back to the old number), which makes "delete then
- * type a new value" impossible on touch. Here every keystroke updates the draft,
- * valid values (≥ min) commit live via `onChange`, and an empty/invalid field
- * reverts to the committed value on blur.
+ * It uses a TEXT input (not `type="number"`) with a numeric `inputMode`, plus a
+ * local *draft* string, so the field can be freely emptied and retyped. A
+ * `type="number"` input reports an empty string for any intermediate value and
+ * snaps a controlled value back on clear, which makes "delete then type a new
+ * value" impossible (especially on touch). Here every keystroke updates the
+ * draft, valid values (≥ min) commit live via `onChange`, and an empty/invalid
+ * field reverts to the committed value on blur.
  */
 
 import { useEffect, useState } from "react";
@@ -15,12 +16,16 @@ interface Props {
   label: string;
   value: number;
   min: number;
-  step: number;
+  /** Kept for API compatibility; ignored by the text input. */
+  step?: number;
   suffix: string;
   onChange: (v: number) => void;
 }
 
-export const NumberField = ({ label, value, min, step, suffix, onChange }: Props) => {
+/** Allow only an optionally-signed decimal in progress (incl. "", "-", "."). */
+const NUMERIC_DRAFT = /^-?\d*\.?\d*$/;
+
+export const NumberField = ({ label, value, min, suffix, onChange }: Props) => {
   const [draft, setDraft] = useState(() => String(value));
   const [editing, setEditing] = useState(false);
 
@@ -34,15 +39,16 @@ export const NumberField = ({ label, value, min, step, suffix, onChange }: Props
       <span className="text-muted-foreground">{label}</span>
       <span className="flex items-center gap-1">
         <input
-          type="number"
-          min={min}
-          step={step}
+          type="text"
+          inputMode={min < 0 ? "text" : "decimal"}
           value={draft}
           onFocus={() => setEditing(true)}
           onChange={(e) => {
-            setDraft(e.target.value);
-            const v = Number(e.target.value);
-            if (e.target.value.trim() !== "" && !Number.isNaN(v) && v >= min) onChange(v);
+            const raw = e.target.value;
+            if (raw !== "" && !NUMERIC_DRAFT.test(raw)) return; // ignore non-numeric keystrokes
+            setDraft(raw);
+            const v = Number(raw);
+            if (raw.trim() !== "" && !Number.isNaN(v) && v >= min) onChange(v);
           }}
           onBlur={(e) => {
             setEditing(false);
