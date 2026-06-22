@@ -50,7 +50,6 @@ const WallActions = () => {
 
   const selected = selectedId ? shapes[selectedId] : undefined;
   const wall = isWallLike(selected) ? selected : null;
-  const isArc = wall?.type === "arc-wall";
 
   // Close the modal whenever the selection leaves a wall
   useEffect(() => {
@@ -153,10 +152,9 @@ const WallActions = () => {
               </Button>
             </div>
 
-            {/* Tabs — arc walls expose properties only (layer takeoff is exact
-                only for straight walls). */}
+            {/* Tabs — straight and arc walls both expose the composite layers. */}
             <div className="flex gap-1 rounded-lg bg-muted p-0.5">
-              {(isArc ? (["properties"] as const) : (["properties", "layers"] as const)).map((tabId) => (
+              {(["properties", "layers"] as const).map((tabId) => (
                 <button
                   key={tabId}
                   onClick={() => setTab(tabId)}
@@ -172,7 +170,7 @@ const WallActions = () => {
               ))}
             </div>
 
-            {tab === "layers" && wall.type === "wall" ? (
+            {tab === "layers" ? (
               <WallLayersPanel wall={wall} />
             ) : (
               <>

@@ -2,15 +2,15 @@ import { Line, Text, Shape as KonvaShape, Group } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useLayersStore } from "@/store/layers.store";
 import { useViewportStore } from "@/store/viewport.store";
-import { useEditorStore, type DimensionUnit } from "@/store/editor.store";
+import { useEditorStore } from "@/store/editor.store";
 import { categoryOf } from "@/core/layers/systemCategories";
 import type { Shape, WallShape, ArcWallShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeDoorSwing } from "@/core/door/computeDoorSwing";
-import { layersOf, materialColor, WALL_SIDES } from "@/core/wall-layers/wallLayers";
+import { materialColor } from "@/core/wall-layers/wallLayers";
+import { wallAssembly } from "@/core/wall-layers/wallAssembly";
 import { buildWallAssemblyBands } from "@/core/wall-layers/buildWallAssemblyBands";
 import { computeWallOutlines, computeJunctionPatches, finishSetbacksForWall, type WallOutline } from "@/core/wall-junctions";
-import { arcFromChordBulge, arcPolyline } from "@/core/arc/arcGeometry";
-import { formatDimension } from "@/core/dimensions/dimensionUnits";
+import { arcPolyline } from "@/core/arc/arcGeometry";
 import { materialHatch, HATCH_MIN_SCALE } from "./materialHatch";
 
 const WALL_FILL = "#1e293b"; // slate-800 — structural body
@@ -200,46 +200,41 @@ const WallRenderer = ({
   );
 };
 
-/** Arc (curved) wall: stroked centreline arc with thickness + concentric layer
- *  bands, and an arc-length label at the apex. */
-const ArcWallRenderer = ({ shape, showLabel, unit, ppm }: { shape: ArcWallShape; showLabel: boolean; unit: DimensionUnit; ppm: number }) => {
+/** Arc (curved) wall: the full composite assembly as concentric layer bands —
+ *  exterior→interior across the wall thickness, with thin separators and heavier
+ *  structural-core boundaries, exactly like the straight wall body. Each layer's
+ *  signed +n face offset maps to a radial offset of the arc. Dimensions are drawn
+ *  by ArcDimensionRenderer, not here. */
+const ARC_SEGMENTS = 40;
+
+const ArcWallRenderer = ({ shape }: { shape: ArcWallShape }) => {
   const base = shape.offset ?? 0;
-  const bodyPts = arcPolyline(shape.x1, shape.y1, shape.x2, shape.y2, shape.bulge, 28, base);
-
-  const bands: { pts: number[]; color: string; width: number }[] = [];
-  for (const side of WALL_SIDES) {
-    const sign = side === "inner" ? -1 : 1; // inner stacks toward the centre
-    let off = shape.thickness / 2;
-    for (const layer of layersOf(shape, side)) {
-      const c = off + layer.thickness / 2;
-      bands.push({
-        pts: arcPolyline(shape.x1, shape.y1, shape.x2, shape.y2, shape.bulge, 28, base + sign * c),
-        color: materialColor(layer.material),
-        width: layer.thickness,
-      });
-      off += layer.thickness;
-    }
-  }
-
-  const arc = arcFromChordBulge(shape.x1, shape.y1, shape.x2, shape.y2, shape.bulge);
+  const { layers, coreStart, coreEnd } = wallAssembly(shape);
   const existing = shape.existing === true;
+  const arcAt = (s: number) => arcPolyline(shape.x1, shape.y1, shape.x2, shape.y2, shape.bulge, ARC_SEGMENTS, base + s);
+
+  const bands = layers.map((l) => ({
+    pts: arcAt((l.start + l.end) / 2),
+    color: existing ? EXISTING_FILL : l.material ? materialColor(l.material) : WALL_FILL,
+    width: l.end - l.start,
+  }));
+
+  const boundaries = layers.length > 0 ? [layers[0].start, ...layers.map((l) => l.end)] : [];
+  const isCoreBoundary = (s: number) => Math.abs(s - coreStart) < 1e-6 || Math.abs(s - coreEnd) < 1e-6;
+  const separators = existing ? [] : boundaries.filter((s) => !isCoreBoundary(s)).map(arcAt);
+  const coreLines = existing ? [] : [arcAt(coreStart), arcAt(coreEnd)];
+
   return (
     <Group key={shape.id}>
-      {!existing &&
-        bands.map((b, i) => (
-          <Line key={i} points={b.pts} stroke={b.color} strokeWidth={b.width} lineCap="butt" />
-        ))}
-      <Line points={bodyPts} stroke={existing ? EXISTING_FILL : WALL_FILL} strokeWidth={shape.thickness} lineCap="round" lineJoin="round" />
-      {showLabel && arc && (
-        <Text
-          x={arc.apex.x + ((arc.apex.x - arc.cx) / arc.radius) * (shape.thickness / 2 + 6)}
-          y={arc.apex.y + ((arc.apex.y - arc.cy) / arc.radius) * (shape.thickness / 2 + 6)}
-          text={formatDimension(arc.length, unit, ppm)}
-          fontSize={11}
-          fill="#475569"
-          listening={false}
-        />
-      )}
+      {bands.map((b, i) => (
+        <Line key={`b${i}`} points={b.pts} stroke={b.color} strokeWidth={b.width} lineCap="butt" />
+      ))}
+      {separators.map((pts, i) => (
+        <Line key={`s${i}`} points={pts} stroke={LAYER_SEPARATOR} strokeWidth={0.75} strokeScaleEnabled={false} listening={false} />
+      ))}
+      {coreLines.map((pts, i) => (
+        <Line key={`c${i}`} points={pts} stroke={CORE_BOUNDARY} strokeWidth={1.25} strokeScaleEnabled={false} listening={false} />
+      ))}
     </Group>
   );
 };
@@ -248,7 +243,6 @@ const renderShape = (
   shape: Shape,
   outlines: ReturnType<typeof computeWallOutlines>,
   setbacks: Record<string, { p1: number; p2: number }>,
-  arcLabel: { show: boolean; unit: DimensionUnit; ppm: number },
   showHatch: boolean,
 ) => {
   switch (shape.type) {
@@ -264,15 +258,7 @@ const renderShape = (
       );
 
     case "arc-wall":
-      return (
-        <ArcWallRenderer
-          key={shape.id}
-          shape={shape}
-          showLabel={arcLabel.show}
-          unit={arcLabel.unit}
-          ppm={arcLabel.ppm}
-        />
-      );
+      return <ArcWallRenderer key={shape.id} shape={shape} />;
 
     case "line":
       return (
@@ -335,16 +321,6 @@ const ShapeRenderer = () => {
   // architectural category is hidden (patches are structural wall geometry).
   const patches = visibility.architectural ? computeJunctionPatches(shapes, config) : [];
 
-  // Arc-length label visibility mirrors the per-segment dimension display mode.
-  const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
-  const ppm = useEditorStore((s) => s.pixelsPerMeter);
-  const dimensionDisplay = useEditorStore((s) => s.dimensionDisplay);
-  const arcLabel = {
-    show: dimensionDisplay === "segments" || dimensionDisplay === "both",
-    unit: dimensionUnit,
-    ppm,
-  };
-
   const sorted = Object.values(shapes)
     .filter((s) => visibility[categoryOf(s)]) // hide shapes in hidden categories
     .sort((a, b) => (RENDER_ORDER[a.type] ?? 1) - (RENDER_ORDER[b.type] ?? 1));
@@ -356,7 +332,7 @@ const ShapeRenderer = () => {
       {patches.map((p, i) => (
         <Line key={`patch-${i}`} points={flatRing(p)} closed fill={WALL_FILL} />
       ))}
-      {sorted.map((s) => renderShape(s, outlines, setbacks, arcLabel, showHatch))}
+      {sorted.map((s) => renderShape(s, outlines, setbacks, showHatch))}
     </>
   );
 };

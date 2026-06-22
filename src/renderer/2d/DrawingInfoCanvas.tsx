@@ -20,7 +20,7 @@ import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useEditorStore } from "@/store/editor.store";
 import { useToolsStore } from "@/store/tools.store";
 import { useSelectionStore } from "@/store/selection.store";
-import type { Shape, WallShape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, WallShape, ArcWallShape } from "@/core/drawing-engine/drawing.types";
 import { buildDrawingInfo, type DrawingRow, type DrawingCell } from "@/core/drawing-info/buildDrawingInfo";
 import { buildWallLayerRows } from "@/core/wall-layers/buildWallLayerRows";
 import { materialColor } from "@/core/wall-layers/wallLayers";
@@ -140,7 +140,9 @@ const DrawingInfoCanvas = () => {
   if (rows.length === 0 || anchor === null) return null;
 
   const selected = selectedId ? shapes[selectedId] : undefined;
-  const selectedWall: WallShape | null = selected?.type === "wall" ? selected : null;
+  // Both straight and arc walls carry the composite assembly → expand either.
+  const selectedWall: WallShape | ArcWallShape | null =
+    selected?.type === "wall" || selected?.type === "arc-wall" ? selected : null;
 
   // Flatten rows, expanding the selected wall into its assembly layer detail.
   // Rooms are numbered in encounter order so "Room"/"Locale"/"Raum"/"اتاق" + n

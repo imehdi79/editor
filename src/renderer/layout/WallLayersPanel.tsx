@@ -16,7 +16,7 @@ import { useEditorStore } from "@/store/editor.store";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { toPx, toUnit, stepFor } from "@/core/dimensions/dimensionUnits";
 import { NumericInput } from "@/components/ui/number-field";
-import type { LayerFunction, WallLayer, WallShape } from "@/core/drawing-engine/drawing.types";
+import type { ArcWallShape, LayerFunction, WallLayer, WallShape } from "@/core/drawing-engine/drawing.types";
 import { WALL_MATERIALS, materialColor } from "@/core/wall-layers/wallLayers";
 import { wallAssembly, LAYER_FUNCTIONS } from "@/core/wall-layers/wallAssembly";
 import { ASSEMBLY_PRESETS, presetToPatch, coreWidth } from "@/core/wall-layers/wallAssemblyPresets";
@@ -27,7 +27,7 @@ const INPUT = "h-7 rounded border bg-background px-1.5 outline-none focus-visibl
 
 type Row = WallLayer & { isCore: boolean };
 
-const WallLayersPanel = ({ wall }: { wall: WallShape }) => {
+const WallLayersPanel = ({ wall }: { wall: WallShape | ArcWallShape }) => {
   const { t, tf } = useTranslation();
   const unit = useEditorStore((s) => s.dimensionUnit);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);

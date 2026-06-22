@@ -12,11 +12,12 @@
  * Pure — no React, no Konva, no store.
  */
 
-import type { Shape, WallShape } from "@/core/drawing-engine/drawing.types";
+import type { ArcWallShape, Shape, WallShape } from "@/core/drawing-engine/drawing.types";
 import { wallAssembly } from "./wallAssembly";
 
-/** Finish build-up beyond the structural core on each face (px). */
-export const finishBuildup = (wall: WallShape): { inner: number; outer: number } => {
+/** Finish build-up beyond the structural core on each face (px). Accepts any
+ *  layered wall (straight or arc). */
+export const finishBuildup = (wall: WallShape | ArcWallShape): { inner: number; outer: number } => {
   const { layers, coreStart, coreEnd } = wallAssembly(wall);
   // Assembly is exterior(−n / outer) → interior(+n / inner); the core is the
   // [coreStart..coreEnd] slice, so layers before it are outer finishes, after it

@@ -1,9 +1,29 @@
 import type { ToolDefinition } from "@/core/drawing-engine/tool-definition.types";
 import { useEditorStore } from "@/store/editor.store";
+import { ASSEMBLY_PRESETS, presetToPatch, coreWidth } from "@/core/wall-layers/wallAssemblyPresets";
 
-const wallDefaults = () => {
+/** Resolve the active default preset (null → plain single-thickness wall). */
+const defaultPreset = () => {
+  const id = useEditorStore.getState().defaultAssemblyPreset;
+  return id ? (ASSEMBLY_PRESETS.find((p) => p.id === id) ?? null) : null;
+};
+
+/** Thickness for the live preview — the preset's core width, else the default. */
+const ghostDefaults = () => {
   const { defaultWallThickness, defaultWallHeight } = useEditorStore.getState();
-  return { thickness: defaultWallThickness, height: defaultWallHeight };
+  const preset = defaultPreset();
+  const thickness = preset ? coreWidth(preset.layers, preset.coreStart, preset.coreEnd) : defaultWallThickness;
+  return { thickness, height: defaultWallHeight };
+};
+
+/** Committed arc: a real composite (default preset) or a single-thickness wall —
+ *  the same assembly/preset model as the straight wall tool. */
+const shapeDefaults = () => {
+  const { defaultWallThickness, defaultWallHeight } = useEditorStore.getState();
+  const preset = defaultPreset();
+  return preset
+    ? { height: defaultWallHeight, ...presetToPatch(preset) }
+    : { thickness: defaultWallThickness, height: defaultWallHeight };
 };
 
 /** Default bulge for a freshly drawn arc: a quarter of the chord, bowing left. */
@@ -19,7 +39,7 @@ export const arcWallToolDefinition: ToolDefinition = {
     x2,
     y2,
     bulge: defaultBulge(x1, y1, x2, y2),
-    ...wallDefaults(),
+    ...ghostDefaults(),
   }),
 
   buildShape: (x1, y1, x2, y2) => ({
@@ -29,6 +49,6 @@ export const arcWallToolDefinition: ToolDefinition = {
     x2,
     y2,
     bulge: defaultBulge(x1, y1, x2, y2),
-    ...wallDefaults(),
+    ...shapeDefaults(),
   }),
 };

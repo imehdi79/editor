@@ -16,8 +16,11 @@
  * Pure — no React, no Konva, no store.
  */
 
-import type { LayerFunction, WallLayer, WallShape } from "@/core/drawing-engine/drawing.types";
+import type { ArcWallShape, LayerFunction, WallLayer, WallShape } from "@/core/drawing-engine/drawing.types";
 import { layersOf } from "./wallLayers";
+
+/** Any wall that carries a composite assembly — straight or arc (identical model). */
+export type LayeredWall = WallShape | ArcWallShape;
 
 /** Junction priority by function — a lower number wins (passes through a joint). */
 export const FUNCTION_PRIORITY: Record<LayerFunction, number> = {
@@ -106,7 +109,7 @@ const layout = (ordered: readonly { layer: WallLayer; isCore: boolean }[]): Reso
 };
 
 /** The full-width composite assembly for a wall (explicit, else derived). */
-export const wallAssembly = (wall: WallShape): ResolvedAssembly => {
+export const wallAssembly = (wall: LayeredWall): ResolvedAssembly => {
   if (wall.assembly && wall.assembly.length > 0) {
     const cs = wall.coreStart ?? 0;
     const ce = wall.coreEnd ?? wall.assembly.length - 1;

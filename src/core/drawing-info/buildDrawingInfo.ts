@@ -13,6 +13,7 @@
 import type { Shape } from "@/core/drawing-engine/drawing.types";
 import type { DimensionUnit } from "@/store/editor.store";
 import { formatDimension, formatArea, cmToPx } from "@/core/dimensions/dimensionUnits";
+import { layeredWallLength } from "@/core/wall-layers/buildWallLayerRows";
 import { computeSpaces } from "@/core/spaces/computeSpaces";
 
 export interface DrawingCell {
@@ -47,8 +48,8 @@ export const buildDrawingInfo = (
   const rows: DrawingRow[] = [];
 
   for (const s of Object.values(shapes)) {
-    if (s.type === "wall") {
-      const l = segLen(s.x1, s.y1, s.x2, s.y2);
+    if (s.type === "wall" || s.type === "arc-wall") {
+      const l = layeredWallLength(s); // true arc length for arc walls, chord otherwise
       const h = s.height ?? defaultWallHeight;
       const surfaceM2 = (l / pixelsPerMeter) * (h / 100);
       rows.push({

@@ -10,11 +10,19 @@
  * No React, no Konva, no side effects.
  */
 
-import type { LayerFunction, WallShape } from "@/core/drawing-engine/drawing.types";
+import type { ArcWallShape, LayerFunction, WallShape } from "@/core/drawing-engine/drawing.types";
 import type { DimensionUnit } from "@/store/editor.store";
 import { formatDimension, formatArea, toUnit, cmToPx } from "@/core/dimensions/dimensionUnits";
 import { wallLength } from "@/core/wall-utils/wallGeometry";
+import { arcFromChordBulge } from "@/core/arc/arcGeometry";
 import { wallAssembly } from "./wallAssembly";
+
+/** Construction length of a wall — true arc length for an arc, chord otherwise. */
+export const layeredWallLength = (wall: WallShape | ArcWallShape): number =>
+  wall.type === "arc-wall"
+    ? (arcFromChordBulge(wall.x1, wall.y1, wall.x2, wall.y2, wall.bulge)?.length ??
+        Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1))
+    : wallLength(wall);
 
 export interface WallLayerRow {
   id: string;
@@ -33,12 +41,12 @@ export interface WallLayerRow {
 }
 
 export const buildWallLayerRows = (
-  wall: WallShape,
+  wall: WallShape | ArcWallShape,
   unit: DimensionUnit,
   pixelsPerMeter: number,
   defaultWallHeight: number,
 ): WallLayerRow[] => {
-  const len = wallLength(wall);
+  const len = layeredWallLength(wall);
   const h = wall.height ?? defaultWallHeight;
   const surfaceM2 = (len / pixelsPerMeter) * (h / 100);
   const lengthDisplay = formatDimension(len, unit, pixelsPerMeter);

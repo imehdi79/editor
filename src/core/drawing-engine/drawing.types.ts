@@ -135,6 +135,12 @@ export interface ArcWallShape extends BaseShape {
   height?: number;
   offset?: number;
   layers?: Record<WallSide, WallLayer[]>;
+  /** BIM composite assembly (see WallShape.assembly) — full parity with straight
+   *  walls. When present it drives the concentric layer bands + takeoff; absent =
+   *  derive from `thickness` + `layers`. `thickness` stays the core width. */
+  assembly?: WallLayer[];
+  coreStart?: number;
+  coreEnd?: number;
   /** Renovation phase — pre-existing construction (see WallShape.existing). */
   existing?: boolean;
 }
