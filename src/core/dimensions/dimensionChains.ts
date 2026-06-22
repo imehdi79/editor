@@ -190,12 +190,13 @@ interface RunGeom {
 }
 
 /**
- * For a run, collect every abutting-wall junction along its body.
+ * For a run, collect every crossing-wall junction along its body.
  *
- * An abutting wall qualifies when one of its endpoints lies on the run line
- * (within ATTACH_EPS perpendicular distance) and within the run span — and the
- * wall is NOT collinear with the run (collinear neighbours are already part of
- * the run). The abutting wall may meet the run at a node OR mid-body.
+ * A non-collinear wall qualifies when its centreline crosses the run axis within
+ * the run span AND within the wall's own length — so it is found whether the wall
+ * butts the run, the run butts the wall, or they cross at an X. Each crossing
+ * contributes its FINISHED-face interval on every run side it occupies, so the
+ * complement (the room spans) is the true clear distance between finished faces.
  */
 const collectRunGeom = (
   run: WallRun,
@@ -230,45 +231,56 @@ const collectRunGeom = (
     // Collinear walls are continuations, not cross-junctions — skip.
     if (dotDir(ux, uy, rx, ry) >= COLLINEAR_COS_TOLERANCE) continue;
 
-    // Each endpoint paired with its opposite end (which way the wall extends).
-    const ends: [number, number, number, number][] = [
-      [shape.x1, shape.y1, shape.x2, shape.y2],
-      [shape.x2, shape.y2, shape.x1, shape.y1],
-    ];
-    for (const [px, py, otherX, otherY] of ends) {
-      const tFoot = projectT(px, py, ox, oy, ux, uy);
-      // Must land within the run span.
-      if (tFoot < tMin - ATTACH_EPS || tFoot > tMax + ATTACH_EPS) continue;
-      // Perpendicular distance from the endpoint to the run line.
-      const footX = ox + ux * tFoot;
-      const footY = oy + uy * tFoot;
-      if (Math.hypot(px - footX, py - footY) > ATTACH_EPS) continue;
+    // Where the cross wall's CENTRELINE meets the run axis. Solve
+    // O + t·U = E1 + s·R for t (param along the run) and s (along the cross wall).
+    // Non-collinear ⇒ the lines aren't parallel ⇒ det ≠ 0. This finds the junction
+    // whether the cross wall butts the run (s ≈ an end), the run butts the cross
+    // wall (s mid-body), or they cross at an X — all bound a room and must clip the
+    // clear span, so detection no longer depends on an endpoint sitting on the run.
+    const det = rx * uy - ry * ux;
+    const bx0 = shape.x1 - ox;
+    const by0 = shape.y1 - oy;
+    const tCross = (rx * by0 - ry * bx0) / det;
+    const sCross = (ux * by0 - uy * bx0) / det;
+    // The crossing must fall within the run span AND within the cross wall's own
+    // length — i.e. its body actually reaches the run line, not its extension.
+    if (tCross < tMin - ATTACH_EPS || tCross > tMax + ATTACH_EPS) continue;
+    const segLen = Math.hypot(shape.x2 - shape.x1, shape.y2 - shape.y1) || 1;
+    if (sCross < -ATTACH_EPS || sCross > segLen + ATTACH_EPS) continue;
 
-      // This endpoint (px,py) sits on the run. The opposite end tells us which
-      // side of the run the abutting wall extends to.
-      const side: 1 | -1 = (otherX - px) * lpx + (otherY - py) * lpy >= 0 ? 1 : -1;
+    // Which run side(s) the cross wall occupies — the perpendicular projection of
+    // its endpoints. A wall that butts the run lies on one side; one the run butts
+    // into (or an X-cross) straddles the run and clips BOTH side chains.
+    const crossX = ox + ux * tCross;
+    const crossY = oy + uy * tCross;
+    const perp1 = (shape.x1 - crossX) * lpx + (shape.y1 - crossY) * lpy;
+    const perp2 = (shape.x2 - crossX) * lpx + (shape.y2 - crossY) * lpy;
+    const sides: (1 | -1)[] = [];
+    if (perp1 > ATTACH_EPS || perp2 > ATTACH_EPS) sides.push(1);
+    if (perp1 < -ATTACH_EPS || perp2 < -ATTACH_EPS) sides.push(-1);
+    if (sides.length === 0) continue;
 
-      // Face-to-face: intersect each FINISHED face of the abutting wall with the
-      // run axis. Faces are the abutting centerline offset along its normal
-      // n = (-ry, rx): +n (inner) by the core half + inner finishes, −n (outer)
-      // by the core half + outer finishes — so a composite wall's footprint
-      // matches its drawn finished body. Solve t*U − s*R = (P ± off) − O for t.
-      const fb = finishBuildup(shape);
-      const halfPlus = shape.thickness / 2 + fb.inner; // +n face
-      const halfMinus = shape.thickness / 2 + fb.outer; // −n face
-      const nx = -ry;
-      const ny = rx;
-      const det = rx * uy - ry * ux;
-      const faceT = (sign: 1 | -1): number => {
-        const half = sign > 0 ? halfPlus : halfMinus;
-        const bx = px + sign * half * nx - ox;
-        const by = py + sign * half * ny - oy;
-        return (rx * by - ry * bx) / det;
-      };
-      const ta = faceT(1);
-      const tb = faceT(-1);
-      junctions.push({ tNear: Math.min(ta, tb), tFar: Math.max(ta, tb), side });
-    }
+    // Face-to-face: intersect each FINISHED face of the cross wall with the run
+    // axis. Faces are the centreline offset along its normal n = (−ry, rx) by the
+    // core half + that side's finish build-up (+n inner, −n outer), so a composite
+    // wall's footprint matches its drawn finished body. The face line is parallel
+    // to the centreline, so any centreline point (E1) yields the same crossing.
+    const fb = finishBuildup(shape);
+    const halfPlus = shape.thickness / 2 + fb.inner; // +n face
+    const halfMinus = shape.thickness / 2 + fb.outer; // −n face
+    const nx = -ry;
+    const ny = rx;
+    const faceT = (sign: 1 | -1): number => {
+      const half = sign > 0 ? halfPlus : halfMinus;
+      const fbx = shape.x1 + sign * half * nx - ox;
+      const fby = shape.y1 + sign * half * ny - oy;
+      return (rx * fby - ry * fbx) / det;
+    };
+    const ta = faceT(1);
+    const tb = faceT(-1);
+    const tNear = Math.min(ta, tb);
+    const tFar = Math.max(ta, tb);
+    for (const side of sides) junctions.push({ tNear, tFar, side });
   }
 
   return { ox, oy, ux, uy, tMin, tMax, junctions };

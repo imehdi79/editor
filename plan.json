@@ -23,11 +23,6 @@
   ],
   "steps": [
     {
-      "id": "clear-dimensions",
-      "title": "Support clear dimensions in dimension chains",
-      "detail": "Dimension chains should report clear (net) dimensions, measured between the finished faces of walls. The displayed value must account for wall build-up layers and be calculated as the structural dimension minus the total thickness of the relevant finish layers."
-    },
-    {
       "id": "wall-actions-exist-flag",
       "title": "Support existing wall reuse in wall actions",
       "detail": "Add an 'existing' flag to wall actions to indicate that a wall is pre-existing and should not be reconstructed from scratch. When this flag is true."
