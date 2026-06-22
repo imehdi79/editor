@@ -19,8 +19,9 @@ import { useSelectionStore } from "@/store/selection.store";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useToolsStore } from "@/store/tools.store";
 import { useEditorStore } from "@/store/editor.store";
-import { toPx, toUnit, cmToPx, pxToCm, stepFor } from "@/core/dimensions/dimensionUnits";
+import { toPx, toUnit, cmToPx, pxToCm, stepFor, formatDimension } from "@/core/dimensions/dimensionUnits";
 import { absoluteAngleDeg } from "@/core/wall-utils/wallAngles";
+import { arcFromChordBulge } from "@/core/arc/arcGeometry";
 import type { Shape, WallShape, ArcWallShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { useTranslation } from "@/i18n";
 import { useSetWallThickness } from "@/features/wall-tool/useWallThickness";
@@ -230,6 +231,31 @@ const WallActions = () => {
                   onChange={(v) => setBulge(toPx(v, unit, ppm))}
                 />
               )}
+
+              {/* Derived arc dimensions (read-only) — chord, true arc length and
+                  depth (rise/sagitta), recomputed live from radius + sweep. */}
+              {wall.type === "arc-wall" && (() => {
+                const arc = arcFromChordBulge(wall.x1, wall.y1, wall.x2, wall.y2, wall.bulge);
+                const chordPx = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+                const arcLenPx = arc ? arc.length : chordPx;
+                const depthPx = Math.abs(wall.bulge);
+                const rows: [string, number][] = [
+                  [t("wall.chord"), chordPx],
+                  [t("wall.arcLength"), arcLenPx],
+                  [t("wall.depth"), depthPx],
+                ];
+                return (
+                  <div className="mt-1 flex flex-col gap-1 rounded-lg bg-muted/50 p-2">
+                    <span className="text-[11px] font-medium text-muted-foreground">{t("wall.arcDimensions")}</span>
+                    {rows.map(([label, px]) => (
+                      <div key={label} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-medium tabular-nums">{formatDimension(px, unit, ppm)}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Renovation phase — new build vs pre-existing (retained) wall */}
