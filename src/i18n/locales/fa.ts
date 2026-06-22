@@ -158,6 +158,9 @@ export const fa: Dictionary = {
     left: "چپ",
     right: "راست",
     noDoors: "دری روی این دیوار برای ترازبندی نیست.",
+    phase: "فاز اجرا",
+    new: "نوساز",
+    existing: "موجود",
   },
 
   wallSides: {
@@ -240,6 +243,7 @@ export const fa: Dictionary = {
     height: "ارتفاع",
     area: "مساحت",
     addLayer: "لایه",
+    existing: "موجود",
     types: {
       wall: "دیوار",
       window: "پنجره",

@@ -23,11 +23,6 @@
   ],
   "steps": [
     {
-      "id": "wall-actions-exist-flag",
-      "title": "Support existing wall reuse in wall actions",
-      "detail": "Add an 'existing' flag to wall actions to indicate that a wall is pre-existing and should not be reconstructed from scratch. When this flag is true."
-    },
-    {
       "id": "arc-wall-dimensions",
       "title": "Add chord, arc length, and depth dimensions for arc walls",
       "detail": "Arc walls must expose three key dimensions: chord length (straight distance between start and end nodes), arc length (true curved length), and depth (maximum deviation from chord to arc). These values should be computed dynamically based on radius and sweep angle and updated when geometry changes."

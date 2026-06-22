@@ -28,6 +28,8 @@ export interface DrawingRow {
   width: DrawingCell;
   height: DrawingCell;
   area: DrawingCell;
+  /** Pre-existing (retained) wall — tagged in the table, not new construction. */
+  existing?: boolean;
 }
 
 const EMPTY: DrawingCell = { display: "—" };
@@ -58,6 +60,7 @@ export const buildDrawingInfo = (
         // Height is stored in cm; bridge to px so it displays in the active unit.
         height: lenCell(cmToPx(h, pixelsPerMeter)),
         area: { display: formatArea(surfaceM2) },
+        existing: s.existing === true,
       });
     } else if (s.type === "window" || s.type === "door") {
       rows.push({

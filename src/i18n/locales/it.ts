@@ -157,6 +157,9 @@ export const it: Dictionary = {
     left: "Sinistra",
     right: "Destra",
     noDoors: "Nessuna porta da allineare su questa parete.",
+    phase: "Fase",
+    new: "Nuovo",
+    existing: "Esistente",
   },
 
   wallSides: {
@@ -239,6 +242,7 @@ export const it: Dictionary = {
     height: "Altezza",
     area: "Area",
     addLayer: "Strato",
+    existing: "Esistente",
     types: {
       wall: "Parete",
       window: "Finestra",

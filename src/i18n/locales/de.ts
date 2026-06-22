@@ -158,6 +158,9 @@ export const de: Dictionary = {
     left: "Links",
     right: "Rechts",
     noDoors: "Keine Türen an dieser Wand zum Ausrichten.",
+    phase: "Bauphase",
+    new: "Neubau",
+    existing: "Bestand",
   },
 
   wallSides: {
@@ -240,6 +243,7 @@ export const de: Dictionary = {
     height: "Höhe",
     area: "Fläche",
     addLayer: "Schicht",
+    existing: "Bestand",
     types: {
       wall: "Wand",
       window: "Fenster",

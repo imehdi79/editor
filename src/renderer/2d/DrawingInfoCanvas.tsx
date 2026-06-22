@@ -149,7 +149,11 @@ const DrawingInfoCanvas = () => {
   let roomOrdinal = 0;
   for (const row of rows) {
     const typeLabel =
-      row.kind === "room" ? `${t("drawingInfo.types.room")} ${++roomOrdinal}` : t(`drawingInfo.types.${row.kind}`);
+      row.kind === "room"
+        ? `${t("drawingInfo.types.room")} ${++roomOrdinal}`
+        : row.existing
+          ? `${t(`drawingInfo.types.${row.kind}`)} · ${t("drawingInfo.existing")}`
+          : t(`drawingInfo.types.${row.kind}`);
     items.push({ kind: "shape", row, typeLabel });
     if (selectedWall && row.id === selectedWall.id) {
       for (const lr of buildWallLayerRows(selectedWall, unit, ppm, defaultWallHeight)) {

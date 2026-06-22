@@ -164,6 +164,9 @@ export const en = {
     left: "Left",
     right: "Right",
     noDoors: "No doors on this wall to align.",
+    phase: "Phase",
+    new: "New",
+    existing: "Existing",
   },
 
   // Wall faces — the two build-up sides of a wall.
@@ -253,6 +256,7 @@ export const en = {
     height: "Height",
     area: "Area",
     addLayer: "Layer",
+    existing: "Existing",
     types: {
       wall: "Wall",
       window: "Window",

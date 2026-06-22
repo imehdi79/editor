@@ -109,6 +109,9 @@ const WallActions = () => {
 
   const setBulge = (bulge: number) => updateShape(wall.id, { bulge });
 
+  // Renovation phase — mark the wall as pre-existing (retained) vs new build.
+  const setExisting = (existing: boolean) => updateShape(wall.id, { existing });
+
   const alignSwing = (swingDirection: DoorShape["swingDirection"]) => {
     doors.forEach((d) => updateShape(d.id, { swingDirection }));
   };
@@ -227,6 +230,29 @@ const WallActions = () => {
                   onChange={(v) => setBulge(toPx(v, unit, ppm))}
                 />
               )}
+            </div>
+
+            {/* Renovation phase — new build vs pre-existing (retained) wall */}
+            <div className="flex flex-col gap-1.5 border-t pt-3">
+              <span className="text-[11px] text-muted-foreground">{t("wall.phase")}</span>
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant={wall.existing ? "outline" : "default"}
+                  className="flex-1"
+                  onClick={() => setExisting(false)}
+                >
+                  {t("wall.new")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant={wall.existing ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => setExisting(true)}
+                >
+                  {t("wall.existing")}
+                </Button>
+              </div>
             </div>
 
             {/* Opening alignment — only meaningful when doors exist */}

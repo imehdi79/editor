@@ -17,6 +17,13 @@ const WALL_FILL = "#1e293b"; // slate-800 — structural body
 const LAYER_SEPARATOR = "#475569"; // slate-600 — thin line between adjacent layers
 const CORE_BOUNDARY = "#0f172a"; // slate-950 — heavier structural-core boundary
 
+// "Existing" (retained) walls read as a lighter grey poché — distinct from the
+// dark new-build body, and per-material colours/hatch are suppressed since they
+// are not part of the new construction.
+const EXISTING_FILL = "#cbd5e1"; // slate-300 — existing poché
+const EXISTING_SEPARATOR = "#94a3b8"; // slate-400
+const EXISTING_CORE = "#64748b"; // slate-500
+
 /** Flatten a Vec2[] ring to a Konva points array. */
 const flatRing = (ring: { x: number; y: number }[]): number[] => ring.flatMap((p) => [p.x, p.y]);
 
@@ -160,14 +167,16 @@ const WallRenderer = ({
     );
   }
   const { bands, separators, coreLines } = buildWallAssemblyBands(shape, outline, setback);
+  const existing = shape.existing === true;
   return (
     <Group>
       {bands.map((b, i) => (
-        <Line key={`b${i}`} points={b.polygon} closed fill={b.color || WALL_FILL} />
+        <Line key={`b${i}`} points={b.polygon} closed fill={existing ? EXISTING_FILL : b.color || WALL_FILL} />
       ))}
       {/* Per-material CAD hatch over each band's flat fill (LOD-gated). The tile
-          is a transparent canvas tiled in world space; cast for Konva's typing. */}
-      {showHatch &&
+          is a transparent canvas tiled in world space; cast for Konva's typing.
+          Suppressed on existing walls — they are not new construction. */}
+      {showHatch && !existing &&
         bands.map((b, i) => {
           const hatch = materialHatch(b.material);
           return hatch ? (
@@ -182,10 +191,10 @@ const WallRenderer = ({
           ) : null;
         })}
       {separators.map((s, i) => (
-        <Line key={`s${i}`} points={s} stroke={LAYER_SEPARATOR} strokeWidth={0.75} strokeScaleEnabled={false} listening={false} />
+        <Line key={`s${i}`} points={s} stroke={existing ? EXISTING_SEPARATOR : LAYER_SEPARATOR} strokeWidth={0.75} strokeScaleEnabled={false} listening={false} />
       ))}
       {coreLines.map((c, i) => (
-        <Line key={`c${i}`} points={c} stroke={CORE_BOUNDARY} strokeWidth={1.25} strokeScaleEnabled={false} listening={false} />
+        <Line key={`c${i}`} points={c} stroke={existing ? EXISTING_CORE : CORE_BOUNDARY} strokeWidth={1.25} strokeScaleEnabled={false} listening={false} />
       ))}
     </Group>
   );
@@ -213,12 +222,14 @@ const ArcWallRenderer = ({ shape, showLabel, unit, ppm }: { shape: ArcWallShape;
   }
 
   const arc = arcFromChordBulge(shape.x1, shape.y1, shape.x2, shape.y2, shape.bulge);
+  const existing = shape.existing === true;
   return (
     <Group key={shape.id}>
-      {bands.map((b, i) => (
-        <Line key={i} points={b.pts} stroke={b.color} strokeWidth={b.width} lineCap="butt" />
-      ))}
-      <Line points={bodyPts} stroke={WALL_FILL} strokeWidth={shape.thickness} lineCap="round" lineJoin="round" />
+      {!existing &&
+        bands.map((b, i) => (
+          <Line key={i} points={b.pts} stroke={b.color} strokeWidth={b.width} lineCap="butt" />
+        ))}
+      <Line points={bodyPts} stroke={existing ? EXISTING_FILL : WALL_FILL} strokeWidth={shape.thickness} lineCap="round" lineJoin="round" />
       {showLabel && arc && (
         <Text
           x={arc.apex.x + ((arc.apex.x - arc.cx) / arc.radius) * (shape.thickness / 2 + 6)}

@@ -108,6 +108,12 @@ export interface WallShape extends BaseShape {
    */
   joinP1?: JoinStyle;
   joinP2?: JoinStyle;
+  /**
+   * Renovation phase: the wall is pre-existing construction to be retained, not
+   * built new. Drawn as light "existing" poché and tagged in the takeoff so its
+   * quantities are not counted as new construction. Absent/false = new build.
+   */
+  existing?: boolean;
 }
 
 /**
@@ -129,6 +135,8 @@ export interface ArcWallShape extends BaseShape {
   height?: number;
   offset?: number;
   layers?: Record<WallSide, WallLayer[]>;
+  /** Renovation phase — pre-existing construction (see WallShape.existing). */
+  existing?: boolean;
 }
 
 export interface LineShape extends BaseShape {
