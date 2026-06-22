@@ -20,16 +20,10 @@ import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useEditorStore } from "@/store/editor.store";
 import { useToolsStore } from "@/store/tools.store";
 import { useSelectionStore } from "@/store/selection.store";
-import type { Shape, WallShape, WallSide } from "@/core/drawing-engine/drawing.types";
+import type { Shape, WallShape } from "@/core/drawing-engine/drawing.types";
 import { buildDrawingInfo, type DrawingRow, type DrawingCell } from "@/core/drawing-info/buildDrawingInfo";
 import { buildWallLayerRows } from "@/core/wall-layers/buildWallLayerRows";
-import {
-  WALL_SIDES,
-  materialColor,
-  createWallLayer,
-  layersOf,
-  withSideLayers,
-} from "@/core/wall-layers/wallLayers";
+import { materialColor } from "@/core/wall-layers/wallLayers";
 import { useTranslation, type TranslationKey } from "@/i18n";
 
 // ---------------------------------------------------------------------------
@@ -44,6 +38,7 @@ const PAD_X = 8;
 const RADIUS = 7;
 const SWATCH = 9; // layer colour chip
 const INDENT = 22; // detail rows are indented under their wall (room for swatch)
+const CORE_DOT = "#1e293b"; // structural-core marker (matches the wall body fill)
 
 // `min` is a floor; each column grows to fit its widest cell (see colWidths).
 // `labelKey` is resolved against the active locale at render time.
@@ -54,9 +49,6 @@ const COLS = [
   { key: "height", labelKey: "drawingInfo.height", min: 70, align: "right" as const },
   { key: "area", labelKey: "drawingInfo.area", min: 70, align: "right" as const },
 ] satisfies { key: string; labelKey: TranslationKey; min: number; align: "left" | "right" }[];
-
-const ADD_BTN_W = 56; // ＋ Layer button on a side row
-const REMOVE_W = 18; // × button reserved at the right of a layer row
 
 // Text measurement (Konva's default font is Arial) so columns can fit content.
 const FONT_FAMILY = "Arial";
@@ -80,7 +72,6 @@ const GRID = "#efeff1";
 const SELECT_BG = "#e0f2fe"; // sky-100: highlighted (selected) row
 const ACCENT = "#0284c7"; // sky-600: selection accent + add affordance
 const DETAIL_BG = "#f6f8fb"; // slate-ish: master→detail layer band
-const DANGER = "#ef4444";
 const SWATCH_STROKE = "#0000001a"; // 10% black, so light chips read on white
 
 // ---------------------------------------------------------------------------
@@ -120,10 +111,10 @@ const tableAnchor = (shapes: Record<string, Shape>): { x: number; y: number } | 
 
 type Item =
   | { kind: "shape"; row: DrawingRow; typeLabel: string }
-  | { kind: "side"; wall: WallShape; side: WallSide } // side label + ＋ add
-  // `type` keeps the raw material key (for the colour chip); `typeLabel` is its
-  // localized display name.
-  | { kind: "layer"; wall: WallShape; side: WallSide; layerId: string; type: string; typeLabel: string; width: string; area: string };
+  // One construction layer of the selected wall's assembly (read-only).
+  // `material` is the raw key (colour chip; "" = structural core); `typeLabel`
+  // is its localized name; `isCore` marks the structural slab.
+  | { kind: "layer"; layerId: string; material: string; typeLabel: string; width: string; area: string; isCore: boolean };
 
 const select = (id: string) => {
   useSelectionStore.getState().selectShape(id);
@@ -137,13 +128,11 @@ const select = (id: string) => {
 const DrawingInfoCanvas = () => {
   const { t, tf } = useTranslation();
   const shapes = useFloorPlanStore((s) => s.shapes);
-  const updateShape = useFloorPlanStore((s) => s.updateShape);
   const unit = useEditorStore((s) => s.dimensionUnit);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
   const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
   const selectedId = useSelectionStore((s) => s.selectedId);
 
-  const sideLabel = (side: WallSide) => t(`wallSides.${side}`);
   const materialLabel = (name: string) => tf(`materials.${name.toLowerCase()}`, name);
 
   const rows = buildDrawingInfo(shapes, unit, ppm, defaultWallHeight);
@@ -153,14 +142,7 @@ const DrawingInfoCanvas = () => {
   const selected = selectedId ? shapes[selectedId] : undefined;
   const selectedWall: WallShape | null = selected?.type === "wall" ? selected : null;
 
-  const addLayer = (wall: WallShape, side: WallSide) =>
-    updateShape(wall.id, { layers: withSideLayers(wall, side, [...layersOf(wall, side), createWallLayer()]) });
-  const removeLayer = (wall: WallShape, side: WallSide, layerId: string) =>
-    updateShape(wall.id, {
-      layers: withSideLayers(wall, side, layersOf(wall, side).filter((l) => l.id !== layerId)),
-    });
-
-  // Flatten rows, expanding the selected wall into per-side layer detail rows.
+  // Flatten rows, expanding the selected wall into its assembly layer detail.
   // Rooms are numbered in encounter order so "Room"/"Locale"/"Raum"/"اتاق" + n
   // reads correctly in every locale.
   const items: Item[] = [];
@@ -170,20 +152,17 @@ const DrawingInfoCanvas = () => {
       row.kind === "room" ? `${t("drawingInfo.types.room")} ${++roomOrdinal}` : t(`drawingInfo.types.${row.kind}`);
     items.push({ kind: "shape", row, typeLabel });
     if (selectedWall && row.id === selectedWall.id) {
-      for (const side of WALL_SIDES) {
-        items.push({ kind: "side", wall: selectedWall, side });
-        for (const lr of buildWallLayerRows(selectedWall, side, unit, ppm, defaultWallHeight)) {
-          items.push({
-            kind: "layer",
-            wall: selectedWall,
-            side,
-            layerId: lr.id,
-            type: lr.material,
-            typeLabel: lr.material ? materialLabel(lr.material) : t("wallLayers.layer"),
-            width: lr.widthDisplay,
-            area: lr.areaDisplay,
-          });
-        }
+      for (const lr of buildWallLayerRows(selectedWall, unit, ppm, defaultWallHeight)) {
+        items.push({
+          kind: "layer",
+          layerId: lr.id,
+          material: lr.material,
+          // Named material → its label; the structural core → its function label.
+          typeLabel: lr.material ? materialLabel(lr.material) : t(`layerFunction.${lr.function}`),
+          width: lr.widthDisplay,
+          area: lr.areaDisplay,
+          isCore: lr.isCore,
+        });
       }
     }
   }
@@ -206,20 +185,11 @@ const DrawingInfoCanvas = () => {
   for (const it of items) {
     if (it.kind === "shape") {
       cellsOf(it.row, it.typeLabel).forEach((cell, i) => fit(i, textWidth(cell.display) + PAD_X * 2));
-    } else if (it.kind === "side") {
-      fit(0, textWidth(sideLabel(it.side)) + PAD_X * 2 + INDENT);
     } else {
       fit(0, textWidth(it.typeLabel) + PAD_X * 2 + INDENT);
       fit(2, textWidth(it.width) + PAD_X * 2);
-      fit(4, textWidth(it.area) + PAD_X * 2 + REMOVE_W);
+      fit(4, textWidth(it.area) + PAD_X * 2);
     }
-  }
-  // Reserve room on the right so a side row's ＋ button never overlaps its label.
-  if (selectedWall) {
-    const labelMax = Math.max(...WALL_SIDES.map((s) => textWidth(sideLabel(s)) + PAD_X + INDENT));
-    const total = colW.reduce((s, w) => s + w, 0);
-    const need = labelMax + 8 + ADD_BTN_W + 8;
-    if (total < need) colW[colW.length - 1] += need - total;
   }
   const colLeft: number[] = [];
   const TABLE_W = colW.reduce((x, w, i) => ((colLeft[i] = x), x + w), 0);
@@ -311,98 +281,26 @@ const DrawingInfoCanvas = () => {
           );
         }
 
-        if (item.kind === "side") {
-          const onAdd = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-            e.cancelBubble = true;
-            addLayer(item.wall, item.side);
-          };
-          return (
-            <Group key={`side-${item.side}`}>
-              <Rect x={0} y={top} width={TABLE_W} height={ROW_H} fill={DETAIL_BG} listening={false} />
-              <Line points={[0, top, TABLE_W, top]} stroke={GRID} strokeWidth={0.5} listening={false} />
-              {cellText(0, top, sideLabel(item.side), HEADER_TEXT, INDENT)}
-              {/* ＋ Layer — one-tap add for this face */}
-              <Rect
-                x={TABLE_W - 64}
-                y={top + 3}
-                width={56}
-                height={ROW_H - 6}
-                fill="#ffffff"
-                stroke={ACCENT}
-                strokeWidth={0.75}
-                cornerRadius={3}
-                onMouseDown={onAdd}
-                onTouchStart={onAdd}
-              />
-              <Text
-                x={TABLE_W - 64}
-                y={top + (ROW_H - FONT) / 2}
-                width={56}
-                align="center"
-                text={`＋ ${t("drawingInfo.addLayer")}`}
-                fontSize={FONT - 1}
-                fontStyle="bold"
-                fill={ACCENT}
-                listening={false}
-              />
-            </Group>
-          );
-        }
-
-        // item.kind === "layer"
-        const onRemove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-          e.cancelBubble = true;
-          removeLayer(item.wall, item.side, item.layerId);
-        };
+        // item.kind === "layer" — read-only assembly detail row.
         return (
           <Group key={`layer-${item.layerId}`}>
             <Rect x={0} y={top} width={TABLE_W} height={ROW_H} fill={DETAIL_BG} listening={false} />
             <Line points={[0, top, TABLE_W, top]} stroke={GRID} strokeWidth={0.5} listening={false} />
-            {/* material colour chip */}
+            {/* colour chip — material swatch, or a solid dot for the core slab */}
             <Rect
               x={colLeft[0] + PAD_X + 4}
               y={top + (ROW_H - SWATCH) / 2}
               width={SWATCH}
               height={SWATCH}
-              fill={materialColor(item.type)}
+              fill={item.material ? materialColor(item.material) : CORE_DOT}
               stroke={SWATCH_STROKE}
               strokeWidth={1}
               cornerRadius={2}
               listening={false}
             />
-            {cellText(0, top, item.typeLabel, TEXT, INDENT)}
+            {cellText(0, top, item.typeLabel, item.isCore ? TEXT : MUTED, INDENT)}
             {cellText(2, top, item.width, MUTED)}
-            {/* area — narrowed to clear the × button on the right */}
-            <Text
-              x={colLeft[4] + PAD_X}
-              y={top + (ROW_H - FONT) / 2}
-              width={colW[4] - PAD_X * 2 - REMOVE_W}
-              align="right"
-              text={item.area}
-              fontSize={FONT}
-              fill={MUTED}
-              listening={false}
-            />
-            {/* × remove */}
-            <Rect
-              x={TABLE_W - 20}
-              y={top + 3}
-              width={ROW_H - 6}
-              height={ROW_H - 6}
-              fill="transparent"
-              onMouseDown={onRemove}
-              onTouchStart={onRemove}
-            />
-            <Text
-              x={TABLE_W - 20}
-              y={top + (ROW_H - FONT) / 2}
-              width={ROW_H - 6}
-              align="center"
-              text="✕"
-              fontSize={FONT}
-              fill={DANGER}
-              listening={false}
-            />
+            {cellText(4, top, item.area, MUTED)}
           </Group>
         );
       })}
