@@ -23,6 +23,7 @@ const REFERENCE_OPTIONS = [
   { value: "centerline", key: "reference.center" },
   { value: "inner", key: "reference.inner" },
   { value: "outer", key: "reference.outer" },
+  { value: "core", key: "reference.core" },
 ] satisfies { value: MeasurementReference; key: TranslationKey }[];
 
 /** CAD-style metric units (SI symbols — language-neutral, not translated). */

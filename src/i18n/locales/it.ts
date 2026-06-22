@@ -110,6 +110,7 @@ export const it: Dictionary = {
     center: "Mezzeria",
     inner: "Interno",
     outer: "Esterno",
+    core: "Nucleo",
   },
 
   dimensionDisplay: {

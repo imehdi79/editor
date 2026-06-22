@@ -113,6 +113,7 @@ export const en = {
     center: "Center",
     inner: "Inner",
     outer: "Outer",
+    core: "Core",
   },
 
   // Which dimension system is drawn.

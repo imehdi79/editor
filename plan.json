@@ -28,13 +28,6 @@
       "covers": ["#19"],
       "detail": "Generalize the node resolution (buttJoin + computeWallOutline) so each assembly layer is clipped/extended by its function PRIORITY against the neighbour wall's matching layer: equal-or-higher-priority layers pass through (turn the corner / continue), lower-priority layers stop at the higher-priority neighbour layer's face. This replaces the all-or-nothing finish-face clip with true per-layer matching at L/T/X joins. Keep the registry/classifier architecture (no junction switch-ladders); priority comes from FUNCTION_PRIORITY in wallAssembly.",
       "dimensions": "Structural-core faces (outline corners) are unchanged, so per-segment dims & chains are unaffected; only finish bands re-clip per priority."
-    },
-    {
-      "id": "bim-6",
-      "title": "Core measurement reference + per-layer takeoff + 3D",
-      "covers": ["#18", "#19"],
-      "detail": "Add a 'core' MeasurementReference (measure the structural-core faces via coreStart/coreEnd) in editor.store + measurementReference.ts + dimensionChains break-points + its UI control. Make buildWallLayerRows read the resolved assembly so the takeoff lists every layer (length × height × thickness) including core. Optionally extrude each layer to its own band in the lazy 3D scene (carry height through). Localize the new reference + takeoff labels in en/it/de/fa.",
-      "dimensions": "Adds the core reference faces to measurementReference + chains in the same step (per the dimensions rule)."
     }
   ]
 }

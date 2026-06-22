@@ -111,6 +111,7 @@ export const de: Dictionary = {
     center: "Achse",
     inner: "Innen",
     outer: "Außen",
+    core: "Kern",
   },
 
   dimensionDisplay: {

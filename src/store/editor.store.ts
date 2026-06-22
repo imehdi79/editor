@@ -15,14 +15,16 @@ export type DimensionUnit = "mm" | "cm" | "m" | "px";
  * MeasurementReference — which face of a wall dimensions are measured from.
  *
  *   "centerline" → measured along the wall axis (the stored x1/y1→x2/y2 line)
- *   "inner"      → measured along the inner faces (room-side / chain interno)
- *   "outer"      → measured along the outer faces (overall / chain esterno)
+ *   "inner"      → measured along the inner FINISHED faces (room-side clear)
+ *   "outer"      → measured along the outer FINISHED faces (overall)
+ *   "core"       → measured along the structural-core faces (the structural slab,
+ *                  excluding finish layers); equals inner/outer on a plain wall
  *
  * This is the "source of truth" reference for how wall lengths and dimension
  * chains are reported. Geometry stays centerline-based internally; the
  * reference only shifts the measured faces used by the dimension layer.
  */
-export type MeasurementReference = "centerline" | "inner" | "outer";
+export type MeasurementReference = "centerline" | "inner" | "outer" | "core";
 
 /**
  * DimensionDisplay — which dimension system is drawn.

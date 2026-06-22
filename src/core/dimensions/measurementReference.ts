@@ -131,7 +131,10 @@ export const measuredWallSegment = (
     return { x1: wall.x1, y1: wall.y1, x2: wall.x2, y2: wall.y2 };
   }
 
-  if (outline) return measuredFromOutline(wall, outline, reference);
+  // The caller supplies the right outline per reference: the FINISHED outline for
+  // inner/outer, the structural-core outline for "core". "core" reads the overall
+  // structural span, so it measures the outer corners of that core outline.
+  if (outline) return measuredFromOutline(wall, outline, reference === "inner" ? "inner" : "outer");
 
   const ux = wall.x2 - wall.x1;
   const uy = wall.y2 - wall.y1;

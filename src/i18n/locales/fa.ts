@@ -111,6 +111,7 @@ export const fa: Dictionary = {
     center: "محور",
     inner: "داخلی",
     outer: "خارجی",
+    core: "هسته",
   },
 
   dimensionDisplay: {

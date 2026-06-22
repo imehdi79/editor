@@ -37,6 +37,7 @@ import type { DimensionUnit } from "@/store/editor.store";
 import { formatDimension } from "./dimensionUnits";
 import { computeSegmentDimension, DIM_OFFSET, type DimensionGeometry } from "./dimensionGeometry";
 import { metricsFromGeometry } from "./dimensionLayout";
+import { finishBuildup } from "@/core/wall-layers/finishedWall";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -247,15 +248,19 @@ const collectRunGeom = (
       // side of the run the abutting wall extends to.
       const side: 1 | -1 = (otherX - px) * lpx + (otherY - py) * lpy >= 0 ? 1 : -1;
 
-      // Face-to-face: intersect each face of the abutting wall with the run axis.
-      // Faces are the abutting centerline offset by ±thickness/2 along its normal
-      // n = (-ry, rx). Solve t*U − s*R = (P ± off) − O for t (the run parameter).
-      // det = Rx*Uy − Ry*Ux is non-zero because the wall is not collinear.
-      const half = shape.thickness / 2;
+      // Face-to-face: intersect each FINISHED face of the abutting wall with the
+      // run axis. Faces are the abutting centerline offset along its normal
+      // n = (-ry, rx): +n (inner) by the core half + inner finishes, −n (outer)
+      // by the core half + outer finishes — so a composite wall's footprint
+      // matches its drawn finished body. Solve t*U − s*R = (P ± off) − O for t.
+      const fb = finishBuildup(shape);
+      const halfPlus = shape.thickness / 2 + fb.inner; // +n face
+      const halfMinus = shape.thickness / 2 + fb.outer; // −n face
       const nx = -ry;
       const ny = rx;
       const det = rx * uy - ry * ux;
       const faceT = (sign: 1 | -1): number => {
+        const half = sign > 0 ? halfPlus : halfMinus;
         const bx = px + sign * half * nx - ox;
         const by = py + sign * half * ny - oy;
         return (rx * by - ry * bx) / det;

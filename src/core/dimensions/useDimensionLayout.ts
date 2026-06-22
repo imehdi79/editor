@@ -19,6 +19,7 @@ import { resolveCollisions } from "./dimensionCollision";
 import type { DimensionCandidate } from "./dimensionCollision";
 import { dimensionPxScale } from "./dimensionLayout";
 import { computeWallOutlines } from "@/core/wall-junctions";
+import { finishedWallShapes } from "@/core/wall-layers/finishedWall";
 
 export const useDimensionLayout = (): DimensionCandidate[] => {
   const shapes = useFloorPlanStore((s) => s.shapes);
@@ -34,10 +35,16 @@ export const useDimensionLayout = (): DimensionCandidate[] => {
   const align = useEditorStore((s) => s.junctionAlign);
 
   return useMemo(() => {
+    const config = { joinStyle, miterLimit, endCap, align };
+    // inner/outer measure the FINISHED faces (core + finish layers) → use the
+    // finished-build-up outline; "core" measures the structural slab → the plain
+    // core outline; centerline needs no outline.
     const outlines =
       measurementReference === "centerline"
         ? undefined
-        : computeWallOutlines(shapes, { joinStyle, miterLimit, endCap, align });
+        : measurementReference === "core"
+          ? computeWallOutlines(shapes, config)
+          : computeWallOutlines(finishedWallShapes(shapes), config);
     const candidates = buildCandidates(shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale, outlines);
     return resolveCollisions(candidates, pxScale);
   }, [shapes, dimensionUnit, pixelsPerMeter, measurementReference, pxScale, joinStyle, miterLimit, endCap, align]);
