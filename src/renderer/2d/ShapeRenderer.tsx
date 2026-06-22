@@ -1,6 +1,7 @@
 import { Line, Text, Shape as KonvaShape, Group } from "react-konva";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useLayersStore } from "@/store/layers.store";
+import { useViewportStore } from "@/store/viewport.store";
 import { useEditorStore, type DimensionUnit } from "@/store/editor.store";
 import { categoryOf } from "@/core/layers/systemCategories";
 import type { Shape, WallShape, ArcWallShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
@@ -10,6 +11,7 @@ import { buildWallAssemblyBands } from "@/core/wall-layers/buildWallAssemblyBand
 import { computeWallOutlines, computeJunctionPatches, type WallOutline } from "@/core/wall-junctions";
 import { arcFromChordBulge, arcPolyline } from "@/core/arc/arcGeometry";
 import { formatDimension } from "@/core/dimensions/dimensionUnits";
+import { materialHatch, HATCH_MIN_SCALE } from "./materialHatch";
 
 const WALL_FILL = "#1e293b"; // slate-800 — structural body
 const LAYER_SEPARATOR = "#475569"; // slate-600 — thin line between adjacent layers
@@ -141,7 +143,7 @@ const DoorRenderer = ({ shape }: { shape: DoorShape }) => {
  *  as a mitred band, with thin separators and a heavier structural-core boundary
  *  (the professional CAD read). Falls back to a butt-capped stroke if no outline
  *  (degenerate wall). */
-const WallRenderer = ({ shape, outline }: { shape: WallShape; outline: WallOutline | undefined }) => {
+const WallRenderer = ({ shape, outline, showHatch }: { shape: WallShape; outline: WallOutline | undefined; showHatch: boolean }) => {
   if (!outline) {
     return (
       <Line points={[shape.x1, shape.y1, shape.x2, shape.y2]} stroke={WALL_FILL} strokeWidth={shape.thickness} lineCap="butt" />
@@ -153,6 +155,22 @@ const WallRenderer = ({ shape, outline }: { shape: WallShape; outline: WallOutli
       {bands.map((b, i) => (
         <Line key={`b${i}`} points={b.polygon} closed fill={b.color || WALL_FILL} />
       ))}
+      {/* Per-material CAD hatch over each band's flat fill (LOD-gated). The tile
+          is a transparent canvas tiled in world space; cast for Konva's typing. */}
+      {showHatch &&
+        bands.map((b, i) => {
+          const hatch = materialHatch(b.material);
+          return hatch ? (
+            <Line
+              key={`h${i}`}
+              points={b.polygon}
+              closed
+              fillPatternImage={hatch as unknown as HTMLImageElement}
+              fillPatternRepeat="repeat"
+              listening={false}
+            />
+          ) : null;
+        })}
       {separators.map((s, i) => (
         <Line key={`s${i}`} points={s} stroke={LAYER_SEPARATOR} strokeWidth={0.75} strokeScaleEnabled={false} listening={false} />
       ))}
@@ -205,10 +223,15 @@ const ArcWallRenderer = ({ shape, showLabel, unit, ppm }: { shape: ArcWallShape;
   );
 };
 
-const renderShape = (shape: Shape, outlines: ReturnType<typeof computeWallOutlines>, arcLabel: { show: boolean; unit: DimensionUnit; ppm: number }) => {
+const renderShape = (
+  shape: Shape,
+  outlines: ReturnType<typeof computeWallOutlines>,
+  arcLabel: { show: boolean; unit: DimensionUnit; ppm: number },
+  showHatch: boolean,
+) => {
   switch (shape.type) {
     case "wall":
-      return <WallRenderer key={shape.id} shape={shape} outline={outlines.get(shape.id)} />;
+      return <WallRenderer key={shape.id} shape={shape} outline={outlines.get(shape.id)} showHatch={showHatch} />;
 
     case "arc-wall":
       return (
@@ -261,6 +284,8 @@ const RENDER_ORDER: Record<string, number> = { wall: 0, "arc-wall": 0, line: 1, 
 const ShapeRenderer = () => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const visibility = useLayersStore((s) => s.visibility);
+  // LOD: material hatches are skipped when zoomed out (sub-pixel noise + cost).
+  const showHatch = useViewportStore((s) => s.scale >= HATCH_MIN_SCALE);
   // Select primitives (not a derived object) so the store doesn't re-render on
   // every unrelated change; the compiler memoizes the config + outline build.
   const joinStyle = useEditorStore((s) => s.wallJoinStyle);
@@ -294,7 +319,7 @@ const ShapeRenderer = () => {
       {patches.map((p, i) => (
         <Line key={`patch-${i}`} points={flatRing(p)} closed fill={WALL_FILL} />
       ))}
-      {sorted.map((s) => renderShape(s, outlines, arcLabel))}
+      {sorted.map((s) => renderShape(s, outlines, arcLabel, showHatch))}
     </>
   );
 };

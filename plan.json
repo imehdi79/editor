@@ -23,13 +23,6 @@
   ],
   "steps": [
     {
-      "id": "bim-2",
-      "title": "Per-material hatch patterns (professional fills)",
-      "covers": ["#19"],
-      "detail": "Replace flat material fills with CAD hatches. Add a materialHatch(material) → cached Konva pattern (concrete stipple, insulation batt zigzag, masonry/brick diagonal, drywall plain, etc.), keyed off WALL_MATERIALS so adding a material = one hatch entry. Render each band's hatch above its fill, clipped to the band polygon; keep separators + core boundary on top. Gate hatching behind a viewport-scale LOD threshold (skip when zoomed out) and reuse one pattern canvas per material so mobile stays cheap.",
-      "dimensions": "None (rendering only)."
-    },
-    {
       "id": "bim-3",
       "title": "Per-layer junction priority cleanup (Revit/ArchiCAD)",
       "covers": ["#19"],

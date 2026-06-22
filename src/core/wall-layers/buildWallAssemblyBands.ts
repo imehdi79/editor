@@ -24,6 +24,8 @@ import { wallAssembly } from "./wallAssembly";
 export interface AssemblyBand {
   /** Closed quad as a flat [x,y,...] list (Konva points). */
   polygon: number[];
+  /** Material name (drives fill colour + hatch); empty = structural core. */
+  material: string;
   /** Material fill colour; empty string = use the structural wall colour. */
   color: string;
   isCore: boolean;
@@ -106,6 +108,7 @@ export const buildWallAssemblyBands = (wall: WallShape, outline: WallOutline): A
     const d = p1At(l.end);
     return {
       polygon: [a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y],
+      material: l.material,
       color: l.material ? materialColor(l.material) : "",
       isCore: l.isCore,
     };
