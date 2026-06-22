@@ -13,15 +13,19 @@
  * Pure — no React, no Konva, no store.
  */
 
-import type { Shape, ShapeId, WallShape } from "@/core/drawing-engine/drawing.types";
+import type { ArcWallShape, Shape, ShapeId, WallShape } from "@/core/drawing-engine/drawing.types";
 import { nodeKey } from "@/core/topology/computeTopology";
 import { computeWallJunctions } from "./computeWallJunctions";
 import { getJoinResolver } from "./joinStyles";
 import { getEndCap } from "./endCaps";
 import { buttCornersForEnd } from "./buttJoin";
 import { endThickness } from "@/core/wall-utils/wallThickness";
+import { arcInteriorPoints, arcTangentAtEnd } from "@/core/arc/arcGeometry";
 import type { Vec2 } from "./geometry";
 import type { ClassifiedJunction, JunctionConfig, Wedge, WallEnd } from "./junction.types";
+
+/** Either wall variant — both resolve into a solid body at their junctions. */
+type AnyWall = WallShape | ArcWallShape;
 
 export interface WallOutline {
   wallId: ShapeId;
@@ -183,24 +187,42 @@ const alignTransition = (
   return { inner: shift(corners.inner), outer: shift(corners.outer) };
 };
 
-const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: JunctionConfig): WallOutline | null => {
+/** Sampling resolution for an arc wall's curved faces. */
+const ARC_OUTLINE_SEGMENTS = 48;
+
+/**
+ * Interior face points of an arc at a signed +n offset, p1→p2 order (endpoints
+ * dropped — they are replaced by the resolved junction corners). `nOffset` is
+ * along +n; the radial sign maps it to the arc's away-from-centre frame (see
+ * arcGeometry — +radial = away from centre).
+ */
+const arcFaceInterior = (wall: ArcWallShape, nOffset: number, sgn: number): Vec2[] =>
+  arcInteriorPoints(wall.x1, wall.y1, wall.x2, wall.y2, wall.bulge, ARC_OUTLINE_SEGMENTS, nOffset * sgn);
+
+const buildOutline = (wall: AnyWall, shapes: Record<string, Shape>, config: JunctionConfig): WallOutline | null => {
+  // Chord frame — for an arc the body curves between the ends but the chord still
+  // defines the stable inner(+n)/outer(−n) labelling reference, as for a straight wall.
   const dx = wall.x2 - wall.x1;
   const dy = wall.y2 - wall.y1;
   const len = Math.hypot(dx, dy);
   if (len < 1e-6) return null; // degenerate wall
 
+  const isArc = wall.type === "arc-wall";
   const junctions = computeWallJunctions(shapes);
-  // Wall's own left-hand normal — the stable inner(+n)/outer(−n) reference.
+  // Wall's own left-hand chord normal — the stable inner(+n)/outer(−n) reference.
   const nWall: Vec2 = { x: -dy / len, y: dx / len };
 
   const off = wall.offset ?? 0;
   const bi = (wall.layers?.inner ?? []).reduce((s, l) => s + l.thickness, 0);
   const bo = (wall.layers?.outer ?? []).reduce((s, l) => s + l.thickness, 0);
-  // Per-end thickness: a tapered wall is thinner/thicker at each node, so each
-  // end resolves at its own width (the body becomes a trapezoid).
+  // Per-end thickness: a tapered straight wall resolves at its own width per end
+  // (the body becomes a trapezoid); arc walls are uniform. Each end leaves the
+  // node along its body direction — chord for straight, tangent for an arc.
   const shared = { offset: off, buildupInner: bi, buildupOuter: bo };
-  const end1: WallEnd = { wallId: wall.id, handle: "p1", thickness: endThickness(wall, "p1"), ...shared, dirX: dx / len, dirY: dy / len, bearing: 0 };
-  const end2: WallEnd = { wallId: wall.id, handle: "p2", thickness: endThickness(wall, "p2"), ...shared, dirX: -dx / len, dirY: -dy / len, bearing: 0 };
+  const d1 = isArc ? arcTangentAtEnd(wall.x1, wall.y1, wall.x2, wall.y2, wall.bulge, "p1") : { x: dx / len, y: dy / len };
+  const d2 = isArc ? arcTangentAtEnd(wall.x1, wall.y1, wall.x2, wall.y2, wall.bulge, "p2") : { x: -dx / len, y: -dy / len };
+  const end1: WallEnd = { wallId: wall.id, handle: "p1", thickness: endThickness(wall, "p1"), ...shared, dirX: d1.x, dirY: d1.y, bearing: 0 };
+  const end2: WallEnd = { wallId: wall.id, handle: "p2", thickness: endThickness(wall, "p2"), ...shared, dirX: d2.x, dirY: d2.y, bearing: 0 };
 
   const j1 = junctions.get(nodeKey(wall.x1, wall.y1)) ?? null;
   const j2 = junctions.get(nodeKey(wall.x2, wall.y2)) ?? null;
@@ -212,17 +234,29 @@ const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: Ju
   const c1 = alignTransition(cornersAtEnd(j1, e1, { x: wall.x1, y: wall.y1 }, nWall, config), e1, j1, nWall, config.align);
   const c2 = alignTransition(cornersAtEnd(j2, e2, { x: wall.x2, y: wall.y2 }, nWall, config), e2, j2, nWall, config.align);
 
-  // Free ends get the configured cap (butt/round/square); joined ends keep their
-  // mitre cut. The corner fields stay the face points (dimensions/bands measure
-  // from them); only the rendered body polygon carries the cap. Each cap uses
-  // its own end's half-width so a tapered wall caps correctly at both ends.
-  const ux = dx / len;
-  const uy = dy / len;
-  const free1 = !j1 || j1.ends.length < 2;
-  const free2 = !j2 || j2.ends.length < 2;
-  const cap = getEndCap(config.endCap);
-  const cap1 = free1 ? cap(c1.outer, c1.inner, { x: -ux, y: -uy }, e1.thickness / 2) : [c1.outer, c1.inner];
-  const cap2 = free2 ? cap(c2.inner, c2.outer, { x: ux, y: uy }, e2.thickness / 2) : [c2.inner, c2.outer];
+  let polygon: Vec2[];
+  if (isArc) {
+    // The body follows the curved faces between the resolved end corners. Arc
+    // walls are uniform, and free ends stay square (a plain butt cross), so there
+    // are no taper/end-cap variants here.
+    const sgn = wall.bulge >= 0 ? 1 : -1;
+    const half = wall.thickness / 2;
+    const innerFace = arcFaceInterior(wall, off + half, sgn); // +n face, p1→p2
+    const outerFace = arcFaceInterior(wall, off - half, sgn).reverse(); // −n face, p2→p1
+    polygon = [c1.outer, c1.inner, ...innerFace, c2.inner, c2.outer, ...outerFace];
+  } else {
+    // Free ends get the configured cap (butt/round/square); joined ends keep
+    // their mitre cut. Each cap uses its own end's half-width so a tapered wall
+    // caps correctly at both ends.
+    const ux = dx / len;
+    const uy = dy / len;
+    const free1 = !j1 || j1.ends.length < 2;
+    const free2 = !j2 || j2.ends.length < 2;
+    const cap = getEndCap(config.endCap);
+    const cap1 = free1 ? cap(c1.outer, c1.inner, { x: -ux, y: -uy }, e1.thickness / 2) : [c1.outer, c1.inner];
+    const cap2 = free2 ? cap(c2.inner, c2.outer, { x: ux, y: uy }, e2.thickness / 2) : [c2.inner, c2.outer];
+    polygon = [...cap1, ...cap2];
+  }
 
   return {
     wallId: wall.id,
@@ -230,7 +264,7 @@ const buildOutline = (wall: WallShape, shapes: Record<string, Shape>, config: Ju
     p1Outer: c1.outer,
     p2Inner: c2.inner,
     p2Outer: c2.outer,
-    polygon: [...cap1, ...cap2],
+    polygon,
   };
 };
 
@@ -282,7 +316,7 @@ const outlineData = (shapes: Record<string, Shape>, config: JunctionConfig): Out
 
   const outlines: WallOutlineMap = new Map();
   for (const shape of Object.values(shapes)) {
-    if (shape.type !== "wall") continue;
+    if (shape.type !== "wall" && shape.type !== "arc-wall") continue;
     const outline = buildOutline(shape, shapes, config);
     if (outline) outlines.set(shape.id, outline);
   }

@@ -6,11 +6,9 @@ import { useEditorStore } from "@/store/editor.store";
 import { categoryOf } from "@/core/layers/systemCategories";
 import type { Shape, WallShape, ArcWallShape, WindowShape, DoorShape } from "@/core/drawing-engine/drawing.types";
 import { computeDoorSwing } from "@/core/door/computeDoorSwing";
-import { materialColor } from "@/core/wall-layers/wallLayers";
-import { wallAssembly } from "@/core/wall-layers/wallAssembly";
-import { buildWallAssemblyBands } from "@/core/wall-layers/buildWallAssemblyBands";
+import { buildWallAssemblyBands, type AssemblyBands } from "@/core/wall-layers/buildWallAssemblyBands";
+import { buildArcAssemblyBands } from "@/core/wall-layers/buildArcAssemblyBands";
 import { computeWallOutlines, computeJunctionPatches, finishSetbacksForWall, type WallOutline } from "@/core/wall-junctions";
-import { arcPolyline } from "@/core/arc/arcGeometry";
 import { materialHatch, HATCH_MIN_SCALE } from "./materialHatch";
 
 const WALL_FILL = "#1e293b"; // slate-800 — structural body
@@ -146,28 +144,12 @@ const DoorRenderer = ({ shape }: { shape: DoorShape }) => {
 // Shape dispatch
 // ---------------------------------------------------------------------------
 
-/** Wall body: the full-width BIM composite assembly — every construction layer
- *  as a mitred band, with thin separators and a heavier structural-core boundary
- *  (the professional CAD read). Falls back to a butt-capped stroke if no outline
- *  (degenerate wall). */
-const WallRenderer = ({
-  shape,
-  outline,
-  setback,
-  showHatch,
-}: {
-  shape: WallShape;
-  outline: WallOutline | undefined;
-  setback: { p1: number; p2: number } | undefined;
-  showHatch: boolean;
-}) => {
-  if (!outline) {
-    return (
-      <Line points={[shape.x1, shape.y1, shape.x2, shape.y2]} stroke={WALL_FILL} strokeWidth={shape.thickness} lineCap="butt" />
-    );
-  }
-  const { bands, separators, coreLines } = buildWallAssemblyBands(shape, outline, setback);
-  const existing = shape.existing === true;
+/** Shared wall-body renderer: the full-width BIM composite assembly — every
+ *  construction layer as a filled band, thin separators, and a heavier structural-
+ *  core boundary (the professional CAD read). Identical for straight and arc walls;
+ *  only the band geometry differs (mitred quads vs curved ring segments). */
+const WallBody = ({ bands: a, existing, showHatch }: { bands: AssemblyBands; existing: boolean; showHatch: boolean }) => {
+  const { bands, separators, coreLines } = a;
   return (
     <Group>
       {bands.map((b, i) => (
@@ -200,43 +182,48 @@ const WallRenderer = ({
   );
 };
 
-/** Arc (curved) wall: the full composite assembly as concentric layer bands —
- *  exterior→interior across the wall thickness, with thin separators and heavier
- *  structural-core boundaries, exactly like the straight wall body. Each layer's
- *  signed +n face offset maps to a radial offset of the arc. Dimensions are drawn
- *  by ArcDimensionRenderer, not here. */
-const ARC_SEGMENTS = 40;
+/** Straight wall body. Falls back to a butt-capped stroke if no outline
+ *  (degenerate wall). */
+const WallRenderer = ({
+  shape,
+  outline,
+  setback,
+  showHatch,
+}: {
+  shape: WallShape;
+  outline: WallOutline | undefined;
+  setback: { p1: number; p2: number } | undefined;
+  showHatch: boolean;
+}) => {
+  if (!outline) {
+    return (
+      <Line points={[shape.x1, shape.y1, shape.x2, shape.y2]} stroke={WALL_FILL} strokeWidth={shape.thickness} lineCap="butt" />
+    );
+  }
+  return <WallBody bands={buildWallAssemblyBands(shape, outline, setback)} existing={shape.existing === true} showHatch={showHatch} />;
+};
 
-const ArcWallRenderer = ({ shape }: { shape: ArcWallShape }) => {
-  const base = shape.offset ?? 0;
-  const { layers, coreStart, coreEnd } = wallAssembly(shape);
-  const existing = shape.existing === true;
-  const arcAt = (s: number) => arcPolyline(shape.x1, shape.y1, shape.x2, shape.y2, shape.bulge, ARC_SEGMENTS, base + s);
-
-  const bands = layers.map((l) => ({
-    pts: arcAt((l.start + l.end) / 2),
-    color: existing ? EXISTING_FILL : l.material ? materialColor(l.material) : WALL_FILL,
-    width: l.end - l.start,
-  }));
-
-  const boundaries = layers.length > 0 ? [layers[0].start, ...layers.map((l) => l.end)] : [];
-  const isCoreBoundary = (s: number) => Math.abs(s - coreStart) < 1e-6 || Math.abs(s - coreEnd) < 1e-6;
-  const separators = existing ? [] : boundaries.filter((s) => !isCoreBoundary(s)).map(arcAt);
-  const coreLines = existing ? [] : [arcAt(coreStart), arcAt(coreEnd)];
-
-  return (
-    <Group key={shape.id}>
-      {bands.map((b, i) => (
-        <Line key={`b${i}`} points={b.pts} stroke={b.color} strokeWidth={b.width} lineCap="butt" />
-      ))}
-      {separators.map((pts, i) => (
-        <Line key={`s${i}`} points={pts} stroke={LAYER_SEPARATOR} strokeWidth={0.75} strokeScaleEnabled={false} listening={false} />
-      ))}
-      {coreLines.map((pts, i) => (
-        <Line key={`c${i}`} points={pts} stroke={CORE_BOUNDARY} strokeWidth={1.25} strokeScaleEnabled={false} listening={false} />
-      ))}
-    </Group>
-  );
+/** Arc (curved) wall body: the same composite assembly, drawn as junction-resolved
+ *  curved ring-segment bands so corners mitre/butt into neighbours exactly like a
+ *  straight wall. Dimensions are drawn by ArcDimensionRenderer, not here. Falls
+ *  back to a butt-capped stroke along the chord if no outline (degenerate). */
+const ArcWallRenderer = ({
+  shape,
+  outline,
+  setback,
+  showHatch,
+}: {
+  shape: ArcWallShape;
+  outline: WallOutline | undefined;
+  setback: { p1: number; p2: number } | undefined;
+  showHatch: boolean;
+}) => {
+  if (!outline) {
+    return (
+      <Line points={[shape.x1, shape.y1, shape.x2, shape.y2]} stroke={WALL_FILL} strokeWidth={shape.thickness} lineCap="butt" />
+    );
+  }
+  return <WallBody bands={buildArcAssemblyBands(shape, outline, setback)} existing={shape.existing === true} showHatch={showHatch} />;
 };
 
 const renderShape = (
@@ -258,7 +245,15 @@ const renderShape = (
       );
 
     case "arc-wall":
-      return <ArcWallRenderer key={shape.id} shape={shape} />;
+      return (
+        <ArcWallRenderer
+          key={shape.id}
+          shape={shape}
+          outline={outlines.get(shape.id)}
+          setback={setbacks[shape.id]}
+          showHatch={showHatch}
+        />
+      );
 
     case "line":
       return (
@@ -315,7 +310,7 @@ const ShapeRenderer = () => {
   // plain walls / non-butt joins — those render exactly as the structural body).
   const setbacks: Record<string, { p1: number; p2: number }> = {};
   for (const s of Object.values(shapes)) {
-    if (s.type === "wall") setbacks[s.id] = finishSetbacksForWall(s, shapes, config);
+    if (s.type === "wall" || s.type === "arc-wall") setbacks[s.id] = finishSetbacksForWall(s, shapes, config);
   }
   // Corner chamfer/fillet fills for bevel & round joins. Hidden when the
   // architectural category is hidden (patches are structural wall geometry).

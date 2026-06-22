@@ -119,19 +119,32 @@ stay as module constants — only user choices live in the store.
   and instead show their true **arc length** at the apex (respecting the
   segments/selection display mode).
 
-## Deliberately scoped (future, BIM-tier)
+## Arc walls — now full junction parity (follow-up step)
 
-Consistent with "build the simplest scalable solution; don't add abstractions
-without a clear need", these are documented extensions rather than half-built:
+The arc↔straight items below are no longer deferred — arc walls now participate
+in the junction system exactly like straight walls:
 
-- **Tangent-mitred arc↔straight junctions.** Arc walls render as standalone
-  curved bodies; they connect to straight walls by overlap (same fill). The
-  geometry/registry are ready for a tangent join resolver.
+- **Tangent-mitred arc↔straight junctions.** Each arc end enters
+  `classifyJunction` along its **tangent at the node** (`arcTangentAtEnd`), so the
+  existing miter/butt/bevel/round registry resolves arc corners with no new join
+  code. `computeWallOutline` builds the arc body as a junction-resolved solid
+  (curved faces between the resolved end corners) and `buildArcAssemblyBands`
+  draws the composite layers as curved ring-segment bands that mitre/butt into
+  neighbours — the same `WallBody` renderer fills both wall variants.
+- **Per-node join style on arcs** (`joinP1/joinP2` + `useSetNodeJoin`), **finish-
+  face junction cleanup** (`finishSetbacksForWall` for arc abutters and arc
+  hosts) and **dimension-chain breaks at arc junction nodes** (the arc's tangent
+  footprint clips the running chain) all extend to arcs.
+- **Arc-wall layer editing UI** and **true arc-length takeoff** are already wired
+  (`WallLayersPanel`, `layeredWallLength`).
+
+## Still deliberately scoped (future, BIM-tier)
+
 - **Revit-style per-layer priority matching.** The geometric layer wrap is
   handled (shared corner cut lines + finish-face clipping for butt/T). Full
   priority rules (which layer passes through vs stops) are a future layer on top.
-- **Arc-wall layer editing UI** is scoped to straight walls for now so the layer
-  takeoff length stays exact (arc takeoff would need arc-length, not chord).
+- **Mid-span split, overlap/touching validation, and configurable free-end caps
+  for arc walls** were left out of the arc parity step by design.
 
 ## Verification
 

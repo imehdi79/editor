@@ -18,17 +18,17 @@ export const useSetNodeJoin = () => {
 
   return (wallId: ShapeId, handle: "p1" | "p2", style: JoinStyle) => {
     const wall = shapes[wallId];
-    if (wall?.type !== "wall") return;
+    if (wall?.type !== "wall" && wall?.type !== "arc-wall") return;
 
     const x = handle === "p1" ? wall.x1 : wall.x2;
     const y = handle === "p1" ? wall.y1 : wall.y2;
     const node = computeTopology(shapes).get(nodeKey(x, y));
 
-    // Apply to every wall endpoint sharing the node (the connected walls). A
-    // free end with no topology node still updates the tapped wall itself.
-    const targets = node
-      ? node.refs.filter((ref) => shapes[ref.shapeId]?.type === "wall")
-      : [{ shapeId: wallId, handle }];
+    // Apply to every wall endpoint sharing the node (the connected walls — straight
+    // or arc; both honour the same registry-backed join styles). A free end with no
+    // topology node still updates the tapped wall itself.
+    const isWall = (id: ShapeId) => shapes[id]?.type === "wall" || shapes[id]?.type === "arc-wall";
+    const targets = node ? node.refs.filter((ref) => isWall(ref.shapeId)) : [{ shapeId: wallId, handle }];
 
     for (const ref of targets) {
       updateShape(ref.shapeId, ref.handle === "p1" ? { joinP1: style } : { joinP2: style });

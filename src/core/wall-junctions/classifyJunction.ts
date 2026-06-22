@@ -9,11 +9,17 @@
  * Pure — no React, no Konva, no store.
  */
 
-import type { JoinStyle, Shape, WallShape } from "@/core/drawing-engine/drawing.types";
+import type { ArcWallShape, JoinStyle, Shape, WallShape } from "@/core/drawing-engine/drawing.types";
 import type { TopologyNode } from "@/core/topology/computeTopology";
 import { absoluteAngleDeg } from "@/core/wall-utils/wallAngles";
 import { endThickness } from "@/core/wall-utils/wallThickness";
+import { arcTangentAtEnd } from "@/core/arc/arcGeometry";
 import type { ClassifiedJunction, JunctionKind, WallEnd } from "./junction.types";
+
+/** Either wall variant — both contribute a solid body to a junction. */
+type AnyWall = WallShape | ArcWallShape;
+const isWall = (s: Shape | undefined): s is AnyWall =>
+  !!s && (s.type === "wall" || s.type === "arc-wall");
 
 /**
  * Cos tolerance for treating two wall directions as collinear (≈10°). A
@@ -22,12 +28,23 @@ import type { ClassifiedJunction, JunctionKind, WallEnd } from "./junction.types
  */
 const COLLINEAR_COS = 0.985;
 
-/** The opposite endpoint of a wall — the point its body extends toward. */
-const otherEnd = (wall: WallShape, handle: "p1" | "p2"): { x: number; y: number } =>
-  handle === "p1" ? { x: wall.x2, y: wall.y2 } : { x: wall.x1, y: wall.y1 };
+/**
+ * Unit direction a wall end leaves the node, INTO its body. A straight wall
+ * leaves along its chord toward the far endpoint; an arc wall leaves along its
+ * tangent at the shared endpoint (so the junction mitres against the true curve,
+ * not the chord). This is the only geometric difference between the two variants
+ * at a junction — everything downstream consumes this direction.
+ */
+const awayDir = (wall: AnyWall, handle: "p1" | "p2"): { x: number; y: number } => {
+  if (wall.type === "arc-wall") return arcTangentAtEnd(wall.x1, wall.y1, wall.x2, wall.y2, wall.bulge, handle);
+  const ax = handle === "p1" ? wall.x2 - wall.x1 : wall.x1 - wall.x2;
+  const ay = handle === "p1" ? wall.y2 - wall.y1 : wall.y1 - wall.y2;
+  const len = Math.hypot(ax, ay) || 1;
+  return { x: ax / len, y: ay / len };
+};
 
 /** Total layer build-up on one face (kept inline to avoid a wall-layers cycle). */
-const sideBuildup = (wall: WallShape, side: "inner" | "outer"): number =>
+const sideBuildup = (wall: AnyWall, side: "inner" | "outer"): number =>
   (wall.layers?.[side] ?? []).reduce((sum, layer) => sum + layer.thickness, 0);
 
 /** Build the wall ends meeting at a node, sorted by bearing (CCW from East). */
@@ -35,23 +52,20 @@ const wallEndsAt = (node: TopologyNode, shapes: Record<string, Shape>): WallEnd[
   const ends: WallEnd[] = [];
   for (const ref of node.refs) {
     const wall = shapes[ref.shapeId];
-    if (!wall || wall.type !== "wall") continue;
-    const away = otherEnd(wall, ref.handle);
-    const dx = away.x - node.x;
-    const dy = away.y - node.y;
-    const len = Math.hypot(dx, dy) || 1;
+    if (!isWall(wall)) continue;
+    const dir = awayDir(wall, ref.handle);
     ends.push({
       wallId: wall.id,
       handle: ref.handle,
       // A tapered wall contributes its thickness AT THIS NODE, so the junction
-      // mitres each end at the correct local width.
+      // mitres each end at the correct local width (arc walls are uniform).
       thickness: endThickness(wall, ref.handle),
       offset: wall.offset ?? 0,
       buildupInner: sideBuildup(wall, "inner"),
       buildupOuter: sideBuildup(wall, "outer"),
-      dirX: dx / len,
-      dirY: dy / len,
-      bearing: absoluteAngleDeg(node.x, node.y, away.x, away.y),
+      dirX: dir.x,
+      dirY: dir.y,
+      bearing: absoluteAngleDeg(node.x, node.y, node.x + dir.x, node.y + dir.y),
     });
   }
   ends.sort((a, b) => a.bearing - b.bearing);
@@ -88,7 +102,7 @@ const classifyKind = (ends: WallEnd[]): JunctionKind => {
 const nodeJoinOverride = (node: TopologyNode, shapes: Record<string, Shape>): JoinStyle | undefined => {
   for (const ref of node.refs) {
     const wall = shapes[ref.shapeId];
-    if (wall?.type !== "wall") continue;
+    if (!isWall(wall)) continue;
     const join = ref.handle === "p1" ? wall.joinP1 : wall.joinP2;
     if (join) return join;
   }

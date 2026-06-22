@@ -16,11 +16,16 @@
  * Pure — no React, no Konva, no store.
  */
 
-import type { Shape, WallShape } from "@/core/drawing-engine/drawing.types";
+import type { ArcWallShape, Shape, WallShape } from "@/core/drawing-engine/drawing.types";
 import type { JunctionConfig, WallEnd } from "./junction.types";
 import { computeWallJunctions } from "./computeWallJunctions";
 import { nodeKey } from "@/core/topology/computeTopology";
 import { finishBuildup } from "@/core/wall-layers/finishedWall";
+
+/** Either wall variant — both abut, and both can host, a finish-cleanup butt. */
+type AnyWall = WallShape | ArcWallShape;
+const isWall = (s: Shape | undefined): s is AnyWall =>
+  !!s && (s.type === "wall" || s.type === "arc-wall");
 
 /** Collinearity tolerance (≈10°) — shared with buttJoin / classifyJunction. */
 const COLLINEAR_COS = 0.985;
@@ -52,7 +57,7 @@ const findHost = (ends: WallEnd[]): { host: WallEnd; through: Set<string> } => {
 };
 
 const setbackAt = (
-  wall: WallShape,
+  wall: AnyWall,
   handle: "p1" | "p2",
   shapes: Record<string, Shape>,
   junctions: ReturnType<typeof computeWallJunctions>,
@@ -72,21 +77,32 @@ const setbackAt = (
   if (!thisEnd || through.has(ekey(thisEnd))) return 0; // through ends continue
 
   const hostWall = shapes[host.wallId];
-  if (!hostWall || hostWall.type !== "wall") return 0;
+  if (!isWall(hostWall)) return 0;
   const fb = finishBuildup(hostWall);
   if (fb.inner === 0 && fb.outer === 0) return 0;
 
-  // Which host face does this wall abut? Host inner face is its +n = (−hdy, hdx).
+  // Which host face does this wall abut? The host's inner face is its +n side. Use
+  // the host end's LOCAL normal at the node (perp of its body direction — the arc
+  // tangent for an arc host), oriented to the host's chord +n so it maps to
+  // fb.inner / fb.outer. For a straight host this is just the chord normal.
   const hdx = hostWall.x2 - hostWall.x1;
   const hdy = hostWall.y2 - hostWall.y1;
   const hlen = Math.hypot(hdx, hdy) || 1;
-  const side = dot(thisEnd.dirX, thisEnd.dirY, -hdy / hlen, hdx / hlen);
+  const chordNx = -hdy / hlen;
+  const chordNy = hdx / hlen;
+  let hnx = -host.dirY;
+  let hny = host.dirX;
+  if (hnx * chordNx + hny * chordNy < 0) {
+    hnx = -hnx;
+    hny = -hny;
+  }
+  const side = dot(thisEnd.dirX, thisEnd.dirY, hnx, hny);
   return side >= 0 ? fb.inner : fb.outer;
 };
 
 /** Finish-band setback (px) at each end of a wall. 0 = layers continue as-is. */
 export const finishSetbacksForWall = (
-  wall: WallShape,
+  wall: AnyWall,
   shapes: Record<string, Shape>,
   config: JunctionConfig,
 ): { p1: number; p2: number } => {

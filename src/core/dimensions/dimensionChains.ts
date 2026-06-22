@@ -38,6 +38,7 @@ import { formatDimension } from "./dimensionUnits";
 import { computeSegmentDimension, DIM_OFFSET, type DimensionGeometry } from "./dimensionGeometry";
 import { metricsFromGeometry } from "./dimensionLayout";
 import { finishBuildup } from "@/core/wall-layers/finishedWall";
+import { arcTangentAtEnd } from "@/core/arc/arcGeometry";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -225,55 +226,31 @@ const collectRunGeom = (
   const runIds = new Set(walls.map((w) => w.id));
   const junctions: Junction[] = [];
 
-  for (const shape of Object.values(allShapes)) {
-    if (!isWall(shape) || runIds.has(shape.id)) continue;
-    const { ux: rx, uy: ry } = wallDir(shape);
-    // Collinear walls are continuations, not cross-junctions — skip.
-    if (dotDir(ux, uy, rx, ry) >= COLLINEAR_COS_TOLERANCE) continue;
-
-    // Where the cross wall's CENTRELINE meets the run axis. Solve
-    // O + t·U = E1 + s·R for t (param along the run) and s (along the cross wall).
-    // Non-collinear ⇒ the lines aren't parallel ⇒ det ≠ 0. This finds the junction
-    // whether the cross wall butts the run (s ≈ an end), the run butts the cross
-    // wall (s mid-body), or they cross at an X — all bound a room and must clip the
-    // clear span, so detection no longer depends on an endpoint sitting on the run.
+  /**
+   * Push the thickness-footprint of a crossing wall onto the run. The wall's two
+   * FINISHED faces (centreline offset along n = (−ry, rx) by the core half + that
+   * side's finish build-up) are intersected with the run axis; the [tNear, tFar]
+   * gap between them is exactly its footprint along the run, so the room spans
+   * (the complement) read clear face-to-face. `px,py` is any point on the wall's
+   * centreline; the face lines are parallel to it so the choice doesn't matter.
+   */
+  const pushFootprint = (
+    px: number, py: number,
+    rx: number, ry: number,
+    thickness: number,
+    fb: { inner: number; outer: number },
+    sides: (1 | -1)[],
+  ) => {
     const det = rx * uy - ry * ux;
-    const bx0 = shape.x1 - ox;
-    const by0 = shape.y1 - oy;
-    const tCross = (rx * by0 - ry * bx0) / det;
-    const sCross = (ux * by0 - uy * bx0) / det;
-    // The crossing must fall within the run span AND within the cross wall's own
-    // length — i.e. its body actually reaches the run line, not its extension.
-    if (tCross < tMin - ATTACH_EPS || tCross > tMax + ATTACH_EPS) continue;
-    const segLen = Math.hypot(shape.x2 - shape.x1, shape.y2 - shape.y1) || 1;
-    if (sCross < -ATTACH_EPS || sCross > segLen + ATTACH_EPS) continue;
-
-    // Which run side(s) the cross wall occupies — the perpendicular projection of
-    // its endpoints. A wall that butts the run lies on one side; one the run butts
-    // into (or an X-cross) straddles the run and clips BOTH side chains.
-    const crossX = ox + ux * tCross;
-    const crossY = oy + uy * tCross;
-    const perp1 = (shape.x1 - crossX) * lpx + (shape.y1 - crossY) * lpy;
-    const perp2 = (shape.x2 - crossX) * lpx + (shape.y2 - crossY) * lpy;
-    const sides: (1 | -1)[] = [];
-    if (perp1 > ATTACH_EPS || perp2 > ATTACH_EPS) sides.push(1);
-    if (perp1 < -ATTACH_EPS || perp2 < -ATTACH_EPS) sides.push(-1);
-    if (sides.length === 0) continue;
-
-    // Face-to-face: intersect each FINISHED face of the cross wall with the run
-    // axis. Faces are the centreline offset along its normal n = (−ry, rx) by the
-    // core half + that side's finish build-up (+n inner, −n outer), so a composite
-    // wall's footprint matches its drawn finished body. The face line is parallel
-    // to the centreline, so any centreline point (E1) yields the same crossing.
-    const fb = finishBuildup(shape);
-    const halfPlus = shape.thickness / 2 + fb.inner; // +n face
-    const halfMinus = shape.thickness / 2 + fb.outer; // −n face
+    if (Math.abs(det) < 1e-9) return; // parallel (collinear already skipped)
     const nx = -ry;
     const ny = rx;
+    const halfPlus = thickness / 2 + fb.inner; // +n face
+    const halfMinus = thickness / 2 + fb.outer; // −n face
     const faceT = (sign: 1 | -1): number => {
       const half = sign > 0 ? halfPlus : halfMinus;
-      const fbx = shape.x1 + sign * half * nx - ox;
-      const fby = shape.y1 + sign * half * ny - oy;
+      const fbx = px + sign * half * nx - ox;
+      const fby = py + sign * half * ny - oy;
       return (rx * fby - ry * fbx) / det;
     };
     const ta = faceT(1);
@@ -281,6 +258,71 @@ const collectRunGeom = (
     const tNear = Math.min(ta, tb);
     const tFar = Math.max(ta, tb);
     for (const side of sides) junctions.push({ tNear, tFar, side });
+  };
+
+  for (const shape of Object.values(allShapes)) {
+    if (runIds.has(shape.id)) continue;
+
+    if (isWall(shape)) {
+      const { ux: rx, uy: ry } = wallDir(shape);
+      // Collinear walls are continuations, not cross-junctions — skip.
+      if (dotDir(ux, uy, rx, ry) >= COLLINEAR_COS_TOLERANCE) continue;
+
+      // Where the cross wall's CENTRELINE meets the run axis. Solve
+      // O + t·U = E1 + s·R for t (param along the run) and s (along the cross wall).
+      // Non-collinear ⇒ the lines aren't parallel ⇒ det ≠ 0. This finds the junction
+      // whether the cross wall butts the run (s ≈ an end), the run butts the cross
+      // wall (s mid-body), or they cross at an X — all bound a room and must clip the
+      // clear span, so detection no longer depends on an endpoint sitting on the run.
+      const det = rx * uy - ry * ux;
+      const bx0 = shape.x1 - ox;
+      const by0 = shape.y1 - oy;
+      const tCross = (rx * by0 - ry * bx0) / det;
+      const sCross = (ux * by0 - uy * bx0) / det;
+      // The crossing must fall within the run span AND within the cross wall's own
+      // length — i.e. its body actually reaches the run line, not its extension.
+      if (tCross < tMin - ATTACH_EPS || tCross > tMax + ATTACH_EPS) continue;
+      const segLen = Math.hypot(shape.x2 - shape.x1, shape.y2 - shape.y1) || 1;
+      if (sCross < -ATTACH_EPS || sCross > segLen + ATTACH_EPS) continue;
+
+      // Which run side(s) the cross wall occupies — the perpendicular projection of
+      // its endpoints. A wall that butts the run lies on one side; one the run butts
+      // into (or an X-cross) straddles the run and clips BOTH side chains.
+      const crossX = ox + ux * tCross;
+      const crossY = oy + uy * tCross;
+      const perp1 = (shape.x1 - crossX) * lpx + (shape.y1 - crossY) * lpy;
+      const perp2 = (shape.x2 - crossX) * lpx + (shape.y2 - crossY) * lpy;
+      const sides: (1 | -1)[] = [];
+      if (perp1 > ATTACH_EPS || perp2 > ATTACH_EPS) sides.push(1);
+      if (perp1 < -ATTACH_EPS || perp2 < -ATTACH_EPS) sides.push(-1);
+      if (sides.length === 0) continue;
+
+      pushFootprint(shape.x1, shape.y1, rx, ry, shape.thickness, finishBuildup(shape), sides);
+      continue;
+    }
+
+    // Arc walls join the run at an endpoint and leave along their TANGENT there, so
+    // each contact endpoint is a break-point — its footprint along the run is the
+    // arc's thickness at the tangent angle, exactly as a straight wall would be.
+    if (shape.type === "arc-wall") {
+      const fb = finishBuildup(shape);
+      for (const handle of ["p1", "p2"] as const) {
+        const ex = handle === "p1" ? shape.x1 : shape.x2;
+        const ey = handle === "p1" ? shape.y1 : shape.y2;
+        const tC = projectT(ex, ey, ox, oy, ux, uy);
+        if (tC < tMin - ATTACH_EPS || tC > tMax + ATTACH_EPS) continue;
+        // The endpoint must sit ON the run line (a shared node), not merely project
+        // into the span — otherwise the arc only passes nearby.
+        const perp = (ex - (ox + ux * tC)) * lpx + (ey - (oy + uy * tC)) * lpy;
+        if (Math.abs(perp) > ATTACH_EPS) continue;
+        const tan = arcTangentAtEnd(shape.x1, shape.y1, shape.x2, shape.y2, shape.bulge, handle);
+        if (dotDir(ux, uy, tan.x, tan.y) >= COLLINEAR_COS_TOLERANCE) continue; // leaves along the run
+        // The body extends to the side the tangent points across the run.
+        const across = tan.x * lpx + tan.y * lpy;
+        const side: 1 | -1 = across >= 0 ? 1 : -1;
+        pushFootprint(ex, ey, tan.x, tan.y, shape.thickness, fb, [side]);
+      }
+    }
   }
 
   return { ox, oy, ux, uy, tMin, tMax, junctions };

@@ -141,6 +141,11 @@ export interface ArcWallShape extends BaseShape {
   assembly?: WallLayer[];
   coreStart?: number;
   coreEnd?: number;
+  /** Per-node join-style override at each endpoint (see WallShape.joinP1/joinP2).
+   *  Arc ends join other walls via their tangent at the node, so they honour the
+   *  same registry-backed join styles; kept in sync across the node by useSetNodeJoin. */
+  joinP1?: JoinStyle;
+  joinP2?: JoinStyle;
   /** Renovation phase — pre-existing construction (see WallShape.existing). */
   existing?: boolean;
 }

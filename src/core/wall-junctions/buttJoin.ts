@@ -104,8 +104,13 @@ export const buttCornersForEnd = (
   const half = end.thickness / 2;
   const { host, through } = findHost(junction.ends, node);
   const o = offsetOrigin(node, end);
-  const sq1: Vec2 = { x: o.x + nWall.x * half, y: o.y + nWall.y * half };
-  const sq2: Vec2 = { x: o.x - nWall.x * half, y: o.y - nWall.y * half };
+  // Face points along this end's OWN local normal (perp of its body direction) —
+  // for an arc that direction is the tangent, so the faces sit radially correct.
+  // For a straight wall this equals ±nWall; splitBySide re-labels by nWall, so the
+  // sign is irrelevant and straight results are unchanged.
+  const nLocal = perp(end.dirX, end.dirY);
+  const sq1: Vec2 = { x: o.x + nLocal.x * half, y: o.y + nLocal.y * half };
+  const sq2: Vec2 = { x: o.x - nLocal.x * half, y: o.y - nLocal.y * half };
 
   if (through.has(endKey(end))) {
     const hasPartner = junction.ends.some(

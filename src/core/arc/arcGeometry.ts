@@ -74,6 +74,43 @@ export const arcFromChordBulge = (
 };
 
 /**
+ * Unit tangent at one endpoint of the arc, pointing AWAY from that endpoint into
+ * the arc body (toward the apex / the rest of the curve). This is the direction a
+ * junction must mitre against — an arc joins a neighbour along its tangent at the
+ * shared node, exactly as a straight wall joins along its own direction. Falls
+ * back to the straight chord direction when the bulge is negligible.
+ */
+export const arcTangentAtEnd = (
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  bulge: number,
+  handle: "p1" | "p2",
+): { x: number; y: number } => {
+  const arc = arcFromChordBulge(x1, y1, x2, y2, bulge);
+  // Straight fallback: chord direction away from the node.
+  if (!arc) {
+    const sx = handle === "p1" ? x2 - x1 : x1 - x2;
+    const sy = handle === "p1" ? y2 - y1 : y1 - y2;
+    const len = Math.hypot(sx, sy) || 1;
+    return { x: sx / len, y: sy / len };
+  }
+  const angle = handle === "p1" ? arc.startAngle : arc.startAngle + arc.sweep;
+  // Tangent is perpendicular to the radius at the endpoint.
+  let tx = -Math.sin(angle);
+  let ty = Math.cos(angle);
+  // Orient it away from the node — i.e. toward the apex (into the body).
+  const nodeX = handle === "p1" ? x1 : x2;
+  const nodeY = handle === "p1" ? y1 : y2;
+  if (tx * (arc.apex.x - nodeX) + ty * (arc.apex.y - nodeY) < 0) {
+    tx = -tx;
+    ty = -ty;
+  }
+  return { x: tx, y: ty };
+};
+
+/**
  * Sample the arc into a polyline as a flat [x,y,...] list, at an optional radial
  * offset from the centreline (for face / layer bands; +offset = away from the
  * centre). Falls back to the straight chord when the bulge is negligible.
@@ -96,4 +133,24 @@ export const arcPolyline = (
     out.push(arc.cx + r * Math.cos(ang), arc.cy + r * Math.sin(ang));
   }
   return out;
+};
+
+/**
+ * Interior sample points (the two endpoints dropped) of the arc at a radial
+ * offset, in p1→p2 order. The endpoints are excluded because a junction-resolved
+ * body replaces them with its mitred corners; only the curve between is sampled.
+ */
+export const arcInteriorPoints = (
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  bulge: number,
+  segments: number,
+  radialOffset = 0,
+): { x: number; y: number }[] => {
+  const flat = arcPolyline(x1, y1, x2, y2, bulge, segments, radialOffset);
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 2; i < flat.length - 2; i += 2) pts.push({ x: flat[i], y: flat[i + 1] });
+  return pts;
 };
