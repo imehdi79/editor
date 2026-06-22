@@ -17,12 +17,16 @@
  *
  * Doors and windows are openings hosted on a wall: the wall continues behind
  * them, so they never break a room boundary — hence only walls are considered.
+ * Arc walls bound a room along their CURVE, so each one is sampled into a
+ * centreline polyline (a flat chord would mis-cut the floor area) and its facets
+ * join the same arrangement as straight walls.
  *
  * Pure: no React, no Konva, no store.
  */
 
-import type { Shape } from "@/core/drawing-engine/drawing.types";
+import type { ArcWallShape, Shape } from "@/core/drawing-engine/drawing.types";
 import { nodeKey } from "@/core/topology/computeTopology";
+import { arcFromChordBulge, arcPolyline } from "@/core/arc/arcGeometry";
 
 export interface RoomArea {
   /** Stable id derived from the room's node-key cycle */
@@ -48,6 +52,12 @@ const EPS = 1e-9;
 const ON_SEG_TOL = 0.5;
 /** Faces smaller than this (px²) are numerical slivers, not rooms. */
 const MIN_AREA = 1;
+/** Arc-wall centreline facet density: one chord per ~11° of sweep, clamped so a
+ *  shallow arc still gets a few facets and a deep sweep doesn't flood the O(n²)
+ *  arrangement. The polyline inscribes the true curve, so the traced face hugs it. */
+const ARC_SEG_RAD = Math.PI / 16;
+const ARC_MIN_SEGMENTS = 4;
+const ARC_MAX_SEGMENTS = 48;
 
 /** Signed shoelace area in screen (y-down) space. */
 const signedArea = (poly: Pt[]): number => {
@@ -113,13 +123,38 @@ const projParam = (p: Pt, s: Seg): { t: number; dist: number } => {
   return { t, dist: Math.hypot(p.x - cx, p.y - cy) };
 };
 
+/**
+ * Append an arc wall's centreline to `out` as a chain of straight facets. The
+ * endpoints stay the stored chord nodes (so they fuse with abutting walls via
+ * nodeKey); the interior facet vertices inscribe the true curve. A negligible
+ * bulge degrades to the single chord segment.
+ */
+const pushArcFacets = (s: ArcWallShape, out: Seg[]): void => {
+  const arc = arcFromChordBulge(s.x1, s.y1, s.x2, s.y2, s.bulge);
+  if (!arc) {
+    if (Math.hypot(s.x2 - s.x1, s.y2 - s.y1) >= ON_SEG_TOL)
+      out.push({ a: { x: s.x1, y: s.y1 }, b: { x: s.x2, y: s.y2 } });
+    return;
+  }
+  const count = Math.max(
+    ARC_MIN_SEGMENTS,
+    Math.min(ARC_MAX_SEGMENTS, Math.ceil(Math.abs(arc.sweep) / ARC_SEG_RAD)),
+  );
+  const flat = arcPolyline(s.x1, s.y1, s.x2, s.y2, s.bulge, count);
+  for (let i = 0; i + 3 < flat.length; i += 2)
+    out.push({ a: { x: flat[i], y: flat[i + 1] }, b: { x: flat[i + 2], y: flat[i + 3] } });
+};
+
 const computeRoomAreasUncached = (shapes: Record<string, Shape>): RoomArea[] => {
-  // --- Wall centerlines as segments ---
+  // --- Wall centerlines as segments (arc walls sampled into facets) ---
   const segs: Seg[] = [];
   for (const s of Object.values(shapes)) {
-    if (s.type !== "wall") continue;
-    if (Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < ON_SEG_TOL) continue;
-    segs.push({ a: { x: s.x1, y: s.y1 }, b: { x: s.x2, y: s.y2 } });
+    if (s.type === "wall") {
+      if (Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < ON_SEG_TOL) continue;
+      segs.push({ a: { x: s.x1, y: s.y1 }, b: { x: s.x2, y: s.y2 } });
+    } else if (s.type === "arc-wall") {
+      pushArcFacets(s, segs);
+    }
   }
   if (segs.length < 3) return [];
 

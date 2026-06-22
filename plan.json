@@ -19,7 +19,13 @@
     "Every junction step must update dimensions and dimension display in the same step (measurementReference faces, per-segment dimensions, and dimensionChains break-points), never as a later patch.",
     "Wall height (WallShape.height) is carried in 2D now for future 3D: set it on creation, keep it editable in 2D, and preserve/propagate it through every junction and edit path — never drop it.",
     "If current task related to juctions or dimentions, See .claude/skills/wall-junctions for the authoritative geometry/computation reference for all 20 junction types.",
-    "All user-facing terminology must be localized in Italian (it), Persian (fa), English (en), and German (de). Use professional construction, architecture, and building-design terminology rather than generic translations. Wall types, junctions, join styles, dimensions, layers, structural elements, editor controls, validation messages, and all future features must follow the existing i18n system. Translation keys must be scalable and maintainable. The implementer is responsible for choosing the appropriate industry-standard terminology in each language."
+    "All user-facing terminology must be localized in Italian (it), Persian (fa), English (en), and German (de). Use professional construction, architecture, and building-design terminology rather than generic translations. Wall types, junctions, join styles, dimensions, layers, structural elements, editor controls, validation messages, and all future features must follow the existing i18n system. Translation keys must be scalable and maintainable. The implementer is responsible for choosing the appropriate industry-standard terminology in each language.",
+    "use /compact to reduce token usage on every step complete"
   ],
-  "steps": []
+  "steps": [
+    {
+      "id": "dimention-rendering",
+      "title": "dimentions were to ugly and not undertandable on small or heavy maps"
+    }
+  ]
 }
