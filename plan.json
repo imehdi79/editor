@@ -23,11 +23,24 @@
   ],
   "steps": [
     {
-      "id": "bim-3",
-      "title": "Per-layer junction priority cleanup (Revit/ArchiCAD)",
-      "covers": ["#19"],
-      "detail": "Generalize the node resolution (buttJoin + computeWallOutline) so each assembly layer is clipped/extended by its function PRIORITY against the neighbour wall's matching layer: equal-or-higher-priority layers pass through (turn the corner / continue), lower-priority layers stop at the higher-priority neighbour layer's face. This replaces the all-or-nothing finish-face clip with true per-layer matching at L/T/X joins. Keep the registry/classifier architecture (no junction switch-ladders); priority comes from FUNCTION_PRIORITY in wallAssembly.",
-      "dimensions": "Structural-core faces (outline corners) are unchanged, so per-segment dims & chains are unaffected; only finish bands re-clip per priority."
+      "id": "clear-dimensions",
+      "title": "Support clear dimensions in dimension chains",
+      "detail": "Dimension chains should report clear (net) dimensions, measured between the finished faces of walls. The displayed value must account for wall build-up layers and be calculated as the structural dimension minus the total thickness of the relevant finish layers."
+    },
+    {
+      "id": "wall-actions-exist-flag",
+      "title": "Support existing wall reuse in wall actions",
+      "detail": "Add an 'existing' flag to wall actions to indicate that a wall is pre-existing and should not be reconstructed from scratch. When this flag is true."
+    },
+    {
+      "id": "arc-wall-dimensions",
+      "title": "Add chord, arc length, and depth dimensions for arc walls",
+      "detail": "Arc walls must expose three key dimensions: chord length (straight distance between start and end nodes), arc length (true curved length), and depth (maximum deviation from chord to arc). These values should be computed dynamically based on radius and sweep angle and updated when geometry changes."
+    },
+    {
+      "id": "space-detector",
+      "title": "Detect enclosed spaces, floors, and ceilings from room boundaries",
+      "detail": "Replace the current room detector with a space detection system that identifies enclosed areas based on wall boundaries. Each detected space should automatically generate floor and ceiling surfaces, calculate net area and perimeter, and update when walls or wall layers change."
     }
   ]
 }

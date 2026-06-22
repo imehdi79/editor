@@ -8,7 +8,7 @@ import type { Shape, WallShape, ArcWallShape, WindowShape, DoorShape } from "@/c
 import { computeDoorSwing } from "@/core/door/computeDoorSwing";
 import { layersOf, materialColor, WALL_SIDES } from "@/core/wall-layers/wallLayers";
 import { buildWallAssemblyBands } from "@/core/wall-layers/buildWallAssemblyBands";
-import { computeWallOutlines, computeJunctionPatches, type WallOutline } from "@/core/wall-junctions";
+import { computeWallOutlines, computeJunctionPatches, finishSetbacksForWall, type WallOutline } from "@/core/wall-junctions";
 import { arcFromChordBulge, arcPolyline } from "@/core/arc/arcGeometry";
 import { formatDimension } from "@/core/dimensions/dimensionUnits";
 import { materialHatch, HATCH_MIN_SCALE } from "./materialHatch";
@@ -143,13 +143,23 @@ const DoorRenderer = ({ shape }: { shape: DoorShape }) => {
  *  as a mitred band, with thin separators and a heavier structural-core boundary
  *  (the professional CAD read). Falls back to a butt-capped stroke if no outline
  *  (degenerate wall). */
-const WallRenderer = ({ shape, outline, showHatch }: { shape: WallShape; outline: WallOutline | undefined; showHatch: boolean }) => {
+const WallRenderer = ({
+  shape,
+  outline,
+  setback,
+  showHatch,
+}: {
+  shape: WallShape;
+  outline: WallOutline | undefined;
+  setback: { p1: number; p2: number } | undefined;
+  showHatch: boolean;
+}) => {
   if (!outline) {
     return (
       <Line points={[shape.x1, shape.y1, shape.x2, shape.y2]} stroke={WALL_FILL} strokeWidth={shape.thickness} lineCap="butt" />
     );
   }
-  const { bands, separators, coreLines } = buildWallAssemblyBands(shape, outline);
+  const { bands, separators, coreLines } = buildWallAssemblyBands(shape, outline, setback);
   return (
     <Group>
       {bands.map((b, i) => (
@@ -226,12 +236,21 @@ const ArcWallRenderer = ({ shape, showLabel, unit, ppm }: { shape: ArcWallShape;
 const renderShape = (
   shape: Shape,
   outlines: ReturnType<typeof computeWallOutlines>,
+  setbacks: Record<string, { p1: number; p2: number }>,
   arcLabel: { show: boolean; unit: DimensionUnit; ppm: number },
   showHatch: boolean,
 ) => {
   switch (shape.type) {
     case "wall":
-      return <WallRenderer key={shape.id} shape={shape} outline={outlines.get(shape.id)} showHatch={showHatch} />;
+      return (
+        <WallRenderer
+          key={shape.id}
+          shape={shape}
+          outline={outlines.get(shape.id)}
+          setback={setbacks[shape.id]}
+          showHatch={showHatch}
+        />
+      );
 
     case "arc-wall":
       return (
@@ -294,6 +313,13 @@ const ShapeRenderer = () => {
   const align = useEditorStore((s) => s.junctionAlign);
   const config = { joinStyle, miterLimit, endCap, align };
   const outlines = computeWallOutlines(shapes, config);
+  // Per-layer junction cleanup: how far each wall's finish bands pull back from
+  // the structural cut so they die into the abutting host's finished face (0 for
+  // plain walls / non-butt joins — those render exactly as the structural body).
+  const setbacks: Record<string, { p1: number; p2: number }> = {};
+  for (const s of Object.values(shapes)) {
+    if (s.type === "wall") setbacks[s.id] = finishSetbacksForWall(s, shapes, config);
+  }
   // Corner chamfer/fillet fills for bevel & round joins. Hidden when the
   // architectural category is hidden (patches are structural wall geometry).
   const patches = visibility.architectural ? computeJunctionPatches(shapes, config) : [];
@@ -319,7 +345,7 @@ const ShapeRenderer = () => {
       {patches.map((p, i) => (
         <Line key={`patch-${i}`} points={flatRing(p)} closed fill={WALL_FILL} />
       ))}
-      {sorted.map((s) => renderShape(s, outlines, arcLabel, showHatch))}
+      {sorted.map((s) => renderShape(s, outlines, setbacks, arcLabel, showHatch))}
     </>
   );
 };

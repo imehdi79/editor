@@ -48,7 +48,17 @@ interface CutLine {
 
 const EPS = 1e-6;
 
-export const buildWallAssemblyBands = (wall: WallShape, outline: WallOutline): AssemblyBands => {
+/**
+ * @param setback  Per-end FINISH-band pull-back (px) for butt-junction layer
+ *   cleanup (finishSetbacksForWall). The structural core keeps the structural
+ *   cut; only finish bands at that end stop `setback` short, so the abutting
+ *   wall's finishes meet the host's finished surface. 0 = layers continue.
+ */
+export const buildWallAssemblyBands = (
+  wall: WallShape,
+  outline: WallOutline,
+  setback?: { p1: number; p2: number },
+): AssemblyBands => {
   const dx = wall.x2 - wall.x1;
   const dy = wall.y2 - wall.y1;
   const len = Math.hypot(dx, dy) || 1;
@@ -82,6 +92,17 @@ export const buildWallAssemblyBands = (wall: WallShape, outline: WallOutline): A
     return hit ?? { x: fx + px * t, y: fy + py * t };
   };
 
+  // Per-layer junction priority: at a butt join the structural core (priority 1)
+  // passes through the joint and keeps the structural cut, while the lower-
+  // priority FINISH bands stop `setback` short — at the host wall's *finished*
+  // surface. The finish cut is the structural cut slid along the wall axis toward
+  // the interior by the per-end setback (0 ⇒ identical to the structural cut, so
+  // plain walls and non-butt joins are byte-for-byte unchanged).
+  const sb1 = setback?.p1 ?? 0;
+  const sb2 = setback?.p2 ?? 0;
+  const cut1F: CutLine = { ...cut1, ox: cut1.ox + ux * sb1, oy: cut1.oy + uy * sb1 };
+  const cut2F: CutLine = { ...cut2, ox: cut2.ox - ux * sb2, oy: cut2.oy - uy * sb2 };
+
   // Per-node taper: a wall may be thinner/thicker at each end (thicknessP1/P2).
   // `wallAssembly` lays the layers out at the nominal (mean) thickness, so scale
   // each end's +n face offsets by its own end/nominal ratio. The structural core
@@ -90,22 +111,24 @@ export const buildWallAssemblyBands = (wall: WallShape, outline: WallOutline): A
   const baseThk = wall.thickness > EPS ? wall.thickness : 1;
   const k1 = endThickness(wall, "p1") / baseThk;
   const k2 = endThickness(wall, "p2") / baseThk;
-  const p1At = (s: number) => cornerAt(s * k1, cut1, wall.x1, wall.y1);
-  const p2At = (s: number) => cornerAt(s * k2, cut2, wall.x2, wall.y2);
-  /** A full cross-wall line at offset `s`, from the p1-cut to the p2-cut. */
-  const crossAt = (s: number): number[] => {
-    const a = p1At(s);
-    const b = p2At(s);
+  const p1At = (s: number, isCore: boolean) =>
+    cornerAt(s * k1, isCore ? cut1 : cut1F, wall.x1, wall.y1);
+  const p2At = (s: number, isCore: boolean) =>
+    cornerAt(s * k2, isCore ? cut2 : cut2F, wall.x2, wall.y2);
+  /** A full cross-wall line at offset `s`, cut to the core or the finish faces. */
+  const crossAt = (s: number, isCore: boolean): number[] => {
+    const a = p1At(s, isCore);
+    const b = p2At(s, isCore);
     return [a.x, a.y, b.x, b.y];
   };
 
   const { layers, coreStart, coreEnd } = wallAssembly(wall);
 
   const bands: AssemblyBand[] = layers.map((l) => {
-    const a = p1At(l.start);
-    const b = p2At(l.start);
-    const c = p2At(l.end);
-    const d = p1At(l.end);
+    const a = p1At(l.start, l.isCore);
+    const b = p2At(l.start, l.isCore);
+    const c = p2At(l.end, l.isCore);
+    const d = p1At(l.end, l.isCore);
     return {
       polygon: [a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y],
       material: l.material,
@@ -117,12 +140,13 @@ export const buildWallAssemblyBands = (wall: WallShape, outline: WallOutline): A
   // Every layer boundary gets an edge line: the two silhouette faces, the
   // internal separators, and the structural-core boundaries (drawn heavier).
   // Collect each boundary once (the first layer's outer face + every layer's
-  // inner face — shared boundaries coincide and aren't duplicated).
+  // inner face — shared boundaries coincide and aren't duplicated). The core
+  // boundaries follow the structural cut; finish separators follow the setback.
   const boundaries = layers.length > 0 ? [layers[0].start, ...layers.map((l) => l.end)] : [];
   const isCoreBoundary = (s: number) => Math.abs(s - coreStart) < EPS || Math.abs(s - coreEnd) < EPS;
 
-  const separators = boundaries.filter((s) => !isCoreBoundary(s)).map(crossAt);
-  const coreLines = [crossAt(coreStart), crossAt(coreEnd)];
+  const separators = boundaries.filter((s) => !isCoreBoundary(s)).map((s) => crossAt(s, false));
+  const coreLines = [crossAt(coreStart, true), crossAt(coreEnd, true)];
 
   return { bands, separators, coreLines };
 };
