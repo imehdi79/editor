@@ -15,7 +15,11 @@
  * Pure — no React, no store, no canvas.
  */
 
-import type { Shape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, CornerAngle } from "@/core/drawing-engine/drawing.types";
+
+/** CornerAngle's canonical home is the drawing-engine type hub (drawing.types);
+ *  re-exported here for back-compat with existing `wallAngles` importers. */
+export type { CornerAngle };
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -59,22 +63,6 @@ export const includedAngleDeg = (
   const cos = Math.max(-1, Math.min(1, (a1x * b1x + a1y * b1y) / (la * lb)));
   return Math.acos(cos) * RAD2DEG;
 };
-
-/** Geometry for drawing a corner-angle arc at a chained vertex. */
-export interface CornerAngle {
-  /** Vertex (shared start point) in canvas space */
-  vx: number;
-  vy: number;
-  /** Screen-space (canvas, Y-down) start/end angles of the arc, in radians */
-  startRad: number;
-  endRad: number;
-  /** Whether the canvas arc should sweep counter-clockwise (the minor arc) */
-  anticlockwise: boolean;
-  /** Bisector direction (radians, screen-space) — used to place the label */
-  midRad: number;
-  /** Included angle in degrees, range [0, 180] */
-  cornerDeg: number;
-}
 
 /**
  * If (startX,startY) coincides with an endpoint of an existing wall, compute

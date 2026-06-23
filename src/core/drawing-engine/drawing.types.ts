@@ -1,4 +1,3 @@
-import type { DimensionLabel } from "../dimensions/computeDimensions";
 import type { SystemCategory } from "@/core/layers/systemCategories";
 
 export type ShapeId = string;
@@ -260,6 +259,56 @@ export type GhostShape =
   | Omit<DoorShape, "id">
   | null;
 
+/** Geometry for drawing a corner-angle arc at a chained vertex. Canonical here
+ *  (re-exported by core/wall-utils/wallAngles, which computes it) so the live
+ *  DimensionLabel can reference it without the drawing.types → dimensions →
+ *  wall-utils import cycle. */
+export interface CornerAngle {
+  /** Vertex (shared start point) in canvas space */
+  vx: number;
+  vy: number;
+  /** Screen-space (canvas, Y-down) start/end angles of the arc, in radians */
+  startRad: number;
+  endRad: number;
+  /** Whether the canvas arc should sweep counter-clockwise (the minor arc) */
+  anticlockwise: boolean;
+  /** Bisector direction (radians, screen-space) — used to place the label */
+  midRad: number;
+  /** Included angle in degrees, range [0, 180] */
+  cornerDeg: number;
+}
+
+/**
+ * All data the live DimensionRenderer needs to draw the floating label while a
+ * segment is being drawn. Canonical here (re-exported by
+ * core/dimensions/computeDimensions, which builds it) so DrawingHints can carry
+ * it without drawing.types reaching up into the dimensions feature.
+ *
+ * Centering contract: the Konva Text node is positioned at (anchorX, anchorY)
+ * with offsetX = halfBoxW and offsetY = halfBoxH, so the text center sits on the
+ * anchor and rotation by angleDeg happens about that center.
+ */
+export interface DimensionLabel {
+  /** Anchor point for the label center in canvas space */
+  anchorX: number;
+  anchorY: number;
+  /** Half-width of the rendered box (= Konva offsetX) */
+  halfBoxW: number;
+  /** Half-height of the rendered box (= Konva offsetY) */
+  halfBoxH: number;
+  /** Formatted text (e.g. "250cm") */
+  text: string;
+  /** Rotation angle in degrees — never upside-down (clamped to [-90, 90]) */
+  angleDeg: number;
+  /** Length of the segment in canvas pixels */
+  lengthPx: number;
+  /** Absolute bearing of the segment (East = 0°, CCW, [0, 360)) — already
+   *  baked into `text`; kept here for non-text consumers. */
+  absAngleDeg: number;
+  /** Corner angle vs the previous connected wall, null when not chaining. */
+  corner: CornerAngle | null;
+}
+
 export interface SnapResult {
   x: number;
   y: number;
@@ -284,13 +333,6 @@ export interface DrawingHints {
   guides: GuideLine[];
   axisLocked: boolean;
   axisLockAngle: "horizontal" | "vertical" | null;
-}
-
-export interface DrawingHints {
-  snapResult: SnapResult | null;
-  guides: GuideLine[];
-  axisLocked: boolean;
-  axisLockAngle: "horizontal" | "vertical" | null;
-  perpLocked: boolean; // ← جدید
-  dimension: DimensionLabel | null; // ← جدید
+  perpLocked: boolean;
+  dimension: DimensionLabel | null;
 }

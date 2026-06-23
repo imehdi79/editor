@@ -15,7 +15,12 @@
  */
 
 import { LABEL_FONT_SIZE, LABEL_PADDING } from "./dimensionLayout";
-import type { CornerAngle } from "@/core/wall-utils/wallAngles";
+import type { CornerAngle, DimensionLabel } from "@/core/drawing-engine/drawing.types";
+
+/** DimensionLabel's canonical definition lives in the drawing-engine type hub
+ *  (drawing.types) so DrawingHints can reference it without an import cycle;
+ *  re-exported here because this module builds and owns the value. */
+export type { DimensionLabel };
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -29,43 +34,6 @@ const CHAR_WIDTH = LABEL_FONT_SIZE * 0.6;
 
 /** Line height at LABEL_FONT_SIZE. */
 const LINE_HEIGHT = LABEL_FONT_SIZE * 1.2;
-
-// ---------------------------------------------------------------------------
-// Type
-// ---------------------------------------------------------------------------
-
-/**
- * All data the live DimensionRenderer needs to draw the floating label.
- *
- * Centering contract:
- *   The Konva Text node is positioned at (anchorX, anchorY).
- *   offsetX = half the total rendered box width → text is horizontally centered.
- *   offsetY = half the total rendered box height → text is vertically centered.
- *   rotation = angleDeg, applied around (anchorX, anchorY).
- *
- * This places the text center exactly on the anchor point and rotates it
- * around that center — the correct rotation-about-center pattern in Konva.
- */
-export interface DimensionLabel {
-  /** Anchor point for the label center in canvas space */
-  anchorX: number;
-  anchorY: number;
-  /** Half-width of the rendered box (= Konva offsetX) */
-  halfBoxW: number;
-  /** Half-height of the rendered box (= Konva offsetY) */
-  halfBoxH: number;
-  /** Formatted text (e.g. "250cm") */
-  text: string;
-  /** Rotation angle in degrees — never upside-down (clamped to [-90, 90]) */
-  angleDeg: number;
-  /** Length of the segment in canvas pixels */
-  lengthPx: number;
-  /** Absolute bearing of the segment (East = 0°, CCW, [0, 360)) — already
-   *  baked into `text`; kept here for non-text consumers. */
-  absAngleDeg: number;
-  /** Corner angle vs the previous connected wall, null when not chaining. */
-  corner: CornerAngle | null;
-}
 
 // ---------------------------------------------------------------------------
 // Public API
