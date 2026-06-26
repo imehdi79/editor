@@ -165,6 +165,9 @@ export const de: Dictionary = {
     phase: "Bauphase",
     new: "Neubau",
     existing: "Bestand",
+    demolition: "Abbruch",
+    keep: "Erhalten",
+    demolish: "Abbrechen",
   },
 
   wallSides: {
@@ -260,6 +263,52 @@ export const de: Dictionary = {
       floor: "Boden",
       ceiling: "Decke",
     },
+  },
+
+  // Kalkulation / Kostenermittlung + Preistabelle auf der Zeichenfläche.
+  pricing: {
+    title: "Kalkulation",
+    tooltip: "Kalkulation / Kostenermittlung",
+    currency: "Währung",
+    demolitionRate: "Abbruchpreis",
+    showTable: "Preistabelle anzeigen",
+    rate: "Preis",
+    unitPrice: "Einheitspreis",
+    piecesPer: "Stück je Einheit",
+    basis: "Mengenbasis",
+    materialRules: "Materialregeln",
+    core: "Tragender Kern",
+    table: {
+      item: "Position",
+      status: "Status",
+      qty: "Menge",
+      cost: "Kosten",
+      total: "Summe",
+    },
+    status: {
+      new: "Neubau",
+      existing: "Bestand",
+      demolish: "Abbruch",
+    },
+  },
+
+  pricingUnit: {
+    area: "Pro m²",
+    length: "Pro lfm",
+    piece: "Pro Stück",
+    volume: "Pro m³",
+  },
+
+  pricingUnitSymbol: {
+    area: "m²",
+    length: "m",
+    piece: "Stk",
+    volume: "m³",
+  },
+
+  pricingBasis: {
+    area: "Fläche (m²)",
+    volume: "Volumen (m³)",
   },
 
   templates: {

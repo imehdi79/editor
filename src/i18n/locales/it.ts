@@ -164,6 +164,9 @@ export const it: Dictionary = {
     phase: "Fase",
     new: "Nuovo",
     existing: "Esistente",
+    demolition: "Demolizione",
+    keep: "Mantieni",
+    demolish: "Demolisci",
   },
 
   wallSides: {
@@ -259,6 +262,52 @@ export const it: Dictionary = {
       floor: "Pavimento",
       ceiling: "Soffitto",
     },
+  },
+
+  // Computo / stima dei costi + tabella prezzi sulla tela.
+  pricing: {
+    title: "Computo",
+    tooltip: "Computo / stima dei costi",
+    currency: "Valuta",
+    demolitionRate: "Prezzo demolizione",
+    showTable: "Mostra tabella prezzi",
+    rate: "Prezzo",
+    unitPrice: "Prezzo unitario",
+    piecesPer: "Pezzi per unità",
+    basis: "Base conteggio",
+    materialRules: "Regole materiali",
+    core: "Nucleo strutturale",
+    table: {
+      item: "Voce",
+      status: "Stato",
+      qty: "Q.tà",
+      cost: "Costo",
+      total: "Totale",
+    },
+    status: {
+      new: "Nuovo",
+      existing: "Esistente",
+      demolish: "Demolizione",
+    },
+  },
+
+  pricingUnit: {
+    area: "Al m²",
+    length: "Al m lineare",
+    piece: "A pezzo",
+    volume: "Al m³",
+  },
+
+  pricingUnitSymbol: {
+    area: "m²",
+    length: "m",
+    piece: "pz",
+    volume: "m³",
+  },
+
+  pricingBasis: {
+    area: "Superficie (m²)",
+    volume: "Volume (m³)",
   },
 
   templates: {

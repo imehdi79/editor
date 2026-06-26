@@ -2,12 +2,15 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/vazirmatn";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
+    /* Persian/Farsi UI font — applied for :lang(fa) (see base layer below). */
+    --font-vazir: 'Vazirmatn Variable', 'Geist Variable', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -126,6 +129,11 @@
     }
   html {
     @apply font-sans;
+    }
+  /* Persian renders in Vazirmatn; the i18n store sets <html lang="fa" dir="rtl">,
+     so the whole tree inherits the Farsi font when the locale is fa. */
+  html:lang(fa) {
+    font-family: var(--font-vazir);
     }
 }
 
