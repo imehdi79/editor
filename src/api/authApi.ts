@@ -8,9 +8,13 @@
 
 import { apiFetch } from "./client";
 
+/** Authorization roles, lowest → highest privilege. Backend will own this later. */
+export type UserRole = "user" | "admin" | "super-admin";
+
 export interface AuthUser {
   id: string;
   email: string;
+  role: UserRole;
 }
 
 export interface AuthResponse {

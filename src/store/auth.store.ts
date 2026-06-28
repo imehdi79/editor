@@ -9,12 +9,16 @@
  */
 
 import { create } from "zustand";
-import { authApi, type AuthUser } from "@/api/authApi";
+import { authApi, type AuthUser, type UserRole } from "@/api/authApi";
 import { getToken, setToken, clearToken, subscribeToken } from "@/api/tokenStore";
 import { invalidateProjects, clearProjects } from "@/api/queryClient";
 import { useProjectsStore } from "./projects.store";
 
 type AuthStatus = "loading" | "authed" | "anon";
+
+// Hardcoded until the backend serves per-user roles; every session is an admin
+// for now. Stamped onto the user wherever a session is established below.
+const DEFAULT_USER_ROLE: UserRole = "admin";
 
 interface AuthState {
   user: AuthUser | null;
@@ -57,7 +61,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
       set({ status: "loading" });
       try {
         const me = await authApi.me();
-        set({ user: { id: me.userId, email: me.email }, status: "authed", error: null });
+        set({ user: { id: me.userId, email: me.email, role: DEFAULT_USER_ROLE }, status: "authed", error: null });
         invalidateProjects();
       } catch {
         // me() already cleared the token on 401; ensure we land on login.
@@ -73,7 +77,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
     try {
       const { token, user } = await authApi.login(email, password);
       setToken(token);
-      set({ user, status: "authed", busy: false });
+      set({ user: { ...user, role: DEFAULT_USER_ROLE }, status: "authed", busy: false });
       invalidateProjects();
       return true;
     } catch (err) {
@@ -87,7 +91,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
     try {
       const { token, user } = await authApi.register(email, password);
       setToken(token);
-      set({ user, status: "authed", busy: false });
+      set({ user: { ...user, role: DEFAULT_USER_ROLE }, status: "authed", busy: false });
       invalidateProjects();
       return true;
     } catch (err) {
