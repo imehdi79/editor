@@ -97,8 +97,26 @@ export const fa: Dictionary = {
     view: "نمایش",
   },
 
+  view: {
+    zoomIn: "بزرگ‌نمایی",
+    zoomOut: "کوچک‌نمایی",
+    fit: "اندازه به نما",
+  },
+
+  statusBar: {
+    snap: "گیرش",
+  },
+
+  inspector: {
+    empty: "برای ویرایش ویژگی‌ها، عنصری را انتخاب کنید.",
+    noProps: "هنوز ویژگی قابل‌ویرایشی برای این عنصر وجود ندارد.",
+  },
+
   settings: {
     title: "تنظیمات",
+    theme: "پوسته",
+    themeDark: "تیره",
+    themeLight: "روشن",
     units: "واحدها",
     measurementReference: "مرجع اندازه‌گیری",
     dimensions: "اندازه‌گذاری",

@@ -97,8 +97,26 @@ export const de: Dictionary = {
     view: "Ansicht",
   },
 
+  view: {
+    zoomIn: "Vergrößern",
+    zoomOut: "Verkleinern",
+    fit: "Einpassen",
+  },
+
+  statusBar: {
+    snap: "Fang",
+  },
+
+  inspector: {
+    empty: "Wähle ein Element, um seine Eigenschaften zu bearbeiten.",
+    noProps: "Für dieses Element gibt es noch keine bearbeitbaren Eigenschaften.",
+  },
+
   settings: {
     title: "Einstellungen",
+    theme: "Erscheinungsbild",
+    themeDark: "Dunkel",
+    themeLight: "Hell",
     units: "Einheiten",
     measurementReference: "Messbezug",
     dimensions: "Bemaßung",

@@ -3,6 +3,7 @@ import { Stage, Layer } from "react-konva";
 import type Konva from "konva";
 import { useToolsStore, TOOL_CURSORS } from "@/store/tools.store";
 import { useViewportStore } from "@/store/viewport.store";
+import { usePointerStore } from "@/store/pointer.store";
 import { useDrawingEngine } from "@/core/drawing-engine/useDrawingEngine";
 import { useTransformEngine } from "@/features/select-tool/useTransformEngine";
 import { TOOL_REGISTRY } from "@/features/tool-registry";
@@ -31,6 +32,7 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
   const tool = useToolsStore((s) => s.tool);
   const { width, height } = useStageSize();
   const { x, y, scale } = useViewportStore();
+  const setPointerWorld = usePointerStore((s) => s.setWorld);
 
   // pan-only mode = no tool selected; `select` is the merged select+pan tool.
   const isPanMode = tool === null;
@@ -86,7 +88,14 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
   };
   const handleMouseMove = (e: ME) => {
     viewportEvents.onMouseMove(e);
+    // Live coordinate readout for the status bar (world space, transform-aware).
+    const world = e.target.getStage()?.getRelativePointerPosition();
+    if (world) setPointerWorld({ x: world.x, y: world.y });
     if (!isPanMode) toolEvents.onMouseMove(e);
+  };
+  const handleMouseLeave = () => {
+    viewportEvents.onMouseLeave();
+    setPointerWorld(null);
   };
   const handleMouseUp = (e: ME) => {
     viewportEvents.onMouseUp(e);
@@ -120,7 +129,7 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={viewportEvents.onMouseLeave}
+        onMouseLeave={handleMouseLeave}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

@@ -11,44 +11,17 @@
  */
 
 import { useState } from "react";
-import {
-  Type,
-  BrickWallIcon,
-  Spline,
-  Ellipsis,
-  Minus,
-  SplinePointer,
-  Redo,
-  Undo,
-  Trash2,
-  DoorOpen,
-  AppWindowMac,
-  Layers3,
-  Settings2,
-  PencilRuler,
-  type LucideIcon,
-} from "lucide-react";
+import { Redo, Undo, Trash2, Layers3, Settings2, PencilRuler } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { useToolsStore } from "@/store/tools.store";
 import { useTemporalStore, useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
-import { useTranslation, type TranslationKey } from "@/i18n";
+import { useTranslation } from "@/i18n";
 import type { NoOneClickTools } from "./sidebar/tools.types";
+import { MODE_TOOLS } from "./editor-shell/editorTools";
 import SystemsPanel from "./sidebar/SystemsPanel";
 import SettingsPanel from "./sidebar/SettingsPanel";
-
-/** Mode tools — selecting one sets the active tool and closes the sheet. */
-const MODE_TOOLS: { tool: NoOneClickTools; Icon: LucideIcon; labelKey: TranslationKey }[] = [
-  { tool: "select", Icon: SplinePointer, labelKey: "tools.select" },
-  { tool: "wall", Icon: BrickWallIcon, labelKey: "tools.wall" },
-  { tool: "arc-wall", Icon: Spline, labelKey: "tools.arcWall" },
-  { tool: "window", Icon: AppWindowMac, labelKey: "tools.window" },
-  { tool: "door", Icon: DoorOpen, labelKey: "tools.door" },
-  { tool: "line", Icon: Minus, labelKey: "tools.line" },
-  { tool: "dashed-line", Icon: Ellipsis, labelKey: "tools.dashedLine" },
-  { tool: "text", Icon: Type, labelKey: "tools.text" },
-];
 
 const MobileToolbar = () => {
   const { t } = useTranslation();
@@ -91,7 +64,7 @@ const MobileToolbar = () => {
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-40 size-14 rounded-full shadow-2xl"
+        className="fixed bottom-4 right-4 z-40 size-14 rounded-full shadow-2xl md:hidden"
       >
         <FabIcon className="size-6" />
       </Button>

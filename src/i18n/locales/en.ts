@@ -98,8 +98,26 @@ export const en = {
     view: "View",
   },
 
+  view: {
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    fit: "Fit to view",
+  },
+
+  statusBar: {
+    snap: "Snap",
+  },
+
+  inspector: {
+    empty: "Select an element to edit its properties.",
+    noProps: "No editable properties for this element yet.",
+  },
+
   settings: {
     title: "Settings",
+    theme: "Theme",
+    themeDark: "Dark",
+    themeLight: "Light",
     units: "Units",
     measurementReference: "Measurement reference",
     dimensions: "Dimensions",

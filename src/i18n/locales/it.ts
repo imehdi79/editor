@@ -96,8 +96,26 @@ export const it: Dictionary = {
     view: "Vista",
   },
 
+  view: {
+    zoomIn: "Ingrandisci",
+    zoomOut: "Riduci",
+    fit: "Adatta alla vista",
+  },
+
+  statusBar: {
+    snap: "Aggancio",
+  },
+
+  inspector: {
+    empty: "Seleziona un elemento per modificarne le proprietà.",
+    noProps: "Nessuna proprietà modificabile per questo elemento.",
+  },
+
   settings: {
     title: "Impostazioni",
+    theme: "Tema",
+    themeDark: "Scuro",
+    themeLight: "Chiaro",
     units: "Unità",
     measurementReference: "Riferimento di misura",
     dimensions: "Quote",

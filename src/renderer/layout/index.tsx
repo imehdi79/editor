@@ -3,6 +3,7 @@ import WallActions from "./WallActions";
 import Header from "./header";
 import SubPageBar from "./header/SubPageBar";
 import MobileToolbar from "./MobileToolbar";
+import EditorShell from "./editor-shell";
 
 const Layout = () => {
   return (
@@ -12,8 +13,11 @@ const Layout = () => {
       <Header />
       <SubPageBar />
 
-      <WallActions />
+      {/* Desktop CAD chrome (md+) — tool rail, view controls, inspector, status bar */}
+      <EditorShell />
 
+      {/* Mobile chrome — wall editor modal + tool sheet (hidden on md+) */}
+      <WallActions />
       <MobileToolbar />
     </>
   );
