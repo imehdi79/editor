@@ -113,12 +113,6 @@ export interface WallShape extends BaseShape {
    * quantities are not counted as new construction. Absent/false = new build.
    */
   existing?: boolean;
-  /**
-   * Renovation phase: a pre-existing wall scheduled for demolition. Only
-   * meaningful when `existing` is true (a new wall is never demolished). Priced
-   * as a demolition line (per m² of wall surface) in the pricing takeoff.
-   */
-  demolish?: boolean;
 }
 
 /**
@@ -153,8 +147,6 @@ export interface ArcWallShape extends BaseShape {
   joinP2?: JoinStyle;
   /** Renovation phase — pre-existing construction (see WallShape.existing). */
   existing?: boolean;
-  /** Renovation phase — scheduled for demolition (see WallShape.demolish). */
-  demolish?: boolean;
 }
 
 export interface LineShape extends BaseShape {

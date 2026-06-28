@@ -171,9 +171,6 @@ export const en = {
     phase: "Phase",
     new: "New",
     existing: "Existing",
-    demolition: "Demolition",
-    keep: "Keep",
-    demolish: "Demolish",
   },
 
   // Wall faces — the two build-up sides of a wall.
@@ -276,55 +273,6 @@ export const en = {
       floor: "Floor",
       ceiling: "Ceiling",
     },
-  },
-
-  // Pricing / cost-takeoff panel + on-canvas pricing table.
-  pricing: {
-    title: "Pricing",
-    tooltip: "Pricing / cost takeoff",
-    currency: "Currency",
-    demolitionRate: "Demolition rate",
-    showTable: "Show pricing table",
-    rate: "Rate",
-    unitPrice: "Unit price",
-    piecesPer: "Pieces per unit",
-    basis: "Count basis",
-    materialRules: "Material rules",
-    core: "Structural core",
-    table: {
-      item: "Item",
-      status: "Status",
-      qty: "Qty",
-      cost: "Cost",
-      total: "Total",
-    },
-    status: {
-      new: "New",
-      existing: "Existing",
-      demolish: "Demolish",
-    },
-  },
-
-  // Billing-unit selector labels.
-  pricingUnit: {
-    area: "Per m²",
-    length: "Per linear m",
-    piece: "Per piece",
-    volume: "Per m³",
-  },
-
-  // Compact billing-unit symbols (for the table quantity column).
-  pricingUnitSymbol: {
-    area: "m²",
-    length: "m",
-    piece: "pcs",
-    volume: "m³",
-  },
-
-  // Piece-count basis (how a per-piece quantity is measured).
-  pricingBasis: {
-    area: "Area (m²)",
-    volume: "Volume (m³)",
   },
 
   // Sub-page starter templates.

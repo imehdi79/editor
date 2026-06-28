@@ -21,7 +21,6 @@ import DimensionLayerRenderer from "./DimensionLayerRenderer";
 import DimensionChainsRenderer from "./DimensionChainsRenderer";
 import ArcDimensionRenderer from "./ArcDimensionRenderer";
 import DrawingInfoCanvas from "./DrawingInfoCanvas";
-import PricingTableCanvas from "./PricingTableCanvas";
 import NodeThicknessPopover from "./NodeThicknessPopover";
 
 type StageRef = RefObject<Konva.Stage>;
@@ -136,7 +135,6 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
           <DimensionChainsRenderer />
           <ArcDimensionRenderer />
           <DrawingInfoCanvas />
-          <PricingTableCanvas />
           {isDrawingTool && <GhostRenderer ghost={ghost} />}
           {tool === "select" && <SelectionRenderer previewShape={previewShape} connectedPreviews={connectedPreviews} />}
           {tool !== null && (

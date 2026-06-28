@@ -25,7 +25,6 @@ import {
   AppWindowMac,
   Layers3,
   Settings2,
-  Coins,
   PencilRuler,
   type LucideIcon,
 } from "lucide-react";
@@ -38,7 +37,6 @@ import { useTranslation, type TranslationKey } from "@/i18n";
 import type { NoOneClickTools } from "./sidebar/tools.types";
 import SystemsPanel from "./sidebar/SystemsPanel";
 import SettingsPanel from "./sidebar/SettingsPanel";
-import PricingPanel from "./sidebar/PricingPanel";
 
 /** Mode tools — selecting one sets the active tool and closes the sheet. */
 const MODE_TOOLS: { tool: NoOneClickTools; Icon: LucideIcon; labelKey: TranslationKey }[] = [
@@ -55,7 +53,7 @@ const MODE_TOOLS: { tool: NoOneClickTools; Icon: LucideIcon; labelKey: Translati
 const MobileToolbar = () => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<null | "systems" | "settings" | "pricing">(null);
+  const [view, setView] = useState<null | "systems" | "settings">(null);
 
   const activeTool = useToolsStore((s) => s.tool);
   const setTool = useToolsStore((s) => s.setTool);
@@ -163,17 +161,6 @@ const MobileToolbar = () => {
                   variant="ghost"
                   onClick={() => {
                     setOpen(false);
-                    setView("pricing");
-                  }}
-                  className="h-12 w-full justify-start gap-3 px-3"
-                >
-                  <Coins className="size-5" />
-                  <span className="text-sm font-normal">{t("pricing.title")}</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setOpen(false);
                     setView("settings");
                   }}
                   className="h-12 w-full justify-start gap-3 px-3"
@@ -189,7 +176,6 @@ const MobileToolbar = () => {
 
       {/* Modals — siblings of the sheet so closing the sheet keeps them mounted */}
       <SystemsPanel hideTrigger open={view === "systems"} onOpenChange={(o) => setView(o ? "systems" : null)} />
-      <PricingPanel hideTrigger open={view === "pricing"} onOpenChange={(o) => setView(o ? "pricing" : null)} />
       <SettingsPanel hideTrigger open={view === "settings"} onOpenChange={(o) => setView(o ? "settings" : null)} />
     </>
   );

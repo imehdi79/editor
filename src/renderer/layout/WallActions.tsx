@@ -110,12 +110,7 @@ const WallActions = () => {
   const setBulge = (bulge: number) => updateShape(wall.id, { bulge });
 
   // Renovation phase — mark the wall as pre-existing (retained) vs new build.
-  // Switching back to "new" clears demolition (a new wall is never demolished).
-  const setExisting = (existing: boolean) =>
-    updateShape(wall.id, existing ? { existing } : { existing, demolish: false });
-
-  // Demolition — only meaningful on an existing wall (see WallShape.demolish).
-  const setDemolish = (demolish: boolean) => updateShape(wall.id, { demolish });
+  const setExisting = (existing: boolean) => updateShape(wall.id, { existing });
 
   const alignSwing = (swingDirection: DoorShape["swingDirection"]) => {
     doors.forEach((d) => updateShape(d.id, { swingDirection }));
@@ -282,31 +277,6 @@ const WallActions = () => {
                   {t("wall.existing")}
                 </Button>
               </div>
-
-              {/* Demolition — only an existing wall can be scheduled for demolition. */}
-              {wall.existing && (
-                <div className="mt-1 flex flex-col gap-1.5">
-                  <span className="text-[11px] text-muted-foreground">{t("wall.demolition")}</span>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant={wall.demolish ? "outline" : "default"}
-                      className="flex-1"
-                      onClick={() => setDemolish(false)}
-                    >
-                      {t("wall.keep")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={wall.demolish ? "destructive" : "outline"}
-                      className="flex-1"
-                      onClick={() => setDemolish(true)}
-                    >
-                      {t("wall.demolish")}
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Opening alignment — only meaningful when doors exist */}

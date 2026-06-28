@@ -27,16 +27,3 @@ export const LOCALE_META: Record<Locale, LocaleMeta> = {
 
 export const isLocale = (value: string | null | undefined): value is Locale =>
   !!value && (LOCALES as readonly string[]).includes(value);
-
-/**
- * Default currency label per locale — used to seed the pricing panel's currency
- * for a new user, before they save their own. A user override always wins; this
- * only fills the blank. Free-text labels (not ISO codes) so they read naturally
- * next to amounts in each market.
- */
-export const LOCALE_CURRENCY: Record<Locale, string> = {
-  en: "$",
-  it: "€",
-  de: "€",
-  fa: "تومان",
-};

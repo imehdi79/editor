@@ -13,7 +13,6 @@ import { authApi, type AuthUser } from "@/api/authApi";
 import { getToken, setToken, clearToken, subscribeToken } from "@/api/tokenStore";
 import { invalidateProjects, clearProjects } from "@/api/queryClient";
 import { useProjectsStore } from "./projects.store";
-import { usePricingStore } from "./pricing.store";
 
 type AuthStatus = "loading" | "authed" | "anon";
 
@@ -112,6 +111,5 @@ subscribeToken((token) => {
   if (status === "loading") return; // boot/validation handles its own transition
   useAuthStore.setState({ user: null, status: "anon" });
   useProjectsStore.getState().resetWorkspace();
-  usePricingStore.getState().reset(); // drop the previous user's pricing rates
   clearProjects(); // drop the previous user's cached project lists
 });

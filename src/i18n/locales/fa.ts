@@ -165,9 +165,6 @@ export const fa: Dictionary = {
     phase: "فاز اجرا",
     new: "نوساز",
     existing: "موجود",
-    demolition: "تخریب",
-    keep: "حفظ",
-    demolish: "تخریب",
   },
 
   wallSides: {
@@ -263,52 +260,6 @@ export const fa: Dictionary = {
       floor: "کف",
       ceiling: "سقف",
     },
-  },
-
-  // قیمت‌گذاری / برآورد هزینه + جدول قیمت روی بوم.
-  pricing: {
-    title: "قیمت‌گذاری",
-    tooltip: "قیمت‌گذاری / برآورد هزینه",
-    currency: "واحد پول",
-    demolitionRate: "نرخ تخریب",
-    showTable: "نمایش جدول قیمت",
-    rate: "نرخ",
-    unitPrice: "قیمت واحد",
-    piecesPer: "تعداد در واحد",
-    basis: "مبنای شمارش",
-    materialRules: "قوانین متریال",
-    core: "هستهٔ سازه‌ای",
-    table: {
-      item: "آیتم",
-      status: "وضعیت",
-      qty: "مقدار",
-      cost: "هزینه",
-      total: "جمع کل",
-    },
-    status: {
-      new: "نوساز",
-      existing: "موجود",
-      demolish: "تخریب",
-    },
-  },
-
-  pricingUnit: {
-    area: "هر مترمربع",
-    length: "هر مترطول",
-    piece: "دانه‌ای",
-    volume: "هر مترمکعب",
-  },
-
-  pricingUnitSymbol: {
-    area: "م²",
-    length: "م",
-    piece: "عدد",
-    volume: "م³",
-  },
-
-  pricingBasis: {
-    area: "سطح (م²)",
-    volume: "حجم (م³)",
   },
 
   templates: {
