@@ -55,6 +55,13 @@ export const fa: Dictionary = {
     logout: "خروج",
   },
 
+  admin: {
+    title: "پنل مدیریت",
+    backToEditor: "بازگشت به ویرایشگر",
+    pricing: "قیمت‌گذاری",
+    pricingContent: "این محتوای قیمت‌گذاری مدیریت است",
+  },
+
   pages: {
     add: "افزودن صفحه",
     delete: "حذف صفحه",

@@ -11,6 +11,10 @@ import { apiFetch } from "./client";
 /** Authorization roles, lowest → highest privilege. Backend will own this later. */
 export type UserRole = "user" | "admin" | "super-admin";
 
+/** Roles allowed into the admin area. */
+export const isAdminRole = (role: UserRole): boolean =>
+  role === "admin" || role === "super-admin";
+
 export interface AuthUser {
   id: string;
   email: string;

@@ -8,12 +8,14 @@
  */
 
 import { useState, type ReactNode } from "react";
-import { FolderOpen, FileStack, UserRound, Plus, Trash2, LogOut, Loader2, Check, Save } from "lucide-react";
+import { FolderOpen, FileStack, UserRound, Plus, Trash2, LogOut, Loader2, Check, Save, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { useProjectsStore } from "@/store/projects.store";
 import { useAuthStore } from "@/store/auth.store";
+import { useRouterStore } from "@/store/router.store";
+import { isAdminRole } from "@/api/authApi";
 import { useRecentProjects, useAllProjects } from "@/api/useProjectsQueries";
 import type { ProjectSummary } from "@/store/project.types";
 import { formatRelativeTime } from "@/lib/relativeTime";
@@ -234,6 +236,7 @@ const AccountPanel = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const navigate = useRouterStore((s) => s.navigate);
 
   return (
     <div className="flex flex-col gap-4">
@@ -243,6 +246,18 @@ const AccountPanel = ({ onClose }: { onClose: () => void }) => {
           {user?.email}
         </div>
       </div>
+      {user && isAdminRole(user.role) && (
+        <Button
+          variant="outline"
+          className="w-full justify-start"
+          onClick={() => {
+            onClose();
+            navigate("admin");
+          }}
+        >
+          <Shield size={15} /> {t("admin.title")}
+        </Button>
+      )}
       <Button
         variant="outline"
         className="w-full justify-start text-destructive hover:text-destructive"

@@ -55,6 +55,13 @@ export const de: Dictionary = {
     logout: "Abmelden",
   },
 
+  admin: {
+    title: "Administrationsbereich",
+    backToEditor: "Zurück zum Editor",
+    pricing: "Preisliste",
+    pricingContent: "Dies ist der Admin-Preisinhalt",
+  },
+
   pages: {
     add: "Seite hinzufügen",
     delete: "Seite löschen",

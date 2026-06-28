@@ -56,6 +56,13 @@ export const en = {
     logout: "Log out",
   },
 
+  admin: {
+    title: "Admin panel",
+    backToEditor: "Back to editor",
+    pricing: "Pricing",
+    pricingContent: "this is admin price content",
+  },
+
   pages: {
     add: "Add page",
     delete: "Delete page",
