@@ -19,12 +19,17 @@ export const fa: Dictionary = {
   },
 
   auth: {
-    appName: "Construct Editor",
+    appName: "Mehdify",
+    tagline: "ترسیم دقیق، از طرح اولیه تا برآورد متره.",
+    taglineSub: "دیوار بکشید، فضاها را خودکار تشخیص دهید، دیوارهای چندلایه را مدل کنید و مقادیر را خروجی بگیرید — در دو و سه‌بعدی.",
+    welcomeBack: "خوش آمدید",
+    register: "ثبت‌نام",
     signInSubtitle: "به پروژه‌های خود وارد شوید.",
     registerSubtitle: "برای ذخیره پروژه‌ها حساب بسازید.",
     email: "ایمیل",
     password: "گذرواژه",
     passwordHint: "۸–۷۲ نویسه",
+    togglePassword: "نمایش یا پنهان‌کردن گذرواژه",
     createAccount: "ایجاد حساب",
     signIn: "ورود",
     haveAccount: "حساب دارید؟",

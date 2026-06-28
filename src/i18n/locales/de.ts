@@ -19,12 +19,17 @@ export const de: Dictionary = {
   },
 
   auth: {
-    appName: "Construct Editor",
+    appName: "Mehdify",
+    tagline: "Präzises Zeichnen, von der Skizze zur Mengenermittlung.",
+    taglineSub: "Wände zeichnen, Räume automatisch erkennen, mehrschichtige Wandaufbauten modellieren und Mengen exportieren — in 2D und 3D.",
+    welcomeBack: "Willkommen zurück",
+    register: "Registrieren",
     signInSubtitle: "Melde dich bei deinen Projekten an.",
     registerSubtitle: "Erstelle ein Konto, um deine Projekte zu speichern.",
     email: "E-Mail",
     password: "Passwort",
     passwordHint: "8–72 Zeichen",
+    togglePassword: "Passwort ein- oder ausblenden",
     createAccount: "Konto erstellen",
     signIn: "Anmelden",
     haveAccount: "Schon ein Konto?",

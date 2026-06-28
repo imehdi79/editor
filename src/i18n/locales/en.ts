@@ -20,12 +20,17 @@ export const en = {
   },
 
   auth: {
-    appName: "Construct Editor",
+    appName: "Mehdify",
+    tagline: "Precision drawing, from sketch to takeoff.",
+    taglineSub: "Draw walls, auto-detect rooms, model multi-layer assemblies, and export quantities — in 2D and 3D.",
+    welcomeBack: "Welcome back",
+    register: "Register",
     signInSubtitle: "Sign in to your projects.",
     registerSubtitle: "Create an account to save your projects.",
     email: "Email",
     password: "Password",
     passwordHint: "8–72 characters",
+    togglePassword: "Show or hide password",
     createAccount: "Create account",
     signIn: "Sign in",
     haveAccount: "Already have an account?",

@@ -18,12 +18,17 @@ export const it: Dictionary = {
   },
 
   auth: {
-    appName: "Construct Editor",
+    appName: "Mehdify",
+    tagline: "Disegno di precisione, dallo schizzo al computo metrico.",
+    taglineSub: "Disegna pareti, rileva automaticamente i locali, modella stratigrafie multistrato ed esporta le quantità — in 2D e 3D.",
+    welcomeBack: "Bentornato",
+    register: "Registrati",
     signInSubtitle: "Accedi ai tuoi progetti.",
     registerSubtitle: "Crea un account per salvare i tuoi progetti.",
     email: "Email",
     password: "Password",
     passwordHint: "8–72 caratteri",
+    togglePassword: "Mostra o nascondi la password",
     createAccount: "Crea account",
     signIn: "Accedi",
     haveAccount: "Hai già un account?",
