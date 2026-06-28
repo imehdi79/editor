@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import "./index.css";
 import App from "./App.tsx";
 import { queryClient } from "./api/queryClient";
+import "./store/theme.store"; // initialize theme (applies .dark before render)
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
