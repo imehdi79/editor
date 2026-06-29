@@ -76,9 +76,18 @@ export const en = {
     addLayer: "Add layer",
     removeLayer: "Remove layer",
     noLayers: "No layers yet. Add one to start the catalog.",
-    layerDetails: "Layer details",
-    layerDetailsIntro:
-      "Extra layer detail entries, structured like the catalog above. Managed here for now and don't affect end users yet.",
+    detailName: "Detail name",
+    addDetail: "Add detail",
+    removeDetail: "Remove detail",
+    noDetails: "No details on this layer yet.",
+    materials: "Materials",
+    materialsIntro:
+      "Define the materials that layers and details draw from — each with a colour and default thickness. Managed here for now and don't affect end users yet.",
+    materialName: "Material name",
+    color: "Color",
+    addMaterial: "Add material",
+    removeMaterial: "Remove material",
+    noMaterials: "No materials yet. Add one to start the palette.",
     presets: "Presets",
     presetsIntro:
       "Bundle layers into reusable wall assemblies. They're managed here for now and don't affect end users yet.",

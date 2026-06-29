@@ -8,7 +8,7 @@
  */
 
 import { useState } from "react";
-import { ArrowLeft, DollarSign, BadgeCheck, Layers3, ListTree, Boxes, Plus, Trash2, type LucideIcon } from "lucide-react";
+import { ArrowLeft, DollarSign, BadgeCheck, Palette, Layers3, Boxes, Plus, Trash2, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/BrandMark";
 import { NumericInput } from "@/components/ui/number-field";
@@ -16,31 +16,36 @@ import { Button } from "@/components/ui/button";
 import { useRouterStore } from "@/store/router.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useAdminLayersStore, type AdminWallLayer } from "@/store/admin-layers.store";
-import { WALL_MATERIALS, materialColor } from "@/core/wall-layers/wallLayers";
+import { materialColor } from "@/core/wall-layers/wallLayers";
 import type { UserRole } from "@/api/authApi";
 import { useTranslation, type TranslationKey } from "@/i18n";
 
-type AdminSection = "pricing" | "layers" | "details" | "presets";
+type AdminSection = "pricing" | "materials" | "layers" | "presets";
 
 const NAV_ITEMS: { id: AdminSection; icon: LucideIcon; key: TranslationKey }[] = [
   { id: "pricing", icon: DollarSign, key: "admin.pricing" },
+  { id: "materials", icon: Palette, key: "admin.materials" },
   { id: "layers", icon: Layers3, key: "admin.layers" },
-  { id: "details", icon: ListTree, key: "admin.layerDetails" },
   { id: "presets", icon: Boxes, key: "admin.presets" },
 ];
 
 const FIELD = "h-8 rounded-md bg-panel-2 px-2 text-sm text-ink outline-none hair focus-visible:ring-1 focus-visible:ring-brand";
-const ROW = "grid grid-cols-[1fr_9rem_7rem_2.25rem] items-center gap-2 px-3";
+/** Layer / detail row: name, material, thickness, remove. */
+const ROW = "grid grid-cols-[1fr_9rem_7rem_2.25rem] items-center gap-2";
+/** Materials row: name, colour, thickness, remove. */
+const MATERIAL_ROW = "grid grid-cols-[1fr_3.5rem_7rem_2.25rem] items-center gap-2 px-3";
 
-/** Material picker — keeps an unknown/legacy material selectable (WallLayersPanel pattern). */
+/** Material picker — options come from the admin materials palette; an unknown
+ *  /legacy material stays selectable (WallLayersPanel pattern). */
 const MaterialSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => {
   const { tf } = useTranslation();
+  const materials = useAdminLayersStore((s) => s.materials);
   const label = (name: string) => tf(`materials.${name.toLowerCase()}`, name);
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className={FIELD}>
-      {!WALL_MATERIALS.some((m) => m.name === value) && <option value={value}>{label(value)}</option>}
-      {WALL_MATERIALS.map((m) => (
-        <option key={m.name} value={m.name}>
+      {!materials.some((m) => m.name === value) && <option value={value}>{label(value)}</option>}
+      {materials.map((m) => (
+        <option key={m.id} value={m.name}>
           {label(m.name)}
         </option>
       ))}
@@ -71,67 +76,73 @@ const RemoveButton = ({ title, onClick, className }: { title: string; onClick: (
   </button>
 );
 
-const Swatch = ({ material }: { material: string }) => (
-  <span className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: materialColor(material) }} />
-);
+/** Colour chip — resolved from the materials palette by name, or an explicit
+ *  `color` override (used by the materials list itself). */
+const Swatch = ({ material, color }: { material?: string; color?: string }) => {
+  const materials = useAdminLayersStore((s) => s.materials);
+  const bg = color ?? materials.find((m) => m.name === material)?.color ?? materialColor(material ?? "");
+  return <span className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: bg }} />;
+};
 
 /**
- * LayerCatalog — a titled, add-and-edit table of wall layers (name, material,
- * thickness). Reused for both the layer catalog and the identical "layer
- * details" list. Backed by admin-layers.store (localStorage).
+ * AdminMaterialsSection — the base materials palette. Every material option and
+ * swatch colour across layers, details and presets resolves from here. Persists
+ * to admin-layers.store (localStorage); not yet consumed by the editor.
  */
-const LayerCatalog = ({
-  title,
-  intro,
-  layers,
-  onAdd,
-  onUpdate,
-  onRemove,
-}: {
-  title: string;
-  intro: string;
-  layers: AdminWallLayer[];
-  onAdd: () => void;
-  onUpdate: (id: string, patch: Partial<Omit<AdminWallLayer, "id">>) => void;
-  onRemove: (id: string) => void;
-}) => {
+const AdminMaterialsSection = () => {
   const { t } = useTranslation();
+  const materials = useAdminLayersStore((s) => s.materials);
+  const addMaterial = useAdminLayersStore((s) => s.addMaterial);
+  const updateMaterial = useAdminLayersStore((s) => s.updateMaterial);
+  const removeMaterial = useAdminLayersStore((s) => s.removeMaterial);
+
   return (
-    <div>
+    <div className="max-w-2xl">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold">{title}</h2>
-          <p className="mt-1 max-w-xl text-sm text-ink-2">{intro}</p>
+          <h2 className="text-base font-semibold">{t("admin.materials")}</h2>
+          <p className="mt-1 max-w-xl text-sm text-ink-2">{t("admin.materialsIntro")}</p>
         </div>
-        <Button size="sm" onClick={onAdd} className="shrink-0">
-          <Plus className="size-4" /> {t("admin.addLayer")}
+        <Button size="sm" onClick={addMaterial} className="shrink-0">
+          <Plus className="size-4" /> {t("admin.addMaterial")}
         </Button>
       </div>
 
       <div className="mt-5 overflow-hidden rounded-lg bg-panel hair">
-        <div className={cn(ROW, "border-b bg-panel-2 py-2 text-2xs uppercase tracking-wider text-ink-3 mono")}>
-          <span>{t("admin.layerName")}</span>
-          <span>{t("admin.material")}</span>
+        <div className={cn(MATERIAL_ROW, "border-b bg-panel-2 py-2 text-2xs uppercase tracking-wider text-ink-3 mono")}>
+          <span>{t("admin.materialName")}</span>
+          <span>{t("admin.color")}</span>
           <span className="text-right">{t("admin.thickness")}</span>
           <span />
         </div>
 
-        {layers.length === 0 ? (
-          <p className="px-3 py-10 text-center text-sm text-ink-3">{t("admin.noLayers")}</p>
+        {materials.length === 0 ? (
+          <p className="px-3 py-10 text-center text-sm text-ink-3">{t("admin.noMaterials")}</p>
         ) : (
-          layers.map((layer) => (
-            <div key={layer.id} className={cn(ROW, "border-b py-2 last:border-b-0")}>
+          materials.map((m) => (
+            <div key={m.id} className={cn(MATERIAL_ROW, "border-b py-2 last:border-b-0")}>
               <div className="flex min-w-0 items-center gap-2">
-                <Swatch material={layer.material} />
+                <Swatch color={m.color} />
                 <input
-                  value={layer.name}
-                  onChange={(e) => onUpdate(layer.id, { name: e.target.value })}
+                  value={m.name}
+                  placeholder={t("admin.materialName")}
+                  onChange={(e) => updateMaterial(m.id, { name: e.target.value })}
                   className={cn(FIELD, "min-w-0 flex-1")}
                 />
               </div>
-              <MaterialSelect value={layer.material} onChange={(v) => onUpdate(layer.id, { material: v })} />
-              <ThicknessField value={layer.thickness} onChange={(v) => onUpdate(layer.id, { thickness: v })} />
-              <RemoveButton title={t("admin.removeLayer")} onClick={() => onRemove(layer.id)} className="justify-self-end" />
+              <input
+                type="color"
+                value={m.color}
+                onChange={(e) => updateMaterial(m.id, { color: e.target.value })}
+                aria-label={t("admin.color")}
+                className="h-8 w-full cursor-pointer rounded-md bg-panel-2 p-0.5 hair"
+              />
+              <ThicknessField value={m.thickness} onChange={(v) => updateMaterial(m.id, { thickness: v })} />
+              <RemoveButton
+                title={t("admin.removeMaterial")}
+                onClick={() => removeMaterial(m.id)}
+                className="justify-self-end"
+              />
             </div>
           ))
         )}
@@ -141,45 +152,105 @@ const LayerCatalog = ({
 };
 
 /**
- * AdminLayersSection — the reusable wall-layer catalog. Persists to
- * admin-layers.store (localStorage); not yet consumed by the editor.
+ * LayerCard — one catalog layer: its own fields (name, material, thickness) plus
+ * the N nested details it's built from. Reads its actions straight from the store.
  */
-const AdminLayersSection = () => {
+const LayerCard = ({ layer }: { layer: AdminWallLayer }) => {
   const { t } = useTranslation();
-  const s = useAdminLayersStore();
+  const updateLayer = useAdminLayersStore((s) => s.updateLayer);
+  const removeLayer = useAdminLayersStore((s) => s.removeLayer);
+  const addLayerDetail = useAdminLayersStore((s) => s.addLayerDetail);
+  const updateLayerDetail = useAdminLayersStore((s) => s.updateLayerDetail);
+  const removeLayerDetail = useAdminLayersStore((s) => s.removeLayerDetail);
 
   return (
-    <div className="max-w-2xl">
-      <LayerCatalog
-        title={t("admin.layers")}
-        intro={t("admin.layersIntro")}
-        layers={s.layers}
-        onAdd={s.addLayer}
-        onUpdate={s.updateLayer}
-        onRemove={s.removeLayer}
-      />
+    <div className="overflow-hidden rounded-lg bg-panel hair">
+      <div className={cn(ROW, "border-b bg-panel-2 px-3 py-2")}>
+        <div className="flex min-w-0 items-center gap-2">
+          <Swatch material={layer.material} />
+          <input
+            value={layer.name}
+            placeholder={t("admin.layerName")}
+            onChange={(e) => updateLayer(layer.id, { name: e.target.value })}
+            className={cn(FIELD, "min-w-0 flex-1 bg-panel font-medium")}
+          />
+        </div>
+        <MaterialSelect value={layer.material} onChange={(v) => updateLayer(layer.id, { material: v })} />
+        <ThicknessField value={layer.thickness} onChange={(v) => updateLayer(layer.id, { thickness: v })} />
+        <RemoveButton title={t("admin.removeLayer")} onClick={() => removeLayer(layer.id)} />
+      </div>
+
+      <div className="space-y-2 p-3">
+        {layer.details.length === 0 ? (
+          <p className="py-2 text-center text-sm text-ink-3">{t("admin.noDetails")}</p>
+        ) : (
+          layer.details.map((detail) => (
+            <div key={detail.id} className={ROW}>
+              <div className="flex min-w-0 items-center gap-2">
+                <Swatch material={detail.material} />
+                <input
+                  value={detail.name}
+                  placeholder={t("admin.detailName")}
+                  onChange={(e) => updateLayerDetail(layer.id, detail.id, { name: e.target.value })}
+                  className={cn(FIELD, "min-w-0 flex-1")}
+                />
+              </div>
+              <MaterialSelect
+                value={detail.material}
+                onChange={(v) => updateLayerDetail(layer.id, detail.id, { material: v })}
+              />
+              <ThicknessField
+                value={detail.thickness}
+                onChange={(v) => updateLayerDetail(layer.id, detail.id, { thickness: v })}
+              />
+              <RemoveButton
+                title={t("admin.removeDetail")}
+                onClick={() => removeLayerDetail(layer.id, detail.id)}
+                className="justify-self-end"
+              />
+            </div>
+          ))
+        )}
+
+        <Button size="sm" variant="ghost" onClick={() => addLayerDetail(layer.id)} className="mt-1 h-7 text-ink-2">
+          <Plus className="size-4" /> {t("admin.addDetail")}
+        </Button>
+      </div>
     </div>
   );
 };
 
 /**
- * AdminDetailsSection — the "layer details" catalog. Same structure as the layer
- * catalog, backed by its own list in admin-layers.store (localStorage).
+ * AdminLayersSection — the wall-layer catalog. Each layer is a card carrying its
+ * own fields plus the nested details it's built from. Persists to
+ * admin-layers.store (localStorage); not yet consumed by the editor.
  */
-const AdminDetailsSection = () => {
+const AdminLayersSection = () => {
   const { t } = useTranslation();
-  const s = useAdminLayersStore();
+  const layers = useAdminLayersStore((s) => s.layers);
+  const addLayer = useAdminLayersStore((s) => s.addLayer);
 
   return (
     <div className="max-w-2xl">
-      <LayerCatalog
-        title={t("admin.layerDetails")}
-        intro={t("admin.layerDetailsIntro")}
-        layers={s.details}
-        onAdd={s.addDetail}
-        onUpdate={s.updateDetail}
-        onRemove={s.removeDetail}
-      />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold">{t("admin.layers")}</h2>
+          <p className="mt-1 max-w-xl text-sm text-ink-2">{t("admin.layersIntro")}</p>
+        </div>
+        <Button size="sm" onClick={addLayer} className="shrink-0">
+          <Plus className="size-4" /> {t("admin.addLayer")}
+        </Button>
+      </div>
+
+      {layers.length === 0 ? (
+        <p className="mt-5 rounded-lg bg-panel px-3 py-10 text-center text-sm text-ink-3 hair">{t("admin.noLayers")}</p>
+      ) : (
+        <div className="mt-5 space-y-4">
+          {layers.map((layer) => (
+            <LayerCard key={layer.id} layer={layer} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -296,10 +367,10 @@ const AdminContent = ({ section }: { section: AdminSection }) => {
           <p className="mt-2 text-sm text-ink-2">{t("admin.pricingContent")}</p>
         </div>
       );
+    case "materials":
+      return <AdminMaterialsSection />;
     case "layers":
       return <AdminLayersSection />;
-    case "details":
-      return <AdminDetailsSection />;
     case "presets":
       return <AdminPresetsSection />;
   }

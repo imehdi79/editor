@@ -75,9 +75,18 @@ export const de: Dictionary = {
     addLayer: "Schicht hinzufügen",
     removeLayer: "Schicht entfernen",
     noLayers: "Noch keine Schichten. Füge eine hinzu, um den Katalog zu starten.",
-    layerDetails: "Schichtdetails",
-    layerDetailsIntro:
-      "Zusätzliche Schichtdetail-Einträge, aufgebaut wie der Katalog oben. Werden vorerst hier verwaltet und wirken sich nicht auf Endbenutzer aus.",
+    detailName: "Detailname",
+    addDetail: "Detail hinzufügen",
+    removeDetail: "Detail entfernen",
+    noDetails: "Noch keine Details für diese Schicht.",
+    materials: "Materialien",
+    materialsIntro:
+      "Lege die Materialien fest, aus denen Schichten und Details schöpfen — jeweils mit Farbe und Standarddicke. Werden vorerst hier verwaltet und wirken sich noch nicht auf Endbenutzer aus.",
+    materialName: "Materialname",
+    color: "Farbe",
+    addMaterial: "Material hinzufügen",
+    removeMaterial: "Material entfernen",
+    noMaterials: "Noch keine Materialien. Füge eines hinzu, um die Palette zu starten.",
     presets: "Wandaufbauten",
     presetsIntro:
       "Schichten zu wiederverwendbaren Wandaufbauten bündeln. Sie werden vorerst hier verwaltet und wirken sich noch nicht auf Endbenutzer aus.",
