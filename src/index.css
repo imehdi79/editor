@@ -224,6 +224,12 @@
   scrollbar-width: thin;
   scrollbar-color: var(--panel-3) transparent;
 }
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
 /* range slider */
 input[type="range"] {

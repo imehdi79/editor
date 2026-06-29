@@ -36,9 +36,9 @@ const WallActions = () => {
 
   return (
     <>
-      {/* Fixed-corner button — stacked above the tools FAB (bottom-right), clear
-          of on-canvas dimensions which hug the walls. Mobile only. */}
-      <div className="fixed bottom-22 right-4 z-40 md:hidden">
+      {/* Fixed-corner button — floats above the bottom tool dock (bottom-right),
+          clear of on-canvas dimensions which hug the walls. Mobile only. */}
+      <div className="fixed bottom-18 right-4 z-40 md:hidden">
         <Button
           variant="secondary"
           title={t("wall.actions")}

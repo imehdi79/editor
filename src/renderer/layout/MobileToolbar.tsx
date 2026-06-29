@@ -1,22 +1,25 @@
 /**
- * MobileToolbar — a single floating action button (bottom-right) that opens a
- * bottom sheet of all tools. Replaces the old left sidebar with a thumb-reachable,
- * touch-sized control surface:
- *   - every target is ≥44px (Apple HIG) — tools are large tiles, not 32px icons;
- *   - one tap per tool (no nested fly-out menus);
- *   - the FAB shows the active tool's icon so the current mode is always visible.
+ * MobileToolbar — the mobile CAD chrome (hidden on md+).
  *
- * Systems (layers) and Settings open as centered modals rendered as siblings of
- * the sheet, so closing the sheet doesn't unmount them.
+ * A persistent bottom tool dock mirrors the desktop tool rail: the mode tools
+ * (select/draw) in a horizontally-scrollable row with the active one in brand,
+ * and a trailing "More" button. One tap switches tool — no nested menus — and
+ * every target is ≥44px (Apple HIG).
+ *
+ * "More" opens a bottom sheet for the secondary controls (undo/redo, delete,
+ * Systems, Settings, theme). Systems/Settings render as siblings of the sheet so
+ * closing it doesn't unmount them.
  */
 
 import { useState } from "react";
-import { Redo, Undo, Trash2, Layers3, Settings2, PencilRuler } from "lucide-react";
+import { Redo, Undo, Trash2, Layers3, Settings2, MoreHorizontal, Moon, Sun } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useToolsStore } from "@/store/tools.store";
 import { useTemporalStore, useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
+import { useThemeStore } from "@/store/theme.store";
 import { useTranslation } from "@/i18n";
 import type { NoOneClickTools } from "./sidebar/tools.types";
 import { MODE_TOOLS } from "./editor-shell/editorTools";
@@ -40,10 +43,10 @@ const MobileToolbar = () => {
   const clearSelection = useSelectionStore((s) => s.clearSelection);
   const removeShape = useFloorPlanStore((s) => s.removeShape);
 
-  const pickTool = (tool: NoOneClickTools) => {
-    setTool(tool);
-    setOpen(false);
-  };
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
+
+  const pickTool = (tool: NoOneClickTools) => setTool(tool);
 
   const onDelete = () => {
     if (!selectedId) return;
@@ -52,23 +55,45 @@ const MobileToolbar = () => {
     setOpen(false);
   };
 
-  // FAB shows the active tool's icon (or a generic toolbox icon when idle).
-  const FabIcon = MODE_TOOLS.find((m) => m.tool === activeTool)?.Icon ?? PencilRuler;
-
   return (
     <>
-      {/* Floating action button — bottom-right, always visible */}
-      <Button
-        variant="default"
-        title={t("tools.title")}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-40 size-14 rounded-full shadow-2xl md:hidden"
-      >
-        <FabIcon className="size-6" />
-      </Button>
+      {/* Persistent bottom tool dock — the mobile counterpart of the tool rail */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex h-14 items-center gap-1 border-t bg-popover/95 px-1.5 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden">
+        <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto">
+          {MODE_TOOLS.map(({ tool, Icon, labelKey }) => (
+            <button
+              key={tool}
+              type="button"
+              title={t(labelKey)}
+              aria-label={t(labelKey)}
+              aria-pressed={activeTool === tool}
+              onClick={() => pickTool(tool)}
+              className={cn(
+                "grid size-11 shrink-0 place-items-center rounded-lg transition-colors",
+                activeTool === tool ? "bg-brand text-brand-foreground" : "text-ink-2 hover:bg-panel-2 hover:text-ink",
+              )}
+            >
+              <Icon className="size-5.5" strokeWidth={1.75} />
+            </button>
+          ))}
+        </div>
 
+        <div className="h-7 w-px shrink-0 bg-line" />
+
+        <button
+          type="button"
+          title={t("tools.actions")}
+          aria-label={t("tools.actions")}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onClick={() => setOpen(true)}
+          className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-panel-2 hover:text-ink"
+        >
+          <MoreHorizontal className="size-5.5" />
+        </button>
+      </nav>
+
+      {/* Secondary controls — history, delete, panels, theme */}
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent className="pb-[max(1rem,env(safe-area-inset-bottom))]">
           <DrawerHeader className="pb-2">
@@ -76,21 +101,6 @@ const MobileToolbar = () => {
           </DrawerHeader>
 
           <div className="flex flex-col gap-4 px-4">
-            {/* Mode tools */}
-            <div className="grid grid-cols-3 gap-2">
-              {MODE_TOOLS.map(({ tool, Icon, labelKey }) => (
-                <Button
-                  key={tool}
-                  variant={activeTool === tool ? "default" : "outline"}
-                  onClick={() => pickTool(tool)}
-                  className="h-16 flex-col gap-1"
-                >
-                  <Icon className="size-5" />
-                  <span className="text-[11px] font-normal">{t(labelKey)}</span>
-                </Button>
-              ))}
-            </div>
-
             {/* Actions */}
             <div>
               <span className="px-1 text-2xs uppercase tracking-wider text-ink-3 mono">{t("tools.actions")}</span>
@@ -103,19 +113,14 @@ const MobileToolbar = () => {
                   <Redo className="size-5" />
                   <span className="text-[11px] font-normal">{t("tools.redo")}</span>
                 </Button>
-                <Button
-                  variant="destructive"
-                  disabled={!selectedId}
-                  onClick={onDelete}
-                  className="h-12 flex-col gap-1"
-                >
+                <Button variant="destructive" disabled={!selectedId} onClick={onDelete} className="h-12 flex-col gap-1">
                   <Trash2 className="size-5" />
                   <span className="text-[11px] font-normal">{t("tools.delete")}</span>
                 </Button>
               </div>
             </div>
 
-            {/* View — systems / settings open their own modals */}
+            {/* View — systems / settings open their own modals; theme toggles inline */}
             <div>
               <span className="px-1 text-2xs uppercase tracking-wider text-ink-3 mono">{t("tools.view")}</span>
               <div className="mt-1 flex flex-col gap-1">
@@ -140,6 +145,12 @@ const MobileToolbar = () => {
                 >
                   <Settings2 className="size-5" />
                   <span className="text-sm font-normal">{t("settings.title")}</span>
+                </Button>
+                <Button variant="ghost" onClick={toggleTheme} className="h-12 w-full justify-start gap-3 px-3">
+                  {theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />}
+                  <span className="text-sm font-normal">
+                    {t("settings.theme")} · {t(theme === "dark" ? "settings.themeLight" : "settings.themeDark")}
+                  </span>
                 </Button>
               </div>
             </div>
