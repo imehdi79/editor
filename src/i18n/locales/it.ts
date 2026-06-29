@@ -91,6 +91,7 @@ export const it: Dictionary = {
     presetsIntro:
       "Raggruppa gli strati in stratigrafie di parete riutilizzabili. Per ora sono gestite qui e non influiscono ancora sugli utenti finali.",
     presetName: "Nome stratigrafia",
+    elementType: "Tipo di elemento",
     selectLayer: "Seleziona uno strato…",
     newPreset: "Nuova stratigrafia",
     addPreset: "Aggiungi stratigrafia",
@@ -303,6 +304,13 @@ export const it: Dictionary = {
     ml: "m lineari",
     each: "Pezzo",
     kg: "kg",
+  },
+
+  elementTypes: {
+    wall: "Parete",
+    floor: "Pavimento",
+    ceiling: "Soffitto",
+    roof: "Copertura",
   },
 
   systems: {

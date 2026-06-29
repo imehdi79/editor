@@ -92,6 +92,7 @@ export const fa: Dictionary = {
     presetsIntro:
       "لایه‌ها را در لایه‌بندی‌های دیوار قابل‌استفاده مجدد گروه‌بندی کنید. فعلاً فقط اینجا مدیریت می‌شوند و هنوز روی کاربران نهایی تأثیری ندارند.",
     presetName: "نام لایه‌بندی",
+    elementType: "نوع المان",
     selectLayer: "یک لایه انتخاب کنید…",
     newPreset: "لایه‌بندی جدید",
     addPreset: "افزودن لایه‌بندی",
@@ -304,6 +305,13 @@ export const fa: Dictionary = {
     ml: "مترطول",
     each: "عدد",
     kg: "کیلوگرم",
+  },
+
+  elementTypes: {
+    wall: "دیوار",
+    floor: "کف",
+    ceiling: "سقف",
+    roof: "بام",
   },
 
   systems: {

@@ -18,6 +18,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { useAdminLayersStore, type AdminWallLayer } from "@/store/admin-layers.store";
 import { materialColor } from "@/core/wall-layers/wallLayers";
 import { UNITS, type Unit } from "@/core/estimation/units";
+import { ELEMENT_TYPES, type ElementType } from "@/core/estimation/elementTypes";
 import type { UserRole } from "@/api/authApi";
 import { useTranslation, type TranslationKey } from "@/i18n";
 
@@ -43,6 +44,14 @@ const UNIT_KEY: Record<Unit, TranslationKey> = {
   ml: "units.ml",
   each: "units.each",
   kg: "units.kg",
+};
+
+/** Element-type ids → i18n label keys. */
+const ELEMENT_TYPE_KEY: Record<ElementType, TranslationKey> = {
+  wall: "elementTypes.wall",
+  floor: "elementTypes.floor",
+  ceiling: "elementTypes.ceiling",
+  roof: "elementTypes.roof",
 };
 
 /** Material picker — options come from the admin materials palette; an unknown
@@ -88,6 +97,25 @@ const UnitSelect = ({ value, onChange }: { value: Unit; onChange: (v: Unit) => v
       {UNITS.map((u) => (
         <option key={u} value={u}>
           {t(UNIT_KEY[u])}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+/** Building-element picker scoping which element a preset applies to. */
+const ElementTypeSelect = ({ value, onChange }: { value: ElementType; onChange: (v: ElementType) => void }) => {
+  const { t } = useTranslation();
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as ElementType)}
+      aria-label={t("admin.elementType")}
+      className={cn(FIELD, "w-28 shrink-0")}
+    >
+      {ELEMENT_TYPES.map((et) => (
+        <option key={et} value={et}>
+          {t(ELEMENT_TYPE_KEY[et])}
         </option>
       ))}
     </select>
@@ -313,6 +341,7 @@ const AdminPresetsSection = () => {
   const layers = useAdminLayersStore((s) => s.layers);
   const addPreset = useAdminLayersStore((s) => s.addPreset);
   const renamePreset = useAdminLayersStore((s) => s.renamePreset);
+  const setPresetElementType = useAdminLayersStore((s) => s.setPresetElementType);
   const removePreset = useAdminLayersStore((s) => s.removePreset);
   const addPresetLayer = useAdminLayersStore((s) => s.addPresetLayer);
   const updatePresetLayer = useAdminLayersStore((s) => s.updatePresetLayer);
@@ -347,6 +376,10 @@ const AdminPresetsSection = () => {
                     placeholder={t("admin.newPreset")}
                     onChange={(e) => renamePreset(preset.id, e.target.value)}
                     className={cn(FIELD, "min-w-0 flex-1 bg-panel font-medium")}
+                  />
+                  <ElementTypeSelect
+                    value={preset.elementType}
+                    onChange={(v) => setPresetElementType(preset.id, v)}
                   />
                   <span className="shrink-0 text-2xs text-ink-3 mono">
                     {t("admin.total")} {total} cm

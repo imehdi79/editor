@@ -23,6 +23,7 @@ import { create } from "zustand";
 import { uid } from "@/lib/uid";
 import { WALL_MATERIALS } from "@/core/wall-layers/wallLayers";
 import { DEFAULT_UNIT, type Unit } from "@/core/estimation/units";
+import { DEFAULT_ELEMENT_TYPE, type ElementType } from "@/core/estimation/elementTypes";
 
 /** A base building material — the palette layers/details/presets draw from. */
 export interface AdminMaterial {
@@ -70,6 +71,8 @@ export interface AdminPresetLayer {
 export interface AdminWallPreset {
   id: string;
   name: string;
+  /** Building element this assembly applies to (scopes where it can be used). */
+  elementType: ElementType;
   /** Referenced layers in exterior→interior order. */
   layers: AdminPresetLayer[];
 }
@@ -108,10 +111,11 @@ const loadLayers = (): AdminWallLayer[] =>
     details: Array.isArray(l.details) ? l.details : [],
   }));
 
-/** Preset entries became layer references — drop legacy material/thickness slices. */
+/** Preset entries became layer references + gained an element type — normalise. */
 const loadPresets = (): AdminWallPreset[] =>
   loadList<AdminWallPreset>(PRESETS_KEY, () => []).map((p) => ({
     ...p,
+    elementType: p.elementType ?? DEFAULT_ELEMENT_TYPE,
     layers: Array.isArray(p.layers) ? p.layers.map((l) => ({ id: l.id, layerId: l.layerId ?? "" })) : [],
   }));
 
@@ -147,6 +151,7 @@ interface AdminLayersStore {
   /** Create an empty-named preset with one starter layer. */
   addPreset: () => void;
   renamePreset: (id: string, name: string) => void;
+  setPresetElementType: (id: string, elementType: ElementType) => void;
   removePreset: (id: string) => void;
   addPresetLayer: (presetId: string) => void;
   updatePresetLayer: (presetId: string, layerId: string, patch: Partial<Omit<AdminPresetLayer, "id">>) => void;
@@ -207,8 +212,13 @@ export const useAdminLayersStore = create<AdminLayersStore>((set, get) => {
     removeLayerDetail: (layerId, detailId) =>
       mapLayer(layerId, (l) => ({ ...l, details: l.details.filter((d) => d.id !== detailId) })),
 
-    addPreset: () => commitPresets([...get().presets, { id: uid(), name: "", layers: [freshPresetLayer()] }]),
+    addPreset: () =>
+      commitPresets([
+        ...get().presets,
+        { id: uid(), name: "", elementType: DEFAULT_ELEMENT_TYPE, layers: [freshPresetLayer()] },
+      ]),
     renamePreset: (id, name) => mapPreset(id, (p) => ({ ...p, name })),
+    setPresetElementType: (id, elementType) => mapPreset(id, (p) => ({ ...p, elementType })),
     removePreset: (id) => commitPresets(get().presets.filter((p) => p.id !== id)),
     addPresetLayer: (presetId) => mapPreset(presetId, (p) => ({ ...p, layers: [...p.layers, freshPresetLayer()] })),
     updatePresetLayer: (presetId, layerId, patch) =>

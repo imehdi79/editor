@@ -93,6 +93,7 @@ export const en = {
     presetsIntro:
       "Bundle layers into reusable wall assemblies. They're managed here for now and don't affect end users yet.",
     presetName: "Preset name",
+    elementType: "Element type",
     selectLayer: "Select a layer…",
     newPreset: "New preset",
     addPreset: "Add preset",
@@ -317,6 +318,14 @@ export const en = {
     ml: "Linear m",
     each: "Piece",
     kg: "kg",
+  },
+
+  // Building elements an assembly (preset) can apply to.
+  elementTypes: {
+    wall: "Wall",
+    floor: "Floor",
+    ceiling: "Ceiling",
+    roof: "Roof",
   },
 
   systems: {

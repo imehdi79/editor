@@ -92,6 +92,7 @@ export const de: Dictionary = {
     presetsIntro:
       "Schichten zu wiederverwendbaren Wandaufbauten bündeln. Sie werden vorerst hier verwaltet und wirken sich noch nicht auf Endbenutzer aus.",
     presetName: "Aufbauname",
+    elementType: "Bauteiltyp",
     selectLayer: "Schicht auswählen…",
     newPreset: "Neuer Wandaufbau",
     addPreset: "Wandaufbau hinzufügen",
@@ -304,6 +305,13 @@ export const de: Dictionary = {
     ml: "Laufmeter",
     each: "Stück",
     kg: "kg",
+  },
+
+  elementTypes: {
+    wall: "Wand",
+    floor: "Boden",
+    ceiling: "Decke",
+    roof: "Dach",
   },
 
   systems: {
