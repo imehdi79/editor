@@ -8,7 +8,7 @@
  */
 
 import { useState } from "react";
-import { ArrowLeft, DollarSign, BadgeCheck, Layers3, Boxes, Plus, Trash2, type LucideIcon } from "lucide-react";
+import { ArrowLeft, DollarSign, BadgeCheck, Layers3, ListTree, Boxes, Plus, Trash2, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/BrandMark";
 import { NumericInput } from "@/components/ui/number-field";
@@ -20,11 +20,12 @@ import { WALL_MATERIALS, materialColor } from "@/core/wall-layers/wallLayers";
 import type { UserRole } from "@/api/authApi";
 import { useTranslation, type TranslationKey } from "@/i18n";
 
-type AdminSection = "pricing" | "layers" | "presets";
+type AdminSection = "pricing" | "layers" | "details" | "presets";
 
 const NAV_ITEMS: { id: AdminSection; icon: LucideIcon; key: TranslationKey }[] = [
   { id: "pricing", icon: DollarSign, key: "admin.pricing" },
   { id: "layers", icon: Layers3, key: "admin.layers" },
+  { id: "details", icon: ListTree, key: "admin.layerDetails" },
   { id: "presets", icon: Boxes, key: "admin.presets" },
 ];
 
@@ -140,16 +141,15 @@ const LayerCatalog = ({
 };
 
 /**
- * AdminLayersSection — the layer catalog plus the identical "layer details"
- * list. Both persist to admin-layers.store (localStorage); not yet consumed by
- * the editor.
+ * AdminLayersSection — the reusable wall-layer catalog. Persists to
+ * admin-layers.store (localStorage); not yet consumed by the editor.
  */
 const AdminLayersSection = () => {
   const { t } = useTranslation();
   const s = useAdminLayersStore();
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="max-w-2xl">
       <LayerCatalog
         title={t("admin.layers")}
         intro={t("admin.layersIntro")}
@@ -158,6 +158,20 @@ const AdminLayersSection = () => {
         onUpdate={s.updateLayer}
         onRemove={s.removeLayer}
       />
+    </div>
+  );
+};
+
+/**
+ * AdminDetailsSection — the "layer details" catalog. Same structure as the layer
+ * catalog, backed by its own list in admin-layers.store (localStorage).
+ */
+const AdminDetailsSection = () => {
+  const { t } = useTranslation();
+  const s = useAdminLayersStore();
+
+  return (
+    <div className="max-w-2xl">
       <LayerCatalog
         title={t("admin.layerDetails")}
         intro={t("admin.layerDetailsIntro")}
@@ -284,6 +298,8 @@ const AdminContent = ({ section }: { section: AdminSection }) => {
       );
     case "layers":
       return <AdminLayersSection />;
+    case "details":
+      return <AdminDetailsSection />;
     case "presets":
       return <AdminPresetsSection />;
   }
