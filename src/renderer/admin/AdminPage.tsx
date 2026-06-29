@@ -8,7 +8,7 @@
  */
 
 import { useState } from "react";
-import { ArrowLeft, DollarSign, BadgeCheck, Layers3, Plus, Trash2, type LucideIcon } from "lucide-react";
+import { ArrowLeft, DollarSign, BadgeCheck, Layers3, Boxes, Plus, Trash2, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/BrandMark";
 import { NumericInput } from "@/components/ui/number-field";
@@ -20,27 +20,70 @@ import { WALL_MATERIALS, materialColor } from "@/core/wall-layers/wallLayers";
 import type { UserRole } from "@/api/authApi";
 import { useTranslation, type TranslationKey } from "@/i18n";
 
-type AdminSection = "pricing" | "layers";
+type AdminSection = "pricing" | "layers" | "presets";
 
 const NAV_ITEMS: { id: AdminSection; icon: LucideIcon; key: TranslationKey }[] = [
   { id: "pricing", icon: DollarSign, key: "admin.pricing" },
   { id: "layers", icon: Layers3, key: "admin.layers" },
+  { id: "presets", icon: Boxes, key: "admin.presets" },
 ];
 
 const FIELD = "h-8 rounded-md bg-panel-2 px-2 text-sm text-ink outline-none hair focus-visible:ring-1 focus-visible:ring-brand";
 const ROW = "grid grid-cols-[1fr_9rem_7rem_2.25rem] items-center gap-2 px-3";
+
+/** Material picker — keeps an unknown/legacy material selectable (WallLayersPanel pattern). */
+const MaterialSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => {
+  const { tf } = useTranslation();
+  const label = (name: string) => tf(`materials.${name.toLowerCase()}`, name);
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={FIELD}>
+      {!WALL_MATERIALS.some((m) => m.name === value) && <option value={value}>{label(value)}</option>}
+      {WALL_MATERIALS.map((m) => (
+        <option key={m.name} value={m.name}>
+          {label(m.name)}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+/** Right-aligned thickness field with a trailing "cm" unit. */
+const ThicknessField = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
+  <div className="flex items-center justify-end gap-1">
+    <NumericInput value={value} min={0.1} onChange={onChange} className={cn(FIELD, "w-14 text-right")} />
+    <span className="w-5 text-xs text-ink-3">cm</span>
+  </div>
+);
+
+const RemoveButton = ({ title, onClick, className }: { title: string; onClick: () => void; className?: string }) => (
+  <button
+    type="button"
+    title={title}
+    aria-label={title}
+    onClick={onClick}
+    className={cn(
+      "grid size-8 place-items-center rounded-md text-ink-3 transition-colors hover:bg-panel-2 hover:text-danger",
+      className,
+    )}
+  >
+    <Trash2 className="size-4" />
+  </button>
+);
+
+const Swatch = ({ material }: { material: string }) => (
+  <span className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: materialColor(material) }} />
+);
 
 /**
  * AdminLayersSection — curate the reusable wall-layer catalog. Edits persist to
  * admin-layers.store (localStorage). Not yet consumed by the editor.
  */
 const AdminLayersSection = () => {
-  const { t, tf } = useTranslation();
+  const { t } = useTranslation();
   const layers = useAdminLayersStore((s) => s.layers);
   const addLayer = useAdminLayersStore((s) => s.addLayer);
   const updateLayer = useAdminLayersStore((s) => s.updateLayer);
   const removeLayer = useAdminLayersStore((s) => s.removeLayer);
-  const materialLabel = (name: string) => tf(`materials.${name.toLowerCase()}`, name);
 
   return (
     <div className="max-w-2xl">
@@ -68,52 +111,120 @@ const AdminLayersSection = () => {
           layers.map((layer) => (
             <div key={layer.id} className={cn(ROW, "border-b py-2 last:border-b-0")}>
               <div className="flex min-w-0 items-center gap-2">
-                <span
-                  className="size-3 shrink-0 rounded-sm"
-                  style={{ backgroundColor: materialColor(layer.material) }}
-                />
+                <Swatch material={layer.material} />
                 <input
                   value={layer.name}
                   onChange={(e) => updateLayer(layer.id, { name: e.target.value })}
                   className={cn(FIELD, "min-w-0 flex-1")}
                 />
               </div>
-              <select
-                value={layer.material}
-                onChange={(e) => updateLayer(layer.id, { material: e.target.value })}
-                className={FIELD}
-              >
-                {!WALL_MATERIALS.some((m) => m.name === layer.material) && (
-                  <option value={layer.material}>{materialLabel(layer.material)}</option>
-                )}
-                {WALL_MATERIALS.map((m) => (
-                  <option key={m.name} value={m.name}>
-                    {materialLabel(m.name)}
-                  </option>
-                ))}
-              </select>
-              <div className="flex items-center justify-end gap-1">
-                <NumericInput
-                  value={layer.thickness}
-                  min={0.1}
-                  onChange={(v) => updateLayer(layer.id, { thickness: v })}
-                  className={cn(FIELD, "w-14 text-right")}
-                />
-                <span className="w-5 text-xs text-ink-3">cm</span>
-              </div>
-              <button
-                type="button"
+              <MaterialSelect value={layer.material} onChange={(v) => updateLayer(layer.id, { material: v })} />
+              <ThicknessField value={layer.thickness} onChange={(v) => updateLayer(layer.id, { thickness: v })} />
+              <RemoveButton
                 title={t("admin.removeLayer")}
-                aria-label={t("admin.removeLayer")}
                 onClick={() => removeLayer(layer.id)}
-                className="grid size-8 place-items-center justify-self-end rounded-md text-ink-3 transition-colors hover:bg-panel-2 hover:text-danger"
-              >
-                <Trash2 className="size-4" />
-              </button>
+                className="justify-self-end"
+              />
             </div>
           ))
         )}
       </div>
+    </div>
+  );
+};
+
+/** Column template for a preset's layer rows (swatch+material, thickness, remove). */
+const PRESET_ROW = "grid grid-cols-[1fr_7rem_2.25rem] items-center gap-2";
+
+/**
+ * AdminPresetsSection — compose named wall assemblies (presets) from layers and
+ * review the saved list. Persists to admin-layers.store; not consumed by the
+ * editor yet.
+ */
+const AdminPresetsSection = () => {
+  const { t } = useTranslation();
+  const presets = useAdminLayersStore((s) => s.presets);
+  const addPreset = useAdminLayersStore((s) => s.addPreset);
+  const renamePreset = useAdminLayersStore((s) => s.renamePreset);
+  const removePreset = useAdminLayersStore((s) => s.removePreset);
+  const addPresetLayer = useAdminLayersStore((s) => s.addPresetLayer);
+  const updatePresetLayer = useAdminLayersStore((s) => s.updatePresetLayer);
+  const removePresetLayer = useAdminLayersStore((s) => s.removePresetLayer);
+
+  return (
+    <div className="max-w-2xl">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold">{t("admin.presets")}</h2>
+          <p className="mt-1 max-w-xl text-sm text-ink-2">{t("admin.presetsIntro")}</p>
+        </div>
+        <Button size="sm" onClick={addPreset} className="shrink-0">
+          <Plus className="size-4" /> {t("admin.addPreset")}
+        </Button>
+      </div>
+
+      {presets.length === 0 ? (
+        <p className="mt-5 rounded-lg bg-panel px-3 py-10 text-center text-sm text-ink-3 hair">{t("admin.noPresets")}</p>
+      ) : (
+        <div className="mt-5 space-y-4">
+          {presets.map((preset) => {
+            const total = +preset.layers.reduce((s, l) => s + l.thickness, 0).toFixed(2);
+            return (
+              <div key={preset.id} className="overflow-hidden rounded-lg bg-panel hair">
+                <div className="flex items-center gap-2 border-b bg-panel-2 px-3 py-2">
+                  <Boxes className="size-4 shrink-0 text-ink-3" />
+                  <input
+                    value={preset.name}
+                    placeholder={t("admin.newPreset")}
+                    onChange={(e) => renamePreset(preset.id, e.target.value)}
+                    className={cn(FIELD, "min-w-0 flex-1 bg-panel font-medium")}
+                  />
+                  <span className="shrink-0 text-2xs text-ink-3 mono">
+                    {t("admin.total")} {total} cm
+                  </span>
+                  <RemoveButton title={t("admin.removePreset")} onClick={() => removePreset(preset.id)} />
+                </div>
+
+                <div className="space-y-2 p-3">
+                  {preset.layers.length === 0 ? (
+                    <p className="py-4 text-center text-sm text-ink-3">{t("admin.noLayers")}</p>
+                  ) : (
+                    preset.layers.map((layer) => (
+                      <div key={layer.id} className={PRESET_ROW}>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Swatch material={layer.material} />
+                          <MaterialSelect
+                            value={layer.material}
+                            onChange={(v) => updatePresetLayer(preset.id, layer.id, { material: v })}
+                          />
+                        </div>
+                        <ThicknessField
+                          value={layer.thickness}
+                          onChange={(v) => updatePresetLayer(preset.id, layer.id, { thickness: v })}
+                        />
+                        <RemoveButton
+                          title={t("admin.removeLayer")}
+                          onClick={() => removePresetLayer(preset.id, layer.id)}
+                          className="justify-self-end"
+                        />
+                      </div>
+                    ))
+                  )}
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => addPresetLayer(preset.id)}
+                    className="mt-1 h-7 text-ink-2"
+                  >
+                    <Plus className="size-4" /> {t("admin.addLayer")}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -136,6 +247,8 @@ const AdminContent = ({ section }: { section: AdminSection }) => {
       );
     case "layers":
       return <AdminLayersSection />;
+    case "presets":
+      return <AdminPresetsSection />;
   }
 };
 

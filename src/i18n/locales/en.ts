@@ -76,6 +76,15 @@ export const en = {
     addLayer: "Add layer",
     removeLayer: "Remove layer",
     noLayers: "No layers yet. Add one to start the catalog.",
+    presets: "Presets",
+    presetsIntro:
+      "Bundle layers into reusable wall assemblies. They're managed here for now and don't affect end users yet.",
+    presetName: "Preset name",
+    newPreset: "New preset",
+    addPreset: "Add preset",
+    removePreset: "Remove preset",
+    noPresets: "No presets yet. Create one to bundle layers into an assembly.",
+    total: "Total",
   },
 
   roles: {

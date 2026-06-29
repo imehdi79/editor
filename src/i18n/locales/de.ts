@@ -75,6 +75,15 @@ export const de: Dictionary = {
     addLayer: "Schicht hinzufügen",
     removeLayer: "Schicht entfernen",
     noLayers: "Noch keine Schichten. Füge eine hinzu, um den Katalog zu starten.",
+    presets: "Wandaufbauten",
+    presetsIntro:
+      "Schichten zu wiederverwendbaren Wandaufbauten bündeln. Sie werden vorerst hier verwaltet und wirken sich noch nicht auf Endbenutzer aus.",
+    presetName: "Aufbauname",
+    newPreset: "Neuer Wandaufbau",
+    addPreset: "Wandaufbau hinzufügen",
+    removePreset: "Wandaufbau entfernen",
+    noPresets: "Noch keine Wandaufbauten. Erstelle einen, um Schichten zu einem Aufbau zu bündeln.",
+    total: "Gesamt",
   },
 
   roles: {

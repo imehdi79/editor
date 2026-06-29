@@ -1,12 +1,14 @@
 /**
  * admin-layers.store — an admin-curated catalog of reusable wall construction
- * layers.
+ * layers plus the named presets (wall assemblies) built from them.
  *
- * Admins define layers here (name, material, build-up thickness) so a shared
- * library can be assembled centrally. This catalog is NOT yet consumed by the
- * editor — it has **no effect on end users for now**; it's a staging area for a
- * future shared assembly library. Persisted to localStorage (seeded from the
- * built-in material catalog) so it survives reloads.
+ * Admins define single layers (name, material, build-up thickness) and bundle
+ * them into ordered presets — reusable wall build-ups, the same model as
+ * `wallAssembly` / `ASSEMBLY_PRESETS`. Neither catalog is consumed by the editor
+ * yet — they have **no effect on end users for now**; this is a staging area for
+ * a future shared assembly library. Both lists persist to localStorage (the
+ * layer catalog is seeded from the built-in material catalog; presets start
+ * empty) so they survive reloads.
  */
 
 import { create } from "zustand";
@@ -23,52 +25,108 @@ export interface AdminWallLayer {
   thickness: number;
 }
 
-const STORAGE_KEY = "mehdify.admin.wall-layers.v1";
+/** One layer inside a preset — a material slice (no display name of its own). */
+export interface AdminPresetLayer {
+  id: string;
+  /** Material key — drives the swatch colour via `materialColor`. */
+  material: string;
+  /** Build-up thickness in cm (px ≈ cm at 100 ppm). */
+  thickness: number;
+}
+
+/** A named, ordered wall assembly the admin composes from layers. */
+export interface AdminWallPreset {
+  id: string;
+  name: string;
+  /** Layers in exterior→interior order. */
+  layers: AdminPresetLayer[];
+}
+
+const LAYERS_KEY = "mehdify.admin.wall-layers.v1";
+const PRESETS_KEY = "mehdify.admin.wall-presets.v1";
 
 const seed = (): AdminWallLayer[] =>
   WALL_MATERIALS.map((m) => ({ id: uid(), name: m.name, material: m.name, thickness: m.thickness }));
 
-const load = (): AdminWallLayer[] => {
-  if (typeof window === "undefined") return seed();
+/** A fresh layer seeded from the first catalog material. */
+const freshLayer = (): AdminPresetLayer => {
+  const base = WALL_MATERIALS[0];
+  return { id: uid(), material: base.name, thickness: base.thickness };
+};
+
+/** Read a localStorage list, falling back to `fallback` on miss / parse error. */
+const loadList = <T>(key: string, fallback: () => T[]): T[] => {
+  if (typeof window === "undefined") return fallback();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return seed();
-    const parsed = JSON.parse(raw) as AdminWallLayer[];
-    return Array.isArray(parsed) ? parsed : seed();
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback();
+    const parsed = JSON.parse(raw) as T[];
+    return Array.isArray(parsed) ? parsed : fallback();
   } catch {
-    return seed();
+    return fallback();
   }
 };
 
-const persist = (layers: AdminWallLayer[]) => {
+const persist = (key: string, value: unknown) => {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(layers));
+    localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    /* quota / private mode — keep the in-memory catalog */
+    /* quota / private mode — keep the in-memory copy */
   }
 };
 
 interface AdminLayersStore {
   layers: AdminWallLayer[];
+  presets: AdminWallPreset[];
+
   /** Append a fresh layer seeded from the first catalog material. */
   addLayer: () => void;
   updateLayer: (id: string, patch: Partial<Omit<AdminWallLayer, "id">>) => void;
   removeLayer: (id: string) => void;
+
+  /** Create an empty-named preset with one starter layer. */
+  addPreset: () => void;
+  renamePreset: (id: string, name: string) => void;
+  removePreset: (id: string) => void;
+  addPresetLayer: (presetId: string) => void;
+  updatePresetLayer: (presetId: string, layerId: string, patch: Partial<Omit<AdminPresetLayer, "id">>) => void;
+  removePresetLayer: (presetId: string, layerId: string) => void;
 }
 
 export const useAdminLayersStore = create<AdminLayersStore>((set, get) => {
-  const commit = (layers: AdminWallLayer[]) => {
-    persist(layers);
+  const commitLayers = (layers: AdminWallLayer[]) => {
+    persist(LAYERS_KEY, layers);
     set({ layers });
   };
+  const commitPresets = (presets: AdminWallPreset[]) => {
+    persist(PRESETS_KEY, presets);
+    set({ presets });
+  };
+  const mapPreset = (id: string, fn: (p: AdminWallPreset) => AdminWallPreset) =>
+    commitPresets(get().presets.map((p) => (p.id === id ? fn(p) : p)));
+
   return {
-    layers: load(),
+    layers: loadList(LAYERS_KEY, seed),
+    presets: loadList(PRESETS_KEY, () => []),
+
     addLayer: () => {
       const base = WALL_MATERIALS[0];
-      commit([...get().layers, { id: uid(), name: base.name, material: base.name, thickness: base.thickness }]);
+      commitLayers([...get().layers, { id: uid(), name: base.name, material: base.name, thickness: base.thickness }]);
     },
-    updateLayer: (id, patch) => commit(get().layers.map((l) => (l.id === id ? { ...l, ...patch } : l))),
-    removeLayer: (id) => commit(get().layers.filter((l) => l.id !== id)),
+    updateLayer: (id, patch) => commitLayers(get().layers.map((l) => (l.id === id ? { ...l, ...patch } : l))),
+    removeLayer: (id) => commitLayers(get().layers.filter((l) => l.id !== id)),
+
+    addPreset: () => commitPresets([...get().presets, { id: uid(), name: "", layers: [freshLayer()] }]),
+    renamePreset: (id, name) => mapPreset(id, (p) => ({ ...p, name })),
+    removePreset: (id) => commitPresets(get().presets.filter((p) => p.id !== id)),
+    addPresetLayer: (presetId) => mapPreset(presetId, (p) => ({ ...p, layers: [...p.layers, freshLayer()] })),
+    updatePresetLayer: (presetId, layerId, patch) =>
+      mapPreset(presetId, (p) => ({
+        ...p,
+        layers: p.layers.map((l) => (l.id === layerId ? { ...l, ...patch } : l)),
+      })),
+    removePresetLayer: (presetId, layerId) =>
+      mapPreset(presetId, (p) => ({ ...p, layers: p.layers.filter((l) => l.id !== layerId) })),
   };
 });

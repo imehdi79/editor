@@ -74,6 +74,15 @@ export const it: Dictionary = {
     addLayer: "Aggiungi strato",
     removeLayer: "Rimuovi strato",
     noLayers: "Nessuno strato. Aggiungine uno per iniziare il catalogo.",
+    presets: "Stratigrafie",
+    presetsIntro:
+      "Raggruppa gli strati in stratigrafie di parete riutilizzabili. Per ora sono gestite qui e non influiscono ancora sugli utenti finali.",
+    presetName: "Nome stratigrafia",
+    newPreset: "Nuova stratigrafia",
+    addPreset: "Aggiungi stratigrafia",
+    removePreset: "Rimuovi stratigrafia",
+    noPresets: "Nessuna stratigrafia. Creane una per raggruppare gli strati in un assemblaggio.",
+    total: "Totale",
   },
 
   roles: {
