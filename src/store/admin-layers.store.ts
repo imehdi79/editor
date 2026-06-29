@@ -7,8 +7,9 @@
  *  - **materials** — base building materials (name, colour, default thickness,
  *    unit). Layers and their nested details reference a material here **by id**;
  *    the material's colour drives every swatch.
- *  - **layers** — single construction layers (name, material, thickness). Each
- *    layer owns N **details** — finer sub-entries with the same shape.
+ *  - **layers** — construction layers (name, material, thickness, unit). Each
+ *    layer owns N **details** — atomic sub-layers with the same shape, each
+ *    self-describing for estimation (own material, thickness and unit).
  *  - **presets** — categories that group N layers. Each preset entry just
  *    references a layer from the catalog by id; its material/thickness come from
  *    that layer.
@@ -38,7 +39,8 @@ export interface AdminMaterial {
   unit: Unit;
 }
 
-/** A finer entry nested under a layer — a layer's shape minus its own children. */
+/** An atomic sub-layer nested under a layer — a single material at a thickness,
+ *  self-describing for estimation (carries its own unit of measure). */
 export interface AdminLayerDetail {
   id: string;
   name: string;
@@ -46,6 +48,8 @@ export interface AdminLayerDetail {
   materialId: string;
   /** Build-up thickness in cm. */
   thickness: number;
+  /** Unit of measure used to quantify + price this sub-layer (estimation layer). */
+  unit: Unit;
 }
 
 export interface AdminWallLayer {
@@ -56,7 +60,9 @@ export interface AdminWallLayer {
   materialId: string;
   /** Build-up thickness in cm (px ≈ cm at 100 ppm). */
   thickness: number;
-  /** Finer sub-entries this layer is built from (0..n). */
+  /** Unit of measure used to quantify + price this layer (estimation layer). */
+  unit: Unit;
+  /** Atomic sub-layers this layer is built from (0..n). */
   details: AdminLayerDetail[];
 }
 
@@ -85,18 +91,23 @@ const seedMaterials = (): AdminMaterial[] =>
   WALL_MATERIALS.map((m) => ({ id: uid(), name: m.name, color: m.color, thickness: m.thickness, unit: DEFAULT_UNIT }));
 
 const seedLayers = (materials: AdminMaterial[]): AdminWallLayer[] =>
-  materials.map((m) => ({ id: uid(), name: m.name, materialId: m.id, thickness: m.thickness, details: [] }));
+  materials.map((m) => ({ id: uid(), name: m.name, materialId: m.id, thickness: m.thickness, unit: m.unit, details: [] }));
 
-/** A persisted layer/detail may carry a legacy `material` *name* instead of `materialId`. */
+/** A persisted layer/detail may carry a legacy `material` *name* and predate `unit`. */
 type MaterialRef = { materialId?: string; material?: string };
-type LegacyDetail = Omit<AdminLayerDetail, "materialId"> & MaterialRef;
-type LegacyLayer = Omit<AdminWallLayer, "materialId" | "details"> & MaterialRef & { details?: LegacyDetail[] };
+type LegacyDetail = Omit<AdminLayerDetail, "materialId" | "unit"> & MaterialRef & { unit?: Unit };
+type LegacyLayer = Omit<AdminWallLayer, "materialId" | "unit" | "details"> &
+  MaterialRef & { unit?: Unit; details?: LegacyDetail[] };
 
 /** Resolve a material id, migrating legacy name refs and dropping dangling ones. */
 const resolveMaterialId = (ref: MaterialRef, materials: AdminMaterial[]): string => {
   if (ref.materialId && materials.some((m) => m.id === ref.materialId)) return ref.materialId;
   return materials.find((m) => m.name === ref.material)?.id ?? materials[0]?.id ?? "";
 };
+
+/** Resolve a unit, defaulting older records to their material's unit then area. */
+const resolveUnit = (unit: Unit | undefined, materialId: string, materials: AdminMaterial[]): Unit =>
+  unit ?? materials.find((m) => m.id === materialId)?.unit ?? DEFAULT_UNIT;
 
 /** Read a localStorage list, falling back to `fallback` on miss / parse error. */
 const loadList = <T>(key: string, fallback: () => T[]): T[] => {
@@ -119,20 +130,28 @@ const loadMaterials = (): AdminMaterial[] =>
  *  name refs and older records that predate either. Needs the materials list to
  *  map name → id. */
 const loadLayers = (materials: AdminMaterial[]): AdminWallLayer[] =>
-  loadList<LegacyLayer>(LAYERS_KEY, () => seedLayers(materials)).map((l) => ({
-    id: l.id,
-    name: l.name,
-    thickness: l.thickness,
-    materialId: resolveMaterialId(l, materials),
-    details: Array.isArray(l.details)
-      ? l.details.map((d) => ({
-          id: d.id,
-          name: d.name,
-          thickness: d.thickness,
-          materialId: resolveMaterialId(d, materials),
-        }))
-      : [],
-  }));
+  loadList<LegacyLayer>(LAYERS_KEY, () => seedLayers(materials)).map((l) => {
+    const materialId = resolveMaterialId(l, materials);
+    return {
+      id: l.id,
+      name: l.name,
+      thickness: l.thickness,
+      materialId,
+      unit: resolveUnit(l.unit, materialId, materials),
+      details: Array.isArray(l.details)
+        ? l.details.map((d) => {
+            const detailMaterialId = resolveMaterialId(d, materials);
+            return {
+              id: d.id,
+              name: d.name,
+              thickness: d.thickness,
+              materialId: detailMaterialId,
+              unit: resolveUnit(d.unit, detailMaterialId, materials),
+            };
+          })
+        : [],
+    };
+  });
 
 /** Preset entries became layer references + gained an element type — normalise. */
 const loadPresets = (): AdminWallPreset[] =>
@@ -205,11 +224,11 @@ export const useAdminLayersStore = create<AdminLayersStore>((set, get) => {
   const freshMaterial = (): AdminMaterial => ({ id: uid(), name: "", color: "#94a3b8", thickness: 5, unit: DEFAULT_UNIT });
   const freshLayer = (): AdminWallLayer => {
     const b = base();
-    return { id: uid(), name: b?.name ?? "", materialId: b?.id ?? "", thickness: b?.thickness ?? 5, details: [] };
+    return { id: uid(), name: b?.name ?? "", materialId: b?.id ?? "", thickness: b?.thickness ?? 5, unit: b?.unit ?? DEFAULT_UNIT, details: [] };
   };
   const freshDetail = (): AdminLayerDetail => {
     const b = base();
-    return { id: uid(), name: b?.name ?? "", materialId: b?.id ?? "", thickness: b?.thickness ?? 5 };
+    return { id: uid(), name: b?.name ?? "", materialId: b?.id ?? "", thickness: b?.thickness ?? 5, unit: b?.unit ?? DEFAULT_UNIT };
   };
   const freshPresetLayer = (): AdminPresetLayer => ({ id: uid(), layerId: get().layers[0]?.id ?? "" });
 

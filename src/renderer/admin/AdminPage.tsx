@@ -32,8 +32,8 @@ const NAV_ITEMS: { id: AdminSection; icon: LucideIcon; key: TranslationKey }[] =
 ];
 
 const FIELD = "h-8 rounded-md bg-panel-2 px-2 text-sm text-ink outline-none hair focus-visible:ring-1 focus-visible:ring-brand";
-/** Layer / detail row: name, material, thickness, remove. */
-const ROW = "grid grid-cols-[1fr_9rem_7rem_2.25rem] items-center gap-2";
+/** Layer / detail row: name, material, unit, thickness, remove. */
+const ROW = "grid grid-cols-[1fr_9rem_5rem_7rem_2.25rem] items-center gap-2";
 /** Materials row: name, colour, unit, thickness, remove. */
 const MATERIAL_ROW = "grid grid-cols-[1fr_3.5rem_5rem_7rem_2.25rem] items-center gap-2 px-3";
 
@@ -247,6 +247,7 @@ const LayerCard = ({ layer }: { layer: AdminWallLayer }) => {
           />
         </div>
         <MaterialSelect value={layer.materialId} onChange={(v) => updateLayer(layer.id, { materialId: v })} />
+        <UnitSelect value={layer.unit} onChange={(v) => updateLayer(layer.id, { unit: v })} />
         <ThicknessField value={layer.thickness} onChange={(v) => updateLayer(layer.id, { thickness: v })} />
         <RemoveButton title={t("admin.removeLayer")} onClick={() => removeLayer(layer.id)} />
       </div>
@@ -270,6 +271,7 @@ const LayerCard = ({ layer }: { layer: AdminWallLayer }) => {
                 value={detail.materialId}
                 onChange={(v) => updateLayerDetail(layer.id, detail.id, { materialId: v })}
               />
+              <UnitSelect value={detail.unit} onChange={(v) => updateLayerDetail(layer.id, detail.id, { unit: v })} />
               <ThicknessField
                 value={detail.thickness}
                 onChange={(v) => updateLayerDetail(layer.id, detail.id, { thickness: v })}
