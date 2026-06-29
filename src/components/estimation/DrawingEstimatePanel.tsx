@@ -18,12 +18,66 @@ import { useAdminLayersStore, type AdminWallLayer } from "@/store/admin-layers.s
 import { useAdminPricingStore } from "@/store/admin-pricing.store";
 import { useAdminQuestionsStore } from "@/store/admin-questions.store";
 import { computeSpaces } from "@/core/spaces/computeSpaces";
-import { ELEMENT_TYPES } from "@/core/estimation/elementTypes";
+import { ELEMENT_TYPES, type ElementType } from "@/core/estimation/elementTypes";
 import { estimate, type EstimateItem, type ElementMeasure } from "@/core/estimation/estimate";
 import { measureDrawing, wallMeasure, addMeasure } from "@/core/estimation/takeoff";
+import { recommendAssemblies, type AssemblyOption, type Pricing } from "@/core/estimation/recommend";
 import { EstimateResult } from "./EstimateResult";
 import { JobConditions, flagsFromAnswers } from "./JobConditions";
 import { FIELD, money, ELEMENT_TYPE_KEY } from "./labels";
+
+/**
+ * AssemblyOptions — ranked cost alternatives for one element type. Lists the
+ * type's assemblies cheapest-first with each one's all-in total and the delta vs
+ * the current pick; clicking switches the type's assembly. Hidden when the type
+ * offers fewer than two priced choices.
+ */
+const AssemblyOptions = ({
+  options,
+  measure,
+  pricing,
+  currentId,
+  onPick,
+}: {
+  options: AssemblyOption[];
+  measure: ElementMeasure;
+  pricing: Pricing;
+  currentId: string;
+  onPick: (id: string) => void;
+}) => {
+  const { t } = useTranslation();
+  const recs = recommendAssemblies(options, measure, pricing, currentId || undefined);
+  if (recs.length < 2) return null;
+
+  return (
+    <div className="space-y-0.5 rounded-md bg-panel-2 p-2">
+      <span className="text-2xs uppercase tracking-wider text-ink-3 mono">{t("admin.alternatives")}</span>
+      {recs.slice(0, 4).map((r) => (
+        <button
+          key={r.id}
+          type="button"
+          onClick={() => onPick(r.id)}
+          className={cn(
+            "flex w-full items-center gap-2 rounded px-2 py-1 text-xs transition-colors",
+            r.current ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-panel",
+          )}
+        >
+          <span className="flex-1 truncate text-start">
+            {r.name}
+            {r.cheapest && <span className="ml-1.5 text-2xs text-brand">• {t("admin.cheapest")}</span>}
+          </span>
+          <span className="mono">{money(r.cost.total)}</span>
+          {r.delta !== 0 && (
+            <span className={cn("w-12 text-end text-2xs mono", r.delta > 0 ? "text-ink-3" : "text-brand")}>
+              {r.delta > 0 ? "+" : ""}
+              {money(r.delta)}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 export const DrawingEstimatePanel = () => {
   const { t } = useTranslation();
@@ -76,6 +130,13 @@ export const DrawingEstimatePanel = () => {
   const flags = flagsFromAnswers(questions, answers);
   const result = estimate({ items, rates, rules, flags });
 
+  const pricing: Pricing = { rates, rules, flags };
+  const optionsFor = (et: ElementType): AssemblyOption[] =>
+    presets
+      .filter((p) => p.elementType === et)
+      .map((p) => ({ id: p.id, name: p.name || t("admin.newPreset"), layers: resolveLayers(p.id) }))
+      .filter((o) => o.layers.length > 0);
+
   if (drawnTypes.length === 0) {
     return <p className="rounded-lg bg-panel px-3 py-10 text-center text-sm text-ink-3 hair">{t("admin.noShapes")}</p>;
   }
@@ -84,26 +145,35 @@ export const DrawingEstimatePanel = () => {
     <div className="space-y-4">
       <div className="space-y-3 rounded-lg bg-panel p-3 hair">
         {drawnTypes.map((et) => (
-          <div key={et} className="grid grid-cols-[8rem_1fr] items-center gap-2">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-sm text-ink-2">{t(ELEMENT_TYPE_KEY[et])}</span>
-              <span className="text-2xs text-ink-3 mono">{money(measures[et].area)} m²</span>
+          <div key={et} className="space-y-1.5">
+            <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-sm text-ink-2">{t(ELEMENT_TYPE_KEY[et])}</span>
+                <span className="text-2xs text-ink-3 mono">{money(measures[et].area)} m²</span>
+              </div>
+              <select
+                value={defaults[et] ?? ""}
+                onChange={(e) => setDefaults((d) => ({ ...d, [et]: e.target.value }))}
+                aria-label={t(ELEMENT_TYPE_KEY[et])}
+                className={cn(FIELD, "w-full")}
+              >
+                <option value="">{t("admin.selectPreset")}</option>
+                {presets
+                  .filter((p) => p.elementType === et)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name || t("admin.newPreset")}
+                    </option>
+                  ))}
+              </select>
             </div>
-            <select
-              value={defaults[et] ?? ""}
-              onChange={(e) => setDefaults((d) => ({ ...d, [et]: e.target.value }))}
-              aria-label={t(ELEMENT_TYPE_KEY[et])}
-              className={cn(FIELD, "w-full")}
-            >
-              <option value="">{t("admin.selectPreset")}</option>
-              {presets
-                .filter((p) => p.elementType === et)
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name || t("admin.newPreset")}
-                  </option>
-                ))}
-            </select>
+            <AssemblyOptions
+              options={optionsFor(et)}
+              measure={measures[et]}
+              pricing={pricing}
+              currentId={defaults[et] ?? ""}
+              onPick={(id) => setDefaults((d) => ({ ...d, [et]: id }))}
+            />
           </div>
         ))}
         <JobConditions answers={answers} onChange={(qId, oId) => setAnswers((a) => ({ ...a, [qId]: oId }))} />

@@ -140,6 +140,8 @@ export const it: Dictionary = {
     currentDrawing: "Disegno corrente",
     noShapes: "Disegna pareti o locali per computare il progetto corrente.",
     pickAssemblies: "Scegli una stratigrafia per ogni tipo di elemento per computare il disegno.",
+    alternatives: "Alternative",
+    cheapest: "Più economica",
   },
 
   roles: {

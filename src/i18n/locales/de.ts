@@ -141,6 +141,8 @@ export const de: Dictionary = {
     currentDrawing: "Aktuelle Zeichnung",
     noShapes: "Zeichne Wände oder Räume, um die aktuelle Planung zu kalkulieren.",
     pickAssemblies: "Wähle je Bauteiltyp einen Aufbau, um die Zeichnung zu kalkulieren.",
+    alternatives: "Alternativen",
+    cheapest: "Günstigste",
   },
 
   roles: {

@@ -142,6 +142,8 @@ export const en = {
     currentDrawing: "Current drawing",
     noShapes: "Draw walls or rooms to estimate the current plan.",
     pickAssemblies: "Pick an assembly per element type to cost the drawing.",
+    alternatives: "Alternatives",
+    cheapest: "Cheapest",
   },
 
   roles: {

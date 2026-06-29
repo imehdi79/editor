@@ -141,6 +141,8 @@ export const fa: Dictionary = {
     currentDrawing: "نقشهٔ جاری",
     noShapes: "برای برآورد نقشهٔ جاری، دیوار یا اتاق رسم کنید.",
     pickAssemblies: "برای برآورد نقشه، برای هر نوع المان یک لایه‌بندی انتخاب کنید.",
+    alternatives: "گزینه‌های دیگر",
+    cheapest: "ارزان‌ترین",
   },
 
   roles: {
