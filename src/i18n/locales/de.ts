@@ -84,6 +84,7 @@ export const de: Dictionary = {
       "Lege die Materialien fest, aus denen Schichten und Details schöpfen — jeweils mit Farbe und Standarddicke. Werden vorerst hier verwaltet und wirken sich noch nicht auf Endbenutzer aus.",
     materialName: "Materialname",
     color: "Farbe",
+    unit: "Einheit",
     addMaterial: "Material hinzufügen",
     removeMaterial: "Material entfernen",
     noMaterials: "Noch keine Materialien. Füge eines hinzu, um die Palette zu starten.",
@@ -295,6 +296,14 @@ export const de: Dictionary = {
     drywall: "Gipskarton",
     wood: "Holz",
     tile: "Fliese",
+  },
+
+  units: {
+    m2: "m²",
+    m3: "m³",
+    ml: "Laufmeter",
+    each: "Stück",
+    kg: "kg",
   },
 
   systems: {

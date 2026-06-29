@@ -22,6 +22,7 @@
 import { create } from "zustand";
 import { uid } from "@/lib/uid";
 import { WALL_MATERIALS } from "@/core/wall-layers/wallLayers";
+import { DEFAULT_UNIT, type Unit } from "@/core/estimation/units";
 
 /** A base building material — the palette layers/details/presets draw from. */
 export interface AdminMaterial {
@@ -32,6 +33,8 @@ export interface AdminMaterial {
   color: string;
   /** Default build-up thickness in cm (px ≈ cm at 100 ppm). */
   thickness: number;
+  /** Unit of measure used to quantify + price this material (estimation layer). */
+  unit: Unit;
 }
 
 /** A finer entry nested under a layer — a layer's shape minus its own children. */
@@ -76,7 +79,7 @@ const LAYERS_KEY = "mehdify.admin.wall-layers.v1";
 const PRESETS_KEY = "mehdify.admin.wall-presets.v1";
 
 const seedMaterials = (): AdminMaterial[] =>
-  WALL_MATERIALS.map((m) => ({ id: uid(), name: m.name, color: m.color, thickness: m.thickness }));
+  WALL_MATERIALS.map((m) => ({ id: uid(), name: m.name, color: m.color, thickness: m.thickness, unit: DEFAULT_UNIT }));
 
 const seedLayers = (): AdminWallLayer[] =>
   WALL_MATERIALS.map((m) => ({ id: uid(), name: m.name, material: m.name, thickness: m.thickness, details: [] }));
@@ -93,6 +96,10 @@ const loadList = <T>(key: string, fallback: () => T[]): T[] => {
     return fallback();
   }
 };
+
+/** Materials gained a `unit` — default older persisted records to area. */
+const loadMaterials = (): AdminMaterial[] =>
+  loadList<AdminMaterial>(MATERIALS_KEY, seedMaterials).map((m) => ({ ...m, unit: m.unit ?? DEFAULT_UNIT }));
 
 /** Layers gained a `details` array — normalise older persisted records. */
 const loadLayers = (): AdminWallLayer[] =>
@@ -167,7 +174,7 @@ export const useAdminLayersStore = create<AdminLayersStore>((set, get) => {
   /** Defaults for a fresh slice: the first palette material (or built-in fallback). */
   const base = () => get().materials[0] ?? WALL_MATERIALS[0];
 
-  const freshMaterial = (): AdminMaterial => ({ id: uid(), name: "", color: "#94a3b8", thickness: 5 });
+  const freshMaterial = (): AdminMaterial => ({ id: uid(), name: "", color: "#94a3b8", thickness: 5, unit: DEFAULT_UNIT });
   const freshLayer = (): AdminWallLayer => {
     const b = base();
     return { id: uid(), name: b.name, material: b.name, thickness: b.thickness, details: [] };
@@ -179,7 +186,7 @@ export const useAdminLayersStore = create<AdminLayersStore>((set, get) => {
   const freshPresetLayer = (): AdminPresetLayer => ({ id: uid(), layerId: get().layers[0]?.id ?? "" });
 
   return {
-    materials: loadList(MATERIALS_KEY, seedMaterials),
+    materials: loadMaterials(),
     layers: loadLayers(),
     presets: loadPresets(),
 

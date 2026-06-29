@@ -17,6 +17,7 @@ import { useRouterStore } from "@/store/router.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useAdminLayersStore, type AdminWallLayer } from "@/store/admin-layers.store";
 import { materialColor } from "@/core/wall-layers/wallLayers";
+import { UNITS, type Unit } from "@/core/estimation/units";
 import type { UserRole } from "@/api/authApi";
 import { useTranslation, type TranslationKey } from "@/i18n";
 
@@ -32,8 +33,17 @@ const NAV_ITEMS: { id: AdminSection; icon: LucideIcon; key: TranslationKey }[] =
 const FIELD = "h-8 rounded-md bg-panel-2 px-2 text-sm text-ink outline-none hair focus-visible:ring-1 focus-visible:ring-brand";
 /** Layer / detail row: name, material, thickness, remove. */
 const ROW = "grid grid-cols-[1fr_9rem_7rem_2.25rem] items-center gap-2";
-/** Materials row: name, colour, thickness, remove. */
-const MATERIAL_ROW = "grid grid-cols-[1fr_3.5rem_7rem_2.25rem] items-center gap-2 px-3";
+/** Materials row: name, colour, unit, thickness, remove. */
+const MATERIAL_ROW = "grid grid-cols-[1fr_3.5rem_5rem_7rem_2.25rem] items-center gap-2 px-3";
+
+/** Unit-of-measure ids → i18n label keys. */
+const UNIT_KEY: Record<Unit, TranslationKey> = {
+  m2: "units.m2",
+  m3: "units.m3",
+  ml: "units.ml",
+  each: "units.each",
+  kg: "units.kg",
+};
 
 /** Material picker — options come from the admin materials palette; an unknown
  *  /legacy material stays selectable (WallLayersPanel pattern). */
@@ -64,6 +74,20 @@ const LayerSelect = ({ value, onChange }: { value: string; onChange: (v: string)
       {layers.map((l) => (
         <option key={l.id} value={l.id}>
           {l.name || t("admin.layerName")}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+/** Unit-of-measure picker for a material. */
+const UnitSelect = ({ value, onChange }: { value: Unit; onChange: (v: Unit) => void }) => {
+  const { t } = useTranslation();
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value as Unit)} aria-label={t("admin.unit")} className={FIELD}>
+      {UNITS.map((u) => (
+        <option key={u} value={u}>
+          {t(UNIT_KEY[u])}
         </option>
       ))}
     </select>
@@ -129,6 +153,7 @@ const AdminMaterialsSection = () => {
         <div className={cn(MATERIAL_ROW, "border-b bg-panel-2 py-2 text-2xs uppercase tracking-wider text-ink-3 mono")}>
           <span>{t("admin.materialName")}</span>
           <span>{t("admin.color")}</span>
+          <span>{t("admin.unit")}</span>
           <span className="text-right">{t("admin.thickness")}</span>
           <span />
         </div>
@@ -154,6 +179,7 @@ const AdminMaterialsSection = () => {
                 aria-label={t("admin.color")}
                 className="h-8 w-full cursor-pointer rounded-md bg-panel-2 p-0.5 hair"
               />
+              <UnitSelect value={m.unit} onChange={(v) => updateMaterial(m.id, { unit: v })} />
               <ThicknessField value={m.thickness} onChange={(v) => updateMaterial(m.id, { thickness: v })} />
               <RemoveButton
                 title={t("admin.removeMaterial")}

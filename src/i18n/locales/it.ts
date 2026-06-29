@@ -83,6 +83,7 @@ export const it: Dictionary = {
       "Definisci i materiali da cui attingono strati e dettagli — ciascuno con un colore e uno spessore predefinito. Per ora sono gestiti qui e non influiscono ancora sugli utenti finali.",
     materialName: "Nome materiale",
     color: "Colore",
+    unit: "Unità",
     addMaterial: "Aggiungi materiale",
     removeMaterial: "Rimuovi materiale",
     noMaterials: "Nessun materiale. Aggiungine uno per iniziare la palette.",
@@ -294,6 +295,14 @@ export const it: Dictionary = {
     drywall: "Cartongesso",
     wood: "Legno",
     tile: "Piastrella",
+  },
+
+  units: {
+    m2: "m²",
+    m3: "m³",
+    ml: "m lineari",
+    each: "Pezzo",
+    kg: "kg",
   },
 
   systems: {

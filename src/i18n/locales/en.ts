@@ -85,6 +85,7 @@ export const en = {
       "Define the materials that layers and details draw from — each with a colour and default thickness. Managed here for now and don't affect end users yet.",
     materialName: "Material name",
     color: "Color",
+    unit: "Unit",
     addMaterial: "Add material",
     removeMaterial: "Remove material",
     noMaterials: "No materials yet. Add one to start the palette.",
@@ -307,6 +308,15 @@ export const en = {
     drywall: "Drywall",
     wood: "Wood",
     tile: "Tile",
+  },
+
+  // Units of measure for estimation (stable ids; labels localized).
+  units: {
+    m2: "m²",
+    m3: "m³",
+    ml: "Linear m",
+    each: "Piece",
+    kg: "kg",
   },
 
   systems: {
