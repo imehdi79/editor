@@ -36,11 +36,10 @@ import { EMPTY_RATE } from "@/core/estimation/rate";
 import { UNITS, type Unit } from "@/core/estimation/units";
 import { ELEMENT_TYPES, type ElementType } from "@/core/estimation/elementTypes";
 import { RULE_TARGETS, type RuleTarget, RULE_EFFECTS, type RuleEffect } from "@/core/estimation/pricingRule";
-import { estimate, EMPTY_MEASURE, type EstimateItem, type Estimate } from "@/core/estimation/estimate";
-import { measureDrawing, buildTakeoff } from "@/core/estimation/takeoff";
-import { computeSpaces } from "@/core/spaces/computeSpaces";
-import { useFloorPlanStore } from "@/store/floor-plan.store";
-import { useEditorStore } from "@/store/editor.store";
+import { estimate, EMPTY_MEASURE, type EstimateItem } from "@/core/estimation/estimate";
+import { EstimateResult } from "@/components/estimation/EstimateResult";
+import { DrawingEstimatePanel } from "@/components/estimation/DrawingEstimatePanel";
+import { JobConditions, flagsFromAnswers } from "@/components/estimation/JobConditions";
 import type { UserRole } from "@/api/authApi";
 import { useTranslation, type TranslationKey } from "@/i18n";
 
@@ -749,114 +748,12 @@ const AdminQuestionsSection = () => {
   );
 };
 
-/** Estimate line / total row: name, unit, qty, material, labour, total. */
-const ESTIMATE_ROW = "grid grid-cols-[1fr_3rem_4rem_5rem_5rem_5rem] items-center gap-2 px-3";
-
-/** Two-decimal money/quantity formatter for the estimate readout. */
-const money = (n: number): string => n.toFixed(2);
-
-/**
- * EstimateResult — the shared costed readout for both estimate modes. Renders a
- * per-layer breakdown (grouped by element when more than one is costed), the
- * pre-rules base, the rules that fired, and the rule-adjusted grand total. An
- * item name that is an element-type id is localized; a preset name passes through.
- */
-const EstimateResult = ({ result }: { result: Estimate }) => {
-  const { t, tf } = useTranslation();
-  const materials = useAdminLayersStore((s) => s.materials);
-  const materialName = (id: string) => {
-    const m = materials.find((x) => x.id === id);
-    return m ? tf(`materials.${m.name.toLowerCase()}`, m.name) : "—";
-  };
-  const itemLabel = (name: string) =>
-    (ELEMENT_TYPES as readonly string[]).includes(name) ? t(ELEMENT_TYPE_KEY[name as ElementType]) : name;
-  const multi = result.items.length > 1;
-  const hasLines = result.items.some((i) => i.lines.length > 0);
-
-  return (
-    <div className="overflow-hidden rounded-lg bg-panel hair">
-      <div className={cn(ESTIMATE_ROW, "border-b bg-panel-2 py-2 text-2xs uppercase tracking-wider text-ink-3 mono")}>
-        <span>{t("admin.material")}</span>
-        <span>{t("admin.unit")}</span>
-        <span className="text-right">{t("admin.quantity")}</span>
-        <span className="text-right">{t("admin.materialCost")}</span>
-        <span className="text-right">{t("admin.laborCost")}</span>
-        <span className="text-right">{t("admin.total")}</span>
-      </div>
-
-      {!hasLines ? (
-        <p className="px-3 py-6 text-center text-sm text-ink-3">{t("admin.noLayers")}</p>
-      ) : (
-        result.items.map((item, ii) => (
-          <div key={ii}>
-            {multi && (
-              <div className="flex items-center justify-between border-b bg-panel-2 px-3 py-1.5 text-xs font-medium text-ink-2">
-                <span>{itemLabel(item.name)}</span>
-                <span className="mono">{money(item.subtotal.total)}</span>
-              </div>
-            )}
-            {item.lines.map((l, li) => (
-              <div key={`${ii}-${li}`} className={cn(ESTIMATE_ROW, "border-b py-2 text-sm last:border-b-0")}>
-                <span className="truncate">{l.name || materialName(l.materialId)}</span>
-                <span className="text-ink-2 mono">{t(UNIT_KEY[l.unit])}</span>
-                <span className="text-right mono">{money(l.quantity)}</span>
-                <span className="text-right mono">{money(l.cost.material)}</span>
-                <span className="text-right mono">{money(l.cost.labor)}</span>
-                <span className="text-right mono">{money(l.cost.total)}</span>
-              </div>
-            ))}
-          </div>
-        ))
-      )}
-
-      <div className={cn(ESTIMATE_ROW, "border-t bg-panel-2 py-2 text-sm")}>
-        <span className="text-ink-2">{t("admin.baseTotal")}</span>
-        <span />
-        <span />
-        <span className="text-right mono">{money(result.base.material)}</span>
-        <span className="text-right mono">{money(result.base.labor)}</span>
-        <span className="text-right mono">{money(result.base.total)}</span>
-      </div>
-
-      {result.applied.length > 0 && (
-        <div className="bg-panel-2">
-          <div className="px-3 pt-1 text-2xs uppercase tracking-wider text-ink-3 mono">{t("admin.adjustments")}</div>
-          {result.applied.map((r, i) => (
-            <div key={i} className={cn(ESTIMATE_ROW, "py-1 text-xs text-ink-2")}>
-              <span className="truncate">
-                {r.name || r.flag}{" "}
-                <span className="text-ink-3 mono">
-                  ({r.effect === "percent" ? `${r.amount}%` : money(r.amount)} · {t(RULE_TARGET_KEY[r.target])})
-                </span>
-              </span>
-              <span />
-              <span />
-              <span />
-              <span />
-              <span className="text-right text-brand mono">+{money(r.delta)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className={cn(ESTIMATE_ROW, "border-t bg-panel-2 py-2.5 text-sm font-semibold")}>
-        <span>{t("admin.grandTotal")}</span>
-        <span />
-        <span />
-        <span className="text-right mono">{money(result.total.material)}</span>
-        <span className="text-right mono">{money(result.total.labor)}</span>
-        <span className="text-right mono">{money(result.total.total)}</span>
-      </div>
-    </div>
-  );
-};
-
 /**
  * AdminEstimateSection — the consuming end of the estimation engine. Two modes:
  * a single-assembly sandbox (pick a preset + type a measure) and a drawing mode
- * that costs the live plan (measureDrawing → buildTakeoff, one assembly per
- * element type). Both answer the same job questions (raising flags) and run the
- * pure `estimate` pipeline. Read-only — it writes nothing.
+ * that costs the live plan via the shared DrawingEstimatePanel. Both answer the
+ * same job questions (raising flags) and run the pure `estimate` pipeline.
+ * Read-only — it writes nothing.
  */
 const AdminEstimateSection = () => {
   const { t } = useTranslation();
@@ -865,51 +762,20 @@ const AdminEstimateSection = () => {
   const rates = useAdminPricingStore((s) => s.rates);
   const rules = useAdminPricingStore((s) => s.rules);
   const questions = useAdminQuestionsStore((s) => s.questions);
-  const shapes = useFloorPlanStore((s) => s.shapes);
-  const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
-  const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
 
   const [mode, setMode] = useState<"assembly" | "drawing">("assembly");
   const [presetId, setPresetId] = useState("");
   const [measure, setMeasure] = useState(EMPTY_MEASURE);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [drawingAssembly, setDrawingAssembly] = useState<Record<string, string>>({});
-
-  /** Resolve a preset id to its catalog layers (dangling refs dropped). */
-  const resolveLayers = (id: string): AdminWallLayer[] => {
-    const p = presets.find((x) => x.id === id);
-    return p
-      ? p.layers.map((ref) => layers.find((l) => l.id === ref.layerId)).filter((l): l is AdminWallLayer => Boolean(l))
-      : [];
-  };
-
-  const flags = Object.entries(answers).flatMap(([qId, oId]) => {
-    const option = questions.find((q) => q.id === qId)?.options.find((o) => o.id === oId);
-    return option?.flag ? [option.flag] : [];
-  });
 
   // Assembly (sandbox) mode — one preset against a typed-in measure.
   const preset = presets.find((p) => p.id === presetId);
-  const assemblyItems: EstimateItem[] = preset
-    ? [{ name: preset.name, layers: resolveLayers(preset.id), measure }]
+  const presetLayers = preset
+    ? preset.layers.map((ref) => layers.find((l) => l.id === ref.layerId)).filter((l): l is AdminWallLayer => Boolean(l))
     : [];
-
-  // Drawing mode — measure the live plan, cost one assembly per element type.
-  const measures = measureDrawing(shapes, computeSpaces(shapes), { pixelsPerMeter, defaultWallHeight });
-  const drawnTypes = ELEMENT_TYPES.filter((et) => measures[et].count > 0);
-  const assemblies: Partial<Record<ElementType, AdminWallLayer[]>> = {};
-  for (const et of ELEMENT_TYPES) {
-    const ls = drawingAssembly[et] ? resolveLayers(drawingAssembly[et]) : [];
-    if (ls.length > 0) assemblies[et] = ls;
-  }
-  const drawingItems = buildTakeoff(measures, assemblies);
-
-  const result = estimate({
-    items: mode === "assembly" ? assemblyItems : drawingItems,
-    rates,
-    rules,
-    flags,
-  });
+  const assemblyItems: EstimateItem[] = preset ? [{ name: preset.name, layers: presetLayers, measure }] : [];
+  const flags = flagsFromAnswers(questions, answers);
+  const result = estimate({ items: assemblyItems, rates, rules, flags });
 
   return (
     <div className="max-w-2xl space-y-5">
@@ -935,10 +801,11 @@ const AdminEstimateSection = () => {
         ))}
       </div>
 
-      {/* Inputs: a preset + measure (sandbox) or per-type assemblies (drawing), then shared job conditions. */}
-      <div className="space-y-3 rounded-lg bg-panel p-3 hair">
-        {mode === "assembly" ? (
-          <>
+      {mode === "drawing" ? (
+        <DrawingEstimatePanel />
+      ) : (
+        <>
+          <div className="space-y-3 rounded-lg bg-panel p-3 hair">
             <select
               value={presetId}
               onChange={(e) => setPresetId(e.target.value)}
@@ -982,72 +849,16 @@ const AdminEstimateSection = () => {
                 />
               </label>
             </div>
-          </>
-        ) : drawnTypes.length === 0 ? (
-          <p className="py-6 text-center text-sm text-ink-3">{t("admin.noShapes")}</p>
-        ) : (
-          <div className="space-y-2">
-            {drawnTypes.map((et) => (
-              <div key={et} className="grid grid-cols-[8rem_1fr] items-center gap-2">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-sm text-ink-2">{t(ELEMENT_TYPE_KEY[et])}</span>
-                  <span className="text-2xs text-ink-3 mono">{money(measures[et].area)} m²</span>
-                </div>
-                <select
-                  value={drawingAssembly[et] ?? ""}
-                  onChange={(e) => setDrawingAssembly((a) => ({ ...a, [et]: e.target.value }))}
-                  aria-label={t(ELEMENT_TYPE_KEY[et])}
-                  className={cn(FIELD, "w-full")}
-                >
-                  <option value="">{t("admin.selectPreset")}</option>
-                  {presets
-                    .filter((p) => p.elementType === et)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name || t("admin.newPreset")}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            ))}
-          </div>
-        )}
 
-        {questions.length > 0 && (
-          <div className="space-y-2 border-t pt-3">
-            {questions.map((q) => (
-              <div key={q.id} className="grid grid-cols-[1fr_10rem] items-center gap-2">
-                <span className="truncate text-sm text-ink-2">{q.text || t("admin.questionText")}</span>
-                <select
-                  value={answers[q.id] ?? ""}
-                  onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
-                  aria-label={q.text || t("admin.questionText")}
-                  className={cn(FIELD, "w-full")}
-                >
-                  <option value="">—</option>
-                  {q.options.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label || t("admin.answerLabel")}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
+            <JobConditions answers={answers} onChange={(qId, oId) => setAnswers((a) => ({ ...a, [qId]: oId }))} />
           </div>
-        )}
-      </div>
 
-      {/* Output: shared costed readout, with a context-aware empty state. */}
-      {result.items.length > 0 ? (
-        <EstimateResult result={result} />
-      ) : (
-        <p className="rounded-lg bg-panel px-3 py-10 text-center text-sm text-ink-3 hair">
-          {mode === "assembly"
-            ? t("admin.noEstimate")
-            : drawnTypes.length === 0
-              ? t("admin.noShapes")
-              : t("admin.pickAssemblies")}
-        </p>
+          {preset ? (
+            <EstimateResult result={result} />
+          ) : (
+            <p className="rounded-lg bg-panel px-3 py-10 text-center text-sm text-ink-3 hair">{t("admin.noEstimate")}</p>
+          )}
+        </>
       )}
     </div>
   );

@@ -8,7 +8,7 @@
  */
 
 import { useState } from "react";
-import { Undo, Redo, Trash2, Layers3, SlidersHorizontal, Moon, Sun, type LucideIcon } from "lucide-react";
+import { Undo, Redo, Trash2, Layers3, Calculator, SlidersHorizontal, Moon, Sun, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToolsStore } from "@/store/tools.store";
 import { useTemporalStore, useFloorPlanStore } from "@/store/floor-plan.store";
@@ -18,6 +18,7 @@ import { useTranslation } from "@/i18n";
 import { MODE_TOOLS } from "./editorTools";
 import SystemsPanel from "../sidebar/SystemsPanel";
 import SettingsPanel from "../sidebar/SettingsPanel";
+import EstimatePanel from "../sidebar/EstimatePanel";
 
 const RailButton = ({
   active,
@@ -56,7 +57,7 @@ const RailButton = ({
 
 const ToolRail = () => {
   const { t } = useTranslation();
-  const [panel, setPanel] = useState<null | "systems" | "settings">(null);
+  const [panel, setPanel] = useState<null | "systems" | "settings" | "estimate">(null);
 
   const activeTool = useToolsStore((s) => s.tool);
   const setTool = useToolsStore((s) => s.setTool);
@@ -101,6 +102,12 @@ const ToolRail = () => {
         <div className="flex-1" />
 
         <RailButton
+          Icon={Calculator}
+          title={t("admin.estimate")}
+          active={panel === "estimate"}
+          onClick={() => setPanel(panel === "estimate" ? null : "estimate")}
+        />
+        <RailButton
           Icon={Layers3}
           title={t("systems.title")}
           active={panel === "systems"}
@@ -120,6 +127,7 @@ const ToolRail = () => {
       </nav>
 
       {/* Reuse the existing modals, driven from the rail. */}
+      <EstimatePanel hideTrigger open={panel === "estimate"} onOpenChange={(o) => setPanel(o ? "estimate" : null)} />
       <SystemsPanel hideTrigger open={panel === "systems"} onOpenChange={(o) => setPanel(o ? "systems" : null)} />
       <SettingsPanel hideTrigger open={panel === "settings"} onOpenChange={(o) => setPanel(o ? "settings" : null)} />
     </>
