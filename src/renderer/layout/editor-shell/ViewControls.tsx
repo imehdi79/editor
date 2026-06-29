@@ -58,14 +58,14 @@ const ViewControls = () => {
   return (
     <>
       {/* 2D / 3D toggle */}
-      <div className="fixed left-14 top-23 z-30 hidden rounded-md bg-panel p-0.5 shadow-soft hair md:flex">
+      <div className="fixed left-20 top-29 z-30 hidden rounded-md bg-panel p-0.5 shadow-soft hair md:flex">
         <DimButton active={viewMode === "2d"} label="2D" onClick={() => setViewMode("2d")} />
         <DimButton active={viewMode === "3d"} label="3D" onClick={() => setViewMode("3d")} />
       </div>
 
       {/* Zoom cluster — only meaningful in 2D */}
       {viewMode === "2d" && (
-        <div className="fixed right-76 top-23 z-30 hidden rounded-md bg-panel p-0.5 shadow-soft hair md:flex">
+        <div className="fixed right-76 top-29 z-30 hidden rounded-md bg-panel p-0.5 shadow-soft hair md:flex">
           <ZoomButton title={t("view.zoomIn")} onClick={() => zoomBy(1.2)}>
             <Plus size={15} />
           </ZoomButton>

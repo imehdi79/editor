@@ -9,10 +9,12 @@ import ToolRail from "./ToolRail";
 import ViewControls from "./ViewControls";
 import Inspector from "./Inspector";
 import StatusBar from "./StatusBar";
+import Rulers from "./Rulers";
 
 const EditorShell = () => (
   <>
     <ToolRail />
+    <Rulers />
     <ViewControls />
     <Inspector />
     <StatusBar />
