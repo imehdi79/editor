@@ -16,6 +16,7 @@ import { NumberField } from "@/components/ui/number-field";
 import { ASSEMBLY_PRESETS } from "@/core/wall-layers/wallAssemblyPresets";
 import { useTranslation, type TranslationKey } from "@/i18n";
 import { useI18nStore } from "@/store/i18n.store";
+import { useThemeStore, type Theme } from "@/store/theme.store";
 import { LOCALES, LOCALE_META } from "@/i18n/config";
 
 /** Measurement-reference options — value + the i18n key for its label. */
@@ -57,6 +58,11 @@ const ALIGN_OPTIONS = [
   { value: "centered", key: "align.center" },
   { value: "flush-right", key: "align.right" },
 ] satisfies { value: JunctionAlign; key: TranslationKey }[];
+
+/** A small uppercase section heading (CAD style). */
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <span className="text-2xs uppercase tracking-wider text-ink-3 mono">{children}</span>
+);
 
 /** A labelled row of mutually-exclusive option buttons. */
 const OptionRow = <T extends string>({
@@ -104,6 +110,8 @@ const SettingsPanel = ({ open: openProp, onOpenChange, hideTrigger }: SettingsPa
 
   const locale = useI18nStore((s) => s.locale);
   const setLocale = useI18nStore((s) => s.setLocale);
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
 
   const dimensionUnit = useEditorStore((s) => s.dimensionUnit);
   const setDimensionUnit = useEditorStore((s) => s.setDimensionUnit);
@@ -134,6 +142,10 @@ const SettingsPanel = ({ open: openProp, onOpenChange, hideTrigger }: SettingsPa
     opts.map((o) => ({ value: o.value, label: t(o.key) }));
 
   const languageOptions = LOCALES.map((l) => ({ value: l, label: LOCALE_META[l].label }));
+  const themeOptions: { value: Theme; label: string }[] = [
+    { value: "dark", label: t("settings.themeDark") },
+    { value: "light", label: t("settings.themeLight") },
+  ];
 
   return (
     <>
@@ -167,27 +179,30 @@ const SettingsPanel = ({ open: openProp, onOpenChange, hideTrigger }: SettingsPa
               </Button>
             </div>
 
-            {/* Language — native names, not translated */}
-            <OptionRow label={t("language.label")} value={locale} options={languageOptions} onChange={setLocale} />
+            {/* Appearance — language (native names) + color theme */}
+            <div className="flex flex-col gap-2">
+              <SectionLabel>{t("settings.appearance")}</SectionLabel>
+              <OptionRow label={t("language.label")} value={locale} options={languageOptions} onChange={setLocale} />
+              <OptionRow label={t("settings.theme")} value={theme} options={themeOptions} onChange={setTheme} />
+            </div>
 
-            {/* Unit of measurement — metre is the base unit; cm/mm derive from it */}
-            <OptionRow
-              label={t("settings.units")}
-              value={dimensionUnit}
-              options={UNIT_OPTIONS}
-              onChange={setDimensionUnit}
-            />
-
-            {/* Measurement reference */}
-            <OptionRow
-              label={t("settings.measurementReference")}
-              value={measurementReference}
-              options={labelled(REFERENCE_OPTIONS)}
-              onChange={setMeasurementReference}
-            />
-
-            {/* Dimensions display — per-segment, running chains, or both together. */}
-            <div className="border-t pt-2">
+            {/* Measurement & dimensions */}
+            <div className="flex flex-col gap-2 border-t pt-3">
+              <SectionLabel>{t("settings.measurement")}</SectionLabel>
+              {/* Unit of measurement — metre is the base unit; cm/mm derive from it */}
+              <OptionRow
+                label={t("settings.units")}
+                value={dimensionUnit}
+                options={UNIT_OPTIONS}
+                onChange={setDimensionUnit}
+              />
+              <OptionRow
+                label={t("settings.measurementReference")}
+                value={measurementReference}
+                options={labelled(REFERENCE_OPTIONS)}
+                onChange={setMeasurementReference}
+              />
+              {/* Dimensions display — per-segment, running chains, or both together. */}
               <OptionRow
                 label={t("settings.dimensions")}
                 value={dimensionDisplay}
@@ -196,9 +211,12 @@ const SettingsPanel = ({ open: openProp, onOpenChange, hideTrigger }: SettingsPa
               />
             </div>
 
-            {/* Connected-node move behavior */}
-            <div className="flex flex-col gap-1.5 border-t pt-2">
-              <span className="text-xs text-muted-foreground">{t("settings.moveConnectedNodes")}</span>
+            {/* Wall defaults */}
+            <div className="flex flex-col gap-2 border-t pt-3">
+              <SectionLabel>{t("settings.wallDefaults")}</SectionLabel>
+              {/* Connected-node move behavior */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-muted-foreground">{t("settings.moveConnectedNodes")}</span>
               <div className="flex gap-1">
                 <Button
                   size="sm"
@@ -219,8 +237,8 @@ const SettingsPanel = ({ open: openProp, onOpenChange, hideTrigger }: SettingsPa
               </div>
             </div>
 
-            {/* Wall defaults — shown/entered in the active measurement unit */}
-            <div className="flex flex-col gap-2 border-t pt-2">
+              {/* Newly-drawn wall thickness, height and composite assembly */}
+              <div className="flex flex-col gap-2">
               <NumberField
                 label={t("settings.wallThickness")}
                 value={toUnit(defaultWallThickness, dimensionUnit, ppm)}
@@ -253,10 +271,12 @@ const SettingsPanel = ({ open: openProp, onOpenChange, hideTrigger }: SettingsPa
                   ))}
                 </select>
               </label>
+              </div>
             </div>
 
             {/* Wall joins — how wall bodies resolve where they meet. */}
-            <div className="flex flex-col gap-2 border-t pt-2">
+            <div className="flex flex-col gap-2 border-t pt-3">
+              <SectionLabel>{t("settings.joins")}</SectionLabel>
               <OptionRow label={t("settings.wallJoin")} value={wallJoinStyle} options={labelled(JOIN_OPTIONS)} onChange={setWallJoinStyle} />
               <OptionRow label={t("settings.freeEnd")} value={wallEndCap} options={labelled(END_CAP_OPTIONS)} onChange={setWallEndCap} />
               <OptionRow label={t("settings.thicknessAlign")} value={junctionAlign} options={labelled(ALIGN_OPTIONS)} onChange={setJunctionAlign} />
