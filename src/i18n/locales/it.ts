@@ -113,6 +113,17 @@ export const it: Dictionary = {
     addAnswer: "Aggiungi risposta",
     removeAnswer: "Rimuovi risposta",
     noAnswers: "Nessuna risposta su questa domanda.",
+    rules: "Regole di prezzo",
+    rulesIntro:
+      "Definisci i modificatori che aggiustano il prezzo quando una domanda attiva un flag. Per ora sono gestite qui e non influiscono ancora sugli utenti finali.",
+    ruleName: "Nome regola",
+    addRule: "Aggiungi regola",
+    removeRule: "Rimuovi regola",
+    noRules: "Nessuna regola. Aggiungine una per aggiustare i prezzi in base alle condizioni di cantiere.",
+    selectFlag: "Seleziona un flag…",
+    ruleTarget: "Destinazione",
+    ruleEffect: "Effetto",
+    ruleAmount: "Importo",
   },
 
   roles: {
@@ -326,6 +337,17 @@ export const it: Dictionary = {
     floor: "Pavimento",
     ceiling: "Soffitto",
     roof: "Copertura",
+  },
+
+  ruleTargets: {
+    material: "Materiale",
+    labor: "Manodopera",
+    total: "Totale",
+  },
+
+  ruleEffects: {
+    percent: "Percentuale",
+    fixed: "Importo fisso",
   },
 
   systems: {

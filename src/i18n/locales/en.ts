@@ -115,6 +115,17 @@ export const en = {
     addAnswer: "Add answer",
     removeAnswer: "Remove answer",
     noAnswers: "No answers on this question yet.",
+    rules: "Pricing rules",
+    rulesIntro:
+      "Define modifiers that adjust the price when a question flag is raised. Managed here for now and don't affect end users yet.",
+    ruleName: "Rule name",
+    addRule: "Add rule",
+    removeRule: "Remove rule",
+    noRules: "No rules yet. Add one to adjust prices by job condition.",
+    selectFlag: "Select a flag…",
+    ruleTarget: "Target",
+    ruleEffect: "Effect",
+    ruleAmount: "Amount",
   },
 
   roles: {
@@ -341,6 +352,19 @@ export const en = {
     floor: "Floor",
     ceiling: "Ceiling",
     roof: "Roof",
+  },
+
+  // What part of a cost a pricing rule adjusts.
+  ruleTargets: {
+    material: "Material",
+    labor: "Labor",
+    total: "Total",
+  },
+
+  // How a pricing rule adjusts its target.
+  ruleEffects: {
+    percent: "Percentage",
+    fixed: "Fixed amount",
   },
 
   systems: {

@@ -114,6 +114,17 @@ export const fa: Dictionary = {
     addAnswer: "افزودن پاسخ",
     removeAnswer: "حذف پاسخ",
     noAnswers: "هنوز پاسخی برای این پرسش وجود ندارد.",
+    rules: "قواعد قیمت",
+    rulesIntro:
+      "تعدیل‌هایی را تعریف کنید که هنگام فعال‌شدن نشانه‌ای توسط یک پرسش، قیمت را تغییر می‌دهند. فعلاً اینجا مدیریت می‌شوند و هنوز روی کاربران نهایی تأثیری ندارند.",
+    ruleName: "نام قاعده",
+    addRule: "افزودن قاعده",
+    removeRule: "حذف قاعده",
+    noRules: "هنوز قاعده‌ای وجود ندارد. برای تعدیل قیمت بر اساس شرایط کارگاه یکی اضافه کنید.",
+    selectFlag: "یک نشانه انتخاب کنید…",
+    ruleTarget: "هدف",
+    ruleEffect: "اثر",
+    ruleAmount: "مقدار",
   },
 
   roles: {
@@ -327,6 +338,17 @@ export const fa: Dictionary = {
     floor: "کف",
     ceiling: "سقف",
     roof: "بام",
+  },
+
+  ruleTargets: {
+    material: "مصالح",
+    labor: "دستمزد",
+    total: "مجموع",
+  },
+
+  ruleEffects: {
+    percent: "درصد",
+    fixed: "مبلغ ثابت",
   },
 
   systems: {

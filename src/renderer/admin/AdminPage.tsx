@@ -16,6 +16,7 @@ import {
   Layers3,
   Boxes,
   ClipboardList,
+  Percent,
   Plus,
   Trash2,
   type LucideIcon,
@@ -33,13 +34,15 @@ import { materialColor } from "@/core/wall-layers/wallLayers";
 import { EMPTY_RATE } from "@/core/estimation/rate";
 import { UNITS, type Unit } from "@/core/estimation/units";
 import { ELEMENT_TYPES, type ElementType } from "@/core/estimation/elementTypes";
+import { RULE_TARGETS, type RuleTarget, RULE_EFFECTS, type RuleEffect } from "@/core/estimation/pricingRule";
 import type { UserRole } from "@/api/authApi";
 import { useTranslation, type TranslationKey } from "@/i18n";
 
-type AdminSection = "pricing" | "materials" | "layers" | "presets" | "questions";
+type AdminSection = "pricing" | "rules" | "materials" | "layers" | "presets" | "questions";
 
 const NAV_ITEMS: { id: AdminSection; icon: LucideIcon; key: TranslationKey }[] = [
   { id: "pricing", icon: DollarSign, key: "admin.pricing" },
+  { id: "rules", icon: Percent, key: "admin.rules" },
   { id: "materials", icon: Palette, key: "admin.materials" },
   { id: "layers", icon: Layers3, key: "admin.layers" },
   { id: "presets", icon: Boxes, key: "admin.presets" },
@@ -67,6 +70,19 @@ const ELEMENT_TYPE_KEY: Record<ElementType, TranslationKey> = {
   floor: "elementTypes.floor",
   ceiling: "elementTypes.ceiling",
   roof: "elementTypes.roof",
+};
+
+/** Pricing-rule target ids → i18n label keys. */
+const RULE_TARGET_KEY: Record<RuleTarget, TranslationKey> = {
+  material: "ruleTargets.material",
+  labor: "ruleTargets.labor",
+  total: "ruleTargets.total",
+};
+
+/** Pricing-rule effect ids → i18n label keys. */
+const RULE_EFFECT_KEY: Record<RuleEffect, TranslationKey> = {
+  percent: "ruleEffects.percent",
+  fixed: "ruleEffects.fixed",
 };
 
 /** Material picker — options are the materials palette, referenced by id; a
@@ -131,6 +147,62 @@ const ElementTypeSelect = ({ value, onChange }: { value: ElementType; onChange: 
       {ELEMENT_TYPES.map((et) => (
         <option key={et} value={et}>
           {t(ELEMENT_TYPE_KEY[et])}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+/** Flag picker — options are the distinct flags raised by question answers; the
+ *  current value stays selectable even if no question raises it (yet). */
+const FlagSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => {
+  const { t } = useTranslation();
+  const questions = useAdminQuestionsStore((s) => s.questions);
+  const flags = [...new Set(questions.flatMap((q) => q.options.map((o) => o.flag)).filter(Boolean))];
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={cn(FIELD, "mono")}>
+      {!flags.includes(value) && <option value={value}>{value || t("admin.selectFlag")}</option>}
+      {flags.map((f) => (
+        <option key={f} value={f}>
+          {f}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+/** Pricing-rule target picker (material / labour / total). */
+const TargetSelect = ({ value, onChange }: { value: RuleTarget; onChange: (v: RuleTarget) => void }) => {
+  const { t } = useTranslation();
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as RuleTarget)}
+      aria-label={t("admin.ruleTarget")}
+      className={FIELD}
+    >
+      {RULE_TARGETS.map((rt) => (
+        <option key={rt} value={rt}>
+          {t(RULE_TARGET_KEY[rt])}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+/** Pricing-rule effect picker (percentage / fixed amount). */
+const EffectSelect = ({ value, onChange }: { value: RuleEffect; onChange: (v: RuleEffect) => void }) => {
+  const { t } = useTranslation();
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as RuleEffect)}
+      aria-label={t("admin.ruleEffect")}
+      className={FIELD}
+    >
+      {RULE_EFFECTS.map((re) => (
+        <option key={re} value={re}>
+          {t(RULE_EFFECT_KEY[re])}
         </option>
       ))}
     </select>
@@ -516,6 +588,71 @@ const AdminPricingSection = () => {
   );
 };
 
+/** Pricing-rule row: name, flag, target, effect, amount, remove. */
+const RULE_ROW = "grid grid-cols-[1fr_9rem_7rem_8rem_5rem_2.25rem] items-center gap-2 px-3";
+
+/**
+ * AdminRulesSection — conditional price modifiers. A rule fires on a question
+ * flag and adjusts the material / labour / all-in cost by a percentage or fixed
+ * amount. Persists to admin-pricing.store; not consumed by the editor yet.
+ */
+const AdminRulesSection = () => {
+  const { t } = useTranslation();
+  const rules = useAdminPricingStore((s) => s.rules);
+  const addRule = useAdminPricingStore((s) => s.addRule);
+  const updateRule = useAdminPricingStore((s) => s.updateRule);
+  const removeRule = useAdminPricingStore((s) => s.removeRule);
+
+  return (
+    <div className="max-w-3xl">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold">{t("admin.rules")}</h2>
+          <p className="mt-1 max-w-xl text-sm text-ink-2">{t("admin.rulesIntro")}</p>
+        </div>
+        <Button size="sm" onClick={addRule} className="shrink-0">
+          <Plus className="size-4" /> {t("admin.addRule")}
+        </Button>
+      </div>
+
+      {rules.length === 0 ? (
+        <p className="mt-5 rounded-lg bg-panel px-3 py-10 text-center text-sm text-ink-3 hair">{t("admin.noRules")}</p>
+      ) : (
+        <div className="mt-5 overflow-hidden rounded-lg bg-panel hair">
+          <div className={cn(RULE_ROW, "border-b bg-panel-2 py-2 text-2xs uppercase tracking-wider text-ink-3 mono")}>
+            <span>{t("admin.ruleName")}</span>
+            <span>{t("admin.flag")}</span>
+            <span>{t("admin.ruleTarget")}</span>
+            <span>{t("admin.ruleEffect")}</span>
+            <span className="text-right">{t("admin.ruleAmount")}</span>
+            <span />
+          </div>
+          {rules.map((r) => (
+            <div key={r.id} className={cn(RULE_ROW, "border-b py-2 last:border-b-0")}>
+              <input
+                value={r.name}
+                placeholder={t("admin.ruleName")}
+                onChange={(e) => updateRule(r.id, { name: e.target.value })}
+                className={cn(FIELD, "min-w-0")}
+              />
+              <FlagSelect value={r.flag} onChange={(v) => updateRule(r.id, { flag: v })} />
+              <TargetSelect value={r.target} onChange={(v) => updateRule(r.id, { target: v })} />
+              <EffectSelect value={r.effect} onChange={(v) => updateRule(r.id, { effect: v })} />
+              <NumericInput
+                value={r.amount}
+                min={0}
+                onChange={(v) => updateRule(r.id, { amount: v })}
+                className={cn(FIELD, "w-full text-right")}
+              />
+              <RemoveButton title={t("admin.removeRule")} onClick={() => removeRule(r.id)} className="justify-self-end" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 /** Question answer row: label, flag, remove. */
 const QUESTION_ROW = "grid grid-cols-[1fr_10rem_2.25rem] items-center gap-2";
 
@@ -615,6 +752,8 @@ const AdminContent = ({ section }: { section: AdminSection }) => {
   switch (section) {
     case "pricing":
       return <AdminPricingSection />;
+    case "rules":
+      return <AdminRulesSection />;
     case "materials":
       return <AdminMaterialsSection />;
     case "layers":
