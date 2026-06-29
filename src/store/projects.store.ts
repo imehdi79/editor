@@ -67,9 +67,21 @@ interface ProjectsActions {
   loadProject: (id: string) => Promise<void>;
   /** Reset to a fresh, empty workspace (used on logout / user switch). */
   resetWorkspace: () => void;
+  /**
+   * Replace the working set from a locally-persisted snapshot and load its
+   * active document into the live canvas. Used on boot to restore unsaved edits.
+   */
+  hydrate: (snapshot: WorkspaceSnapshot) => void;
 }
 
 export type ProjectsStore = ProjectsState & ProjectsActions;
+
+/** The local working set persisted to / restored from localStorage. */
+export interface WorkspaceSnapshot {
+  projects: Record<string, Project>;
+  currentProjectId: string;
+  recentIds: string[];
+}
 
 const DEFAULT_VIEWPORT: PageViewport = { x: 0, y: 0, scale: 1 };
 const DEFAULT_SUBPAGE_NAME = "Main";
@@ -393,7 +405,34 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
     });
     loadLive(activeSubPage(project.pages[0]));
   },
+
+  hydrate: (snapshot) => {
+    const project = snapshot.projects[snapshot.currentProjectId];
+    if (!project) return; // ignore a malformed snapshot
+    set({
+      projects: snapshot.projects,
+      currentProjectId: snapshot.currentProjectId,
+      recentIds: snapshot.recentIds,
+      status: "idle",
+    });
+    const active = project.pages.find((p) => p.id === project.activePageId) ?? project.pages[0];
+    loadLive(activeSubPage(active));
+  },
 }));
+
+/**
+ * Capture the working set with the live canvas folded into its active sub-page —
+ * the shape persisted to localStorage so unsaved edits survive a reload.
+ */
+export function snapshotWorkspace(): WorkspaceSnapshot {
+  const s = useProjectsStore.getState();
+  const current = snapshotIntoCurrent(s);
+  return {
+    projects: { ...s.projects, [current.id]: current },
+    currentProjectId: s.currentProjectId,
+    recentIds: s.recentIds,
+  };
+}
 
 /**
  * Snapshot the live canvas into the current project's active page and return

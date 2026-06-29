@@ -13,6 +13,7 @@ import { authApi, type AuthUser, type UserRole } from "@/api/authApi";
 import { getToken, setToken, clearToken, subscribeToken } from "@/api/tokenStore";
 import { invalidateProjects, clearProjects } from "@/api/queryClient";
 import { useProjectsStore } from "./projects.store";
+import { loadWorkspaceFor, startWorkspacePersistence, stopWorkspacePersistence } from "./workspace-persistence";
 
 type AuthStatus = "loading" | "authed" | "anon";
 
@@ -41,6 +42,14 @@ interface AuthActions {
 const messageOf = (err: unknown): string =>
   err instanceof Error && err.message ? err.message : "Something went wrong. Please try again.";
 
+// Restore the user's locally-persisted working set (unsaved edits) and start
+// persisting going forward. Called wherever a session is established.
+const beginSession = (userId: string): void => {
+  const snapshot = loadWorkspaceFor(userId);
+  if (snapshot) useProjectsStore.getState().hydrate(snapshot);
+  startWorkspacePersistence(userId);
+};
+
 // Dedupe boot validation: React StrictMode (and remounts) invoke initialize()
 // more than once; share a single in-flight run so /auth/me + recents fire once.
 let bootRun: Promise<void> | null = null;
@@ -62,6 +71,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
       try {
         const me = await authApi.me();
         set({ user: { id: me.userId, email: me.email, role: DEFAULT_USER_ROLE }, status: "authed", error: null });
+        beginSession(me.userId);
         invalidateProjects();
       } catch {
         // me() already cleared the token on 401; ensure we land on login.
@@ -78,6 +88,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
       const { token, user } = await authApi.login(email, password);
       setToken(token);
       set({ user: { ...user, role: DEFAULT_USER_ROLE }, status: "authed", busy: false });
+      beginSession(user.id);
       invalidateProjects();
       return true;
     } catch (err) {
@@ -92,6 +103,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
       const { token, user } = await authApi.register(email, password);
       setToken(token);
       set({ user: { ...user, role: DEFAULT_USER_ROLE }, status: "authed", busy: false });
+      beginSession(user.id);
       invalidateProjects();
       return true;
     } catch (err) {
@@ -114,6 +126,7 @@ subscribeToken((token) => {
   const { status } = useAuthStore.getState();
   if (status === "loading") return; // boot/validation handles its own transition
   useAuthStore.setState({ user: null, status: "anon" });
+  stopWorkspacePersistence(); // keep the stored copy; just stop tracking this session
   useProjectsStore.getState().resetWorkspace();
   clearProjects(); // drop the previous user's cached project lists
 });
