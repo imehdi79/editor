@@ -66,6 +66,13 @@ export const en = {
     backToEditor: "Back to editor",
     pricing: "Pricing",
     pricingContent: "this is admin price content",
+    sections: "Sections",
+  },
+
+  roles: {
+    user: "User",
+    admin: "Admin",
+    superAdmin: "Super-admin",
   },
 
   pages: {

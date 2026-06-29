@@ -65,6 +65,13 @@ export const fa: Dictionary = {
     backToEditor: "بازگشت به ویرایشگر",
     pricing: "قیمت‌گذاری",
     pricingContent: "این محتوای قیمت‌گذاری مدیریت است",
+    sections: "بخش‌ها",
+  },
+
+  roles: {
+    user: "کاربر",
+    admin: "مدیر",
+    superAdmin: "ابرمدیر",
   },
 
   pages: {

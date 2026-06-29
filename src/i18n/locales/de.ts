@@ -65,6 +65,13 @@ export const de: Dictionary = {
     backToEditor: "Zurück zum Editor",
     pricing: "Preisliste",
     pricingContent: "Dies ist der Admin-Preisinhalt",
+    sections: "Bereiche",
+  },
+
+  roles: {
+    user: "Benutzer",
+    admin: "Administrator",
+    superAdmin: "Super-Administrator",
   },
 
   pages: {
