@@ -44,7 +44,7 @@ const Inspector = () => {
   };
 
   return (
-    <aside className="fixed inset-y-12 bottom-7 right-0 z-30 hidden w-72 flex-col overflow-y-auto bg-panel scroll-thin hair md:flex">
+    <aside className="fixed bottom-7 right-0 top-21 z-30 hidden w-72 flex-col overflow-y-auto bg-panel scroll-thin hair md:flex">
       {!selected ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <MousePointerSquareDashed size={28} strokeWidth={1.4} className="text-ink-3" />

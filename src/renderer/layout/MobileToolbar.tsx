@@ -93,7 +93,7 @@ const MobileToolbar = () => {
 
             {/* Actions */}
             <div>
-              <span className="px-1 text-xs text-muted-foreground">{t("tools.actions")}</span>
+              <span className="px-1 text-2xs uppercase tracking-wider text-ink-3 mono">{t("tools.actions")}</span>
               <div className="mt-1 grid grid-cols-3 gap-2">
                 <Button variant="outline" disabled={!canUndo} onClick={() => undo()} className="h-12 flex-col gap-1">
                   <Undo className="size-5" />
@@ -117,7 +117,7 @@ const MobileToolbar = () => {
 
             {/* View — systems / settings open their own modals */}
             <div>
-              <span className="px-1 text-xs text-muted-foreground">{t("tools.view")}</span>
+              <span className="px-1 text-2xs uppercase tracking-wider text-ink-3 mono">{t("tools.view")}</span>
               <div className="mt-1 flex flex-col gap-1">
                 <Button
                   variant="ghost"

@@ -81,7 +81,7 @@ const ToolRail = () => {
 
   return (
     <>
-      <nav className="fixed inset-y-12 bottom-7 left-0 z-30 hidden w-12 flex-col items-center gap-1 bg-panel py-2 hair md:flex">
+      <nav className="fixed bottom-7 left-0 top-21 z-30 hidden w-12 flex-col items-center gap-1 bg-panel py-2 hair md:flex">
         {MODE_TOOLS.map(({ tool, Icon, labelKey }) => (
           <RailButton
             key={tool}
