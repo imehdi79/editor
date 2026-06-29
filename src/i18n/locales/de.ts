@@ -64,7 +64,8 @@ export const de: Dictionary = {
     title: "Administrationsbereich",
     backToEditor: "Zurück zum Editor",
     pricing: "Preisliste",
-    pricingContent: "Dies ist der Admin-Preisinhalt",
+    pricingIntro:
+      "Lege die Material- und Lohnkosten je Einheit für jedes Material fest. Werden vorerst hier verwaltet und wirken sich noch nicht auf Endbenutzer aus.",
     sections: "Bereiche",
     layers: "Schichten",
     layersIntro:
@@ -98,6 +99,8 @@ export const de: Dictionary = {
     addPreset: "Wandaufbau hinzufügen",
     removePreset: "Wandaufbau entfernen",
     noPresets: "Noch keine Wandaufbauten. Erstelle einen, um Schichten zu einem Aufbau zu bündeln.",
+    materialCost: "Materialkosten",
+    laborCost: "Lohnkosten",
     total: "Gesamt",
   },
 

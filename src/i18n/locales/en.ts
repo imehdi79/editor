@@ -65,7 +65,8 @@ export const en = {
     title: "Admin panel",
     backToEditor: "Back to editor",
     pricing: "Pricing",
-    pricingContent: "this is admin price content",
+    pricingIntro:
+      "Set the per-unit material and labour cost for each material. Managed here for now and don't affect end users yet.",
     sections: "Sections",
     layers: "Layers",
     layersIntro:
@@ -99,6 +100,8 @@ export const en = {
     addPreset: "Add preset",
     removePreset: "Remove preset",
     noPresets: "No presets yet. Create one to bundle layers into an assembly.",
+    materialCost: "Material cost",
+    laborCost: "Labor cost",
     total: "Total",
   },
 

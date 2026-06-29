@@ -16,7 +16,9 @@ import { Button } from "@/components/ui/button";
 import { useRouterStore } from "@/store/router.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useAdminLayersStore, type AdminWallLayer } from "@/store/admin-layers.store";
+import { useAdminPricingStore } from "@/store/admin-pricing.store";
 import { materialColor } from "@/core/wall-layers/wallLayers";
+import { EMPTY_RATE } from "@/core/estimation/rate";
 import { UNITS, type Unit } from "@/core/estimation/units";
 import { ELEMENT_TYPES, type ElementType } from "@/core/estimation/elementTypes";
 import type { UserRole } from "@/api/authApi";
@@ -435,6 +437,72 @@ const AdminPresetsSection = () => {
   );
 };
 
+/** Pricing row: material, unit, material cost, labour cost, total. */
+const PRICING_ROW = "grid grid-cols-[1fr_4rem_7rem_7rem_5.5rem] items-center gap-2 px-3";
+
+/**
+ * AdminPricingSection — per-material unit rates. Reuses the materials palette as
+ * the priced items: each row sets a material + labour cost per the material's
+ * unit, summed into an all-in total. Persists to admin-pricing.store; not
+ * consumed by the editor yet.
+ */
+const AdminPricingSection = () => {
+  const { t, tf } = useTranslation();
+  const materials = useAdminLayersStore((s) => s.materials);
+  const rates = useAdminPricingStore((s) => s.rates);
+  const setRate = useAdminPricingStore((s) => s.setRate);
+
+  return (
+    <div className="max-w-2xl">
+      <div>
+        <h2 className="text-base font-semibold">{t("admin.pricing")}</h2>
+        <p className="mt-1 max-w-xl text-sm text-ink-2">{t("admin.pricingIntro")}</p>
+      </div>
+
+      <div className="mt-5 overflow-hidden rounded-lg bg-panel hair">
+        <div className={cn(PRICING_ROW, "border-b bg-panel-2 py-2 text-2xs uppercase tracking-wider text-ink-3 mono")}>
+          <span>{t("admin.materialName")}</span>
+          <span>{t("admin.unit")}</span>
+          <span className="text-right">{t("admin.materialCost")}</span>
+          <span className="text-right">{t("admin.laborCost")}</span>
+          <span className="text-right">{t("admin.total")}</span>
+        </div>
+
+        {materials.length === 0 ? (
+          <p className="px-3 py-10 text-center text-sm text-ink-3">{t("admin.noMaterials")}</p>
+        ) : (
+          materials.map((m) => {
+            const rate = rates[m.id] ?? EMPTY_RATE;
+            const total = +(rate.material + rate.labor).toFixed(2);
+            return (
+              <div key={m.id} className={cn(PRICING_ROW, "border-b py-2 last:border-b-0")}>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Swatch color={m.color} />
+                  <span className="truncate text-sm">{tf(`materials.${m.name.toLowerCase()}`, m.name) || "—"}</span>
+                </div>
+                <span className="text-sm text-ink-2 mono">{t(UNIT_KEY[m.unit])}</span>
+                <NumericInput
+                  value={rate.material}
+                  min={0}
+                  onChange={(v) => setRate(m.id, { material: v })}
+                  className={cn(FIELD, "w-full text-right")}
+                />
+                <NumericInput
+                  value={rate.labor}
+                  min={0}
+                  onChange={(v) => setRate(m.id, { labor: v })}
+                  className={cn(FIELD, "w-full text-right")}
+                />
+                <span className="text-right text-sm mono">{total}</span>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+};
+
 const ROLE_KEY: Record<UserRole, TranslationKey> = {
   user: "roles.user",
   admin: "roles.admin",
@@ -442,15 +510,9 @@ const ROLE_KEY: Record<UserRole, TranslationKey> = {
 };
 
 const AdminContent = ({ section }: { section: AdminSection }) => {
-  const { t } = useTranslation();
   switch (section) {
     case "pricing":
-      return (
-        <div className="max-w-2xl rounded-lg bg-panel p-5 hair">
-          <h2 className="text-base font-semibold">{t("admin.pricing")}</h2>
-          <p className="mt-2 text-sm text-ink-2">{t("admin.pricingContent")}</p>
-        </div>
-      );
+      return <AdminPricingSection />;
     case "materials":
       return <AdminMaterialsSection />;
     case "layers":

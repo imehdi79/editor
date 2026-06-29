@@ -64,7 +64,8 @@ export const fa: Dictionary = {
     title: "پنل مدیریت",
     backToEditor: "بازگشت به ویرایشگر",
     pricing: "قیمت‌گذاری",
-    pricingContent: "این محتوای قیمت‌گذاری مدیریت است",
+    pricingIntro:
+      "هزینهٔ واحدِ مصالح و دستمزد را برای هر مصالح تعیین کنید. فعلاً اینجا مدیریت می‌شوند و هنوز روی کاربران نهایی تأثیری ندارند.",
     sections: "بخش‌ها",
     layers: "لایه‌ها",
     layersIntro:
@@ -98,6 +99,8 @@ export const fa: Dictionary = {
     addPreset: "افزودن لایه‌بندی",
     removePreset: "حذف لایه‌بندی",
     noPresets: "هنوز لایه‌بندی‌ای وجود ندارد. برای گروه‌بندی لایه‌ها در یک مجموعه، یکی بسازید.",
+    materialCost: "هزینهٔ مصالح",
+    laborCost: "هزینهٔ دستمزد",
     total: "مجموع",
   },
 

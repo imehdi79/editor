@@ -63,7 +63,8 @@ export const it: Dictionary = {
     title: "Pannello di amministrazione",
     backToEditor: "Torna all'editor",
     pricing: "Listino prezzi",
-    pricingContent: "questo è il contenuto prezzi dell'amministratore",
+    pricingIntro:
+      "Imposta il costo unitario di materiale e manodopera per ciascun materiale. Per ora sono gestiti qui e non influiscono ancora sugli utenti finali.",
     sections: "Sezioni",
     layers: "Strati",
     layersIntro:
@@ -97,6 +98,8 @@ export const it: Dictionary = {
     addPreset: "Aggiungi stratigrafia",
     removePreset: "Rimuovi stratigrafia",
     noPresets: "Nessuna stratigrafia. Creane una per raggruppare gli strati in un assemblaggio.",
+    materialCost: "Costo materiale",
+    laborCost: "Costo manodopera",
     total: "Totale",
   },
 
