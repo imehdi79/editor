@@ -280,6 +280,8 @@ export const it: Dictionary = {
     phase: "Fase",
     new: "Nuovo",
     existing: "Esistente",
+    costAssembly: "Stratigrafia di computo",
+    noAssembly: "Nessuna",
   },
 
   wallSides: {

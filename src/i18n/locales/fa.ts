@@ -281,6 +281,8 @@ export const fa: Dictionary = {
     phase: "فاز اجرا",
     new: "نوساز",
     existing: "موجود",
+    costAssembly: "مجموعهٔ برآورد",
+    noAssembly: "هیچ‌کدام",
   },
 
   wallSides: {

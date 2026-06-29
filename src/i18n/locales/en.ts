@@ -287,6 +287,8 @@ export const en = {
     phase: "Phase",
     new: "New",
     existing: "Existing",
+    costAssembly: "Cost assembly",
+    noAssembly: "None",
   },
 
   // Wall faces — the two build-up sides of a wall.

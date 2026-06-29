@@ -19,7 +19,7 @@
  * engine never reaches into a store.
  */
 
-import type { Shape } from "@/core/drawing-engine/drawing.types";
+import type { Shape, WallShape, ArcWallShape } from "@/core/drawing-engine/drawing.types";
 import type { Space } from "@/core/spaces/computeSpaces";
 import { layeredWallLength } from "@/core/wall-layers/buildWallLayerRows";
 import { ELEMENT_TYPES, type ElementType } from "./elementTypes";
@@ -33,6 +33,25 @@ export interface MeasureOptions {
   /** Count pre-existing (retained) walls as new construction? Default false. */
   includeExisting?: boolean;
 }
+
+/** Sum two measures component-wise (the wall-grouping accumulator). */
+export const addMeasure = (a: ElementMeasure, b: ElementMeasure): ElementMeasure => ({
+  area: a.area + b.area,
+  length: a.length + b.length,
+  count: a.count + b.count,
+});
+
+/**
+ * Measure a single wall: its construction length × height as area, the length as
+ * running metres, and a count of 1. The unit a layer is priced in then selects
+ * which of these it bills against (see {@link quantityForUnit}).
+ */
+export const wallMeasure = (wall: WallShape | ArcWallShape, opts: MeasureOptions): ElementMeasure => {
+  const ppm = opts.pixelsPerMeter || 1;
+  const lengthM = layeredWallLength(wall) / ppm;
+  const heightM = (wall.height ?? opts.defaultWallHeight) / 100; // height stored in cm
+  return { area: lengthM * heightM, length: lengthM, count: 1 };
+};
 
 /**
  * Aggregate the drawing's geometry into one {@link ElementMeasure} per element
@@ -54,11 +73,7 @@ export const measureDrawing = (
   for (const s of Object.values(shapes)) {
     if (s.type !== "wall" && s.type !== "arc-wall") continue;
     if (s.existing && !opts.includeExisting) continue;
-    const lengthM = layeredWallLength(s) / ppm;
-    const heightM = (s.height ?? opts.defaultWallHeight) / 100; // height stored in cm
-    out.wall.area += lengthM * heightM;
-    out.wall.length += lengthM;
-    out.wall.count += 1;
+    out.wall = addMeasure(out.wall, wallMeasure(s, opts));
   }
 
   for (const sp of spaces) {

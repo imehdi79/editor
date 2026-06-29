@@ -113,6 +113,13 @@ export interface WallShape extends BaseShape {
    * quantities are not counted as new construction. Absent/false = new build.
    */
   existing?: boolean;
+  /**
+   * Estimation assembly: id of the admin preset (the shared assembly library)
+   * this wall is costed with. Resolved against the admin presets catalog; absent
+   * → the global per-type fallback chosen in the estimate panel. Pricing-only and
+   * independent of the visual `assembly`/`layers` composite.
+   */
+  assemblyId?: string;
 }
 
 /**
@@ -147,6 +154,8 @@ export interface ArcWallShape extends BaseShape {
   joinP2?: JoinStyle;
   /** Renovation phase — pre-existing construction (see WallShape.existing). */
   existing?: boolean;
+  /** Estimation assembly id (see WallShape.assemblyId). */
+  assemblyId?: string;
 }
 
 export interface LineShape extends BaseShape {

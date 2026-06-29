@@ -281,6 +281,8 @@ export const de: Dictionary = {
     phase: "Bauphase",
     new: "Neubau",
     existing: "Bestand",
+    costAssembly: "Kalkulationsaufbau",
+    noAssembly: "Keiner",
   },
 
   wallSides: {

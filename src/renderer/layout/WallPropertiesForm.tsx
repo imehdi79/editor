@@ -11,6 +11,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useEditorStore } from "@/store/editor.store";
+import { useAdminLayersStore } from "@/store/admin-layers.store";
 import { toPx, toUnit, cmToPx, pxToCm, stepFor, formatDimension } from "@/core/dimensions/dimensionUnits";
 import { absoluteAngleDeg } from "@/core/wall-utils/wallAngles";
 import { arcFromChordBulge } from "@/core/arc/arcGeometry";
@@ -34,6 +35,8 @@ const WallPropertiesForm = ({ wall }: { wall: WallShape | ArcWallShape }) => {
   const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
   const unit = useEditorStore((s) => s.dimensionUnit);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
+  const presets = useAdminLayersStore((s) => s.presets);
+  const wallPresets = presets.filter((p) => p.elementType === "wall");
   const setWallThickness = useSetWallThickness();
 
   // Tab resets to "properties" on a new selection because callers mount this
@@ -178,6 +181,23 @@ const WallPropertiesForm = ({ wall }: { wall: WallShape | ArcWallShape }) => {
                   </div>
                 );
               })()}
+          </div>
+
+          {/* Cost assembly — the admin pricing preset this wall is estimated with */}
+          <div className="flex flex-col gap-1.5 border-t pt-3">
+            <span className="text-[11px] text-muted-foreground">{t("wall.costAssembly")}</span>
+            <select
+              value={wall.assemblyId ?? ""}
+              onChange={(e) => updateShape(wall.id, { assemblyId: e.target.value || undefined })}
+              className="h-8 rounded-md border bg-background px-2 text-sm text-foreground"
+            >
+              <option value="">{t("wall.noAssembly")}</option>
+              {wallPresets.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name || t("admin.newPreset")}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Renovation phase — new build vs pre-existing (retained) wall */}
