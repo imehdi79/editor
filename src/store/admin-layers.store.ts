@@ -4,9 +4,9 @@
  * those layers compose into.
  *
  * Three linked catalogs:
- *  - **materials** — base building materials (name, colour, default thickness).
- *    Layers, their nested details, and preset layers all pick a material from
- *    here by name; the material's colour drives every swatch.
+ *  - **materials** — base building materials (name, colour, default thickness,
+ *    unit). Layers and their nested details reference a material here **by id**;
+ *    the material's colour drives every swatch.
  *  - **layers** — single construction layers (name, material, thickness). Each
  *    layer owns N **details** — finer sub-entries with the same shape.
  *  - **presets** — categories that group N layers. Each preset entry just
@@ -42,8 +42,8 @@ export interface AdminMaterial {
 export interface AdminLayerDetail {
   id: string;
   name: string;
-  /** Material name — resolved against the materials palette. */
-  material: string;
+  /** Material id — resolved against the materials palette. */
+  materialId: string;
   /** Build-up thickness in cm. */
   thickness: number;
 }
@@ -52,8 +52,8 @@ export interface AdminWallLayer {
   id: string;
   /** Display name (e.g. "Plaster 15"). */
   name: string;
-  /** Material name — drives the swatch colour via the materials palette. */
-  material: string;
+  /** Material id — drives the swatch colour via the materials palette. */
+  materialId: string;
   /** Build-up thickness in cm (px ≈ cm at 100 ppm). */
   thickness: number;
   /** Finer sub-entries this layer is built from (0..n). */
@@ -84,8 +84,19 @@ const PRESETS_KEY = "mehdify.admin.wall-presets.v1";
 const seedMaterials = (): AdminMaterial[] =>
   WALL_MATERIALS.map((m) => ({ id: uid(), name: m.name, color: m.color, thickness: m.thickness, unit: DEFAULT_UNIT }));
 
-const seedLayers = (): AdminWallLayer[] =>
-  WALL_MATERIALS.map((m) => ({ id: uid(), name: m.name, material: m.name, thickness: m.thickness, details: [] }));
+const seedLayers = (materials: AdminMaterial[]): AdminWallLayer[] =>
+  materials.map((m) => ({ id: uid(), name: m.name, materialId: m.id, thickness: m.thickness, details: [] }));
+
+/** A persisted layer/detail may carry a legacy `material` *name* instead of `materialId`. */
+type MaterialRef = { materialId?: string; material?: string };
+type LegacyDetail = Omit<AdminLayerDetail, "materialId"> & MaterialRef;
+type LegacyLayer = Omit<AdminWallLayer, "materialId" | "details"> & MaterialRef & { details?: LegacyDetail[] };
+
+/** Resolve a material id, migrating legacy name refs and dropping dangling ones. */
+const resolveMaterialId = (ref: MaterialRef, materials: AdminMaterial[]): string => {
+  if (ref.materialId && materials.some((m) => m.id === ref.materialId)) return ref.materialId;
+  return materials.find((m) => m.name === ref.material)?.id ?? materials[0]?.id ?? "";
+};
 
 /** Read a localStorage list, falling back to `fallback` on miss / parse error. */
 const loadList = <T>(key: string, fallback: () => T[]): T[] => {
@@ -104,11 +115,23 @@ const loadList = <T>(key: string, fallback: () => T[]): T[] => {
 const loadMaterials = (): AdminMaterial[] =>
   loadList<AdminMaterial>(MATERIALS_KEY, seedMaterials).map((m) => ({ ...m, unit: m.unit ?? DEFAULT_UNIT }));
 
-/** Layers gained a `details` array — normalise older persisted records. */
-const loadLayers = (): AdminWallLayer[] =>
-  loadList<AdminWallLayer>(LAYERS_KEY, seedLayers).map((l) => ({
-    ...l,
-    details: Array.isArray(l.details) ? l.details : [],
+/** Layers reference materials by id + own a `details` array — migrate legacy
+ *  name refs and older records that predate either. Needs the materials list to
+ *  map name → id. */
+const loadLayers = (materials: AdminMaterial[]): AdminWallLayer[] =>
+  loadList<LegacyLayer>(LAYERS_KEY, () => seedLayers(materials)).map((l) => ({
+    id: l.id,
+    name: l.name,
+    thickness: l.thickness,
+    materialId: resolveMaterialId(l, materials),
+    details: Array.isArray(l.details)
+      ? l.details.map((d) => ({
+          id: d.id,
+          name: d.name,
+          thickness: d.thickness,
+          materialId: resolveMaterialId(d, materials),
+        }))
+      : [],
   }));
 
 /** Preset entries became layer references + gained an element type — normalise. */
@@ -176,23 +199,26 @@ export const useAdminLayersStore = create<AdminLayersStore>((set, get) => {
   const mapPreset = (id: string, fn: (p: AdminWallPreset) => AdminWallPreset) =>
     commitPresets(get().presets.map((p) => (p.id === id ? fn(p) : p)));
 
-  /** Defaults for a fresh slice: the first palette material (or built-in fallback). */
-  const base = () => get().materials[0] ?? WALL_MATERIALS[0];
+  /** Defaults for a fresh slice: the first palette material (undefined if none). */
+  const base = (): AdminMaterial | undefined => get().materials[0];
 
   const freshMaterial = (): AdminMaterial => ({ id: uid(), name: "", color: "#94a3b8", thickness: 5, unit: DEFAULT_UNIT });
   const freshLayer = (): AdminWallLayer => {
     const b = base();
-    return { id: uid(), name: b.name, material: b.name, thickness: b.thickness, details: [] };
+    return { id: uid(), name: b?.name ?? "", materialId: b?.id ?? "", thickness: b?.thickness ?? 5, details: [] };
   };
   const freshDetail = (): AdminLayerDetail => {
     const b = base();
-    return { id: uid(), name: b.name, material: b.name, thickness: b.thickness };
+    return { id: uid(), name: b?.name ?? "", materialId: b?.id ?? "", thickness: b?.thickness ?? 5 };
   };
   const freshPresetLayer = (): AdminPresetLayer => ({ id: uid(), layerId: get().layers[0]?.id ?? "" });
 
+  // Materials load first; layers migrate their (legacy name) refs against them.
+  const initialMaterials = loadMaterials();
+
   return {
-    materials: loadMaterials(),
-    layers: loadLayers(),
+    materials: initialMaterials,
+    layers: loadLayers(initialMaterials),
     presets: loadPresets(),
 
     addMaterial: () => commitMaterials([...get().materials, freshMaterial()]),

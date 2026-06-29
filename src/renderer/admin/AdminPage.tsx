@@ -54,17 +54,17 @@ const ELEMENT_TYPE_KEY: Record<ElementType, TranslationKey> = {
   roof: "elementTypes.roof",
 };
 
-/** Material picker — options come from the admin materials palette; an unknown
- *  /legacy material stays selectable (WallLayersPanel pattern). */
+/** Material picker — options are the materials palette, referenced by id; a
+ *  dangling id (its material was deleted) stays selectable as a placeholder. */
 const MaterialSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => {
   const { tf } = useTranslation();
   const materials = useAdminLayersStore((s) => s.materials);
   const label = (name: string) => tf(`materials.${name.toLowerCase()}`, name);
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className={FIELD}>
-      {!materials.some((m) => m.name === value) && <option value={value}>{label(value)}</option>}
+      {!materials.some((m) => m.id === value) && <option value={value}>—</option>}
       {materials.map((m) => (
-        <option key={m.id} value={m.name}>
+        <option key={m.id} value={m.id}>
           {label(m.name)}
         </option>
       ))}
@@ -145,11 +145,11 @@ const RemoveButton = ({ title, onClick, className }: { title: string; onClick: (
   </button>
 );
 
-/** Colour chip — resolved from the materials palette by name, or an explicit
+/** Colour chip — resolved from the materials palette by id, or an explicit
  *  `color` override (used by the materials list itself). */
-const Swatch = ({ material, color }: { material?: string; color?: string }) => {
+const Swatch = ({ materialId, color }: { materialId?: string; color?: string }) => {
   const materials = useAdminLayersStore((s) => s.materials);
-  const bg = color ?? materials.find((m) => m.name === material)?.color ?? materialColor(material ?? "");
+  const bg = color ?? materials.find((m) => m.id === materialId)?.color ?? materialColor("");
   return <span className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: bg }} />;
 };
 
@@ -238,7 +238,7 @@ const LayerCard = ({ layer }: { layer: AdminWallLayer }) => {
     <div className="overflow-hidden rounded-lg bg-panel hair">
       <div className={cn(ROW, "border-b bg-panel-2 px-3 py-2")}>
         <div className="flex min-w-0 items-center gap-2">
-          <Swatch material={layer.material} />
+          <Swatch materialId={layer.materialId} />
           <input
             value={layer.name}
             placeholder={t("admin.layerName")}
@@ -246,7 +246,7 @@ const LayerCard = ({ layer }: { layer: AdminWallLayer }) => {
             className={cn(FIELD, "min-w-0 flex-1 bg-panel font-medium")}
           />
         </div>
-        <MaterialSelect value={layer.material} onChange={(v) => updateLayer(layer.id, { material: v })} />
+        <MaterialSelect value={layer.materialId} onChange={(v) => updateLayer(layer.id, { materialId: v })} />
         <ThicknessField value={layer.thickness} onChange={(v) => updateLayer(layer.id, { thickness: v })} />
         <RemoveButton title={t("admin.removeLayer")} onClick={() => removeLayer(layer.id)} />
       </div>
@@ -258,7 +258,7 @@ const LayerCard = ({ layer }: { layer: AdminWallLayer }) => {
           layer.details.map((detail) => (
             <div key={detail.id} className={ROW}>
               <div className="flex min-w-0 items-center gap-2">
-                <Swatch material={detail.material} />
+                <Swatch materialId={detail.materialId} />
                 <input
                   value={detail.name}
                   placeholder={t("admin.detailName")}
@@ -267,8 +267,8 @@ const LayerCard = ({ layer }: { layer: AdminWallLayer }) => {
                 />
               </div>
               <MaterialSelect
-                value={detail.material}
-                onChange={(v) => updateLayerDetail(layer.id, detail.id, { material: v })}
+                value={detail.materialId}
+                onChange={(v) => updateLayerDetail(layer.id, detail.id, { materialId: v })}
               />
               <ThicknessField
                 value={detail.thickness}
@@ -396,7 +396,7 @@ const AdminPresetsSection = () => {
                       return (
                         <div key={ref.id} className={PRESET_ROW}>
                           <div className="flex min-w-0 items-center gap-2">
-                            <Swatch material={layer?.material} />
+                            <Swatch materialId={layer?.materialId} />
                             <LayerSelect
                               value={ref.layerId}
                               onChange={(v) => updatePresetLayer(preset.id, ref.id, { layerId: v })}
