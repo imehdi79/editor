@@ -20,3 +20,22 @@ export type RuleEffect = (typeof RULE_EFFECTS)[number];
 
 export const DEFAULT_RULE_TARGET: RuleTarget = "total";
 export const DEFAULT_RULE_EFFECT: RuleEffect = "percent";
+
+/**
+ * The pure firing contract of a pricing rule — the fields the estimator needs to
+ * decide whether a rule applies and by how much. The admin store extends this
+ * with its own `id`; everything authored here is plain user data (a free-text
+ * `name`, a flag id), never an i18n key, so it lives safely in core.
+ */
+export interface PricingRule {
+  /** Human label, e.g. "Difficult access surcharge". */
+  name: string;
+  /** Flag that triggers the rule (matches a question answer's flag); "" = never fires. */
+  flag: string;
+  /** Cost target the rule adjusts. */
+  target: RuleTarget;
+  /** How the adjustment is applied. */
+  effect: RuleEffect;
+  /** A percentage when effect = "percent", else a fixed cost added once. */
+  amount: number;
+}

@@ -15,25 +15,15 @@ import { create } from "zustand";
 import { uid } from "@/lib/uid";
 import { type Rate, EMPTY_RATE } from "@/core/estimation/rate";
 import {
-  type RuleTarget,
-  type RuleEffect,
+  type PricingRule,
   DEFAULT_RULE_TARGET,
   DEFAULT_RULE_EFFECT,
 } from "@/core/estimation/pricingRule";
 
-/** A conditional price modifier triggered by a question flag. */
-export interface AdminPricingRule {
+/** A conditional price modifier triggered by a question flag — the pure
+ *  {@link PricingRule} contract plus a persisted id. */
+export interface AdminPricingRule extends PricingRule {
   id: string;
-  /** Human label, e.g. "Difficult access surcharge". */
-  name: string;
-  /** Flag that triggers the rule (matches a question answer's flag); "" = none. */
-  flag: string;
-  /** Cost target the rule adjusts. */
-  target: RuleTarget;
-  /** How the adjustment is applied. */
-  effect: RuleEffect;
-  /** Amount: a percentage when effect = "percent", else a fixed cost. */
-  amount: number;
 }
 
 const RATES_KEY = "mehdify.admin.rates.v1";
