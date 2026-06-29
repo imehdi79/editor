@@ -136,6 +136,10 @@ export const it: Dictionary = {
     baseTotal: "Totale base",
     grandTotal: "Totale computo",
     noEstimate: "Scegli una stratigrafia per vedere il computo.",
+    singleAssembly: "Stratigrafia singola",
+    currentDrawing: "Disegno corrente",
+    noShapes: "Disegna pareti o locali per computare il progetto corrente.",
+    pickAssemblies: "Scegli una stratigrafia per ogni tipo di elemento per computare il disegno.",
   },
 
   roles: {

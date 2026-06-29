@@ -137,6 +137,10 @@ export const de: Dictionary = {
     baseTotal: "Grundsumme",
     grandTotal: "Gesamtkalkulation",
     noEstimate: "Wähle einen Aufbau, um die Kalkulation zu sehen.",
+    singleAssembly: "Einzelaufbau",
+    currentDrawing: "Aktuelle Zeichnung",
+    noShapes: "Zeichne Wände oder Räume, um die aktuelle Planung zu kalkulieren.",
+    pickAssemblies: "Wähle je Bauteiltyp einen Aufbau, um die Zeichnung zu kalkulieren.",
   },
 
   roles: {

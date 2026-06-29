@@ -138,6 +138,10 @@ export const en = {
     baseTotal: "Base total",
     grandTotal: "Estimate total",
     noEstimate: "Pick a preset to preview its estimate.",
+    singleAssembly: "Single assembly",
+    currentDrawing: "Current drawing",
+    noShapes: "Draw walls or rooms to estimate the current plan.",
+    pickAssemblies: "Pick an assembly per element type to cost the drawing.",
   },
 
   roles: {

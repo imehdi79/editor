@@ -137,6 +137,10 @@ export const fa: Dictionary = {
     baseTotal: "جمع پایه",
     grandTotal: "جمع برآورد",
     noEstimate: "برای دیدن برآورد یک لایه‌بندی را انتخاب کنید.",
+    singleAssembly: "لایه‌بندی منفرد",
+    currentDrawing: "نقشهٔ جاری",
+    noShapes: "برای برآورد نقشهٔ جاری، دیوار یا اتاق رسم کنید.",
+    pickAssemblies: "برای برآورد نقشه، برای هر نوع المان یک لایه‌بندی انتخاب کنید.",
   },
 
   roles: {
