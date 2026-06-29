@@ -8,7 +8,18 @@
  */
 
 import { useState } from "react";
-import { ArrowLeft, DollarSign, BadgeCheck, Palette, Layers3, Boxes, Plus, Trash2, type LucideIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  DollarSign,
+  BadgeCheck,
+  Palette,
+  Layers3,
+  Boxes,
+  ClipboardList,
+  Plus,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/BrandMark";
 import { NumericInput } from "@/components/ui/number-field";
@@ -17,6 +28,7 @@ import { useRouterStore } from "@/store/router.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useAdminLayersStore, type AdminWallLayer } from "@/store/admin-layers.store";
 import { useAdminPricingStore } from "@/store/admin-pricing.store";
+import { useAdminQuestionsStore } from "@/store/admin-questions.store";
 import { materialColor } from "@/core/wall-layers/wallLayers";
 import { EMPTY_RATE } from "@/core/estimation/rate";
 import { UNITS, type Unit } from "@/core/estimation/units";
@@ -24,13 +36,14 @@ import { ELEMENT_TYPES, type ElementType } from "@/core/estimation/elementTypes"
 import type { UserRole } from "@/api/authApi";
 import { useTranslation, type TranslationKey } from "@/i18n";
 
-type AdminSection = "pricing" | "materials" | "layers" | "presets";
+type AdminSection = "pricing" | "materials" | "layers" | "presets" | "questions";
 
 const NAV_ITEMS: { id: AdminSection; icon: LucideIcon; key: TranslationKey }[] = [
   { id: "pricing", icon: DollarSign, key: "admin.pricing" },
   { id: "materials", icon: Palette, key: "admin.materials" },
   { id: "layers", icon: Layers3, key: "admin.layers" },
   { id: "presets", icon: Boxes, key: "admin.presets" },
+  { id: "questions", icon: ClipboardList, key: "admin.questions" },
 ];
 
 const FIELD = "h-8 rounded-md bg-panel-2 px-2 text-sm text-ink outline-none hair focus-visible:ring-1 focus-visible:ring-brand";
@@ -503,6 +516,95 @@ const AdminPricingSection = () => {
   );
 };
 
+/** Question answer row: label, flag, remove. */
+const QUESTION_ROW = "grid grid-cols-[1fr_10rem_2.25rem] items-center gap-2";
+
+/**
+ * AdminQuestionsSection — authors the questions that capture job conditions.
+ * Each question is a card: a prompt plus the answers it offers, where an answer
+ * may raise a flag for pricing rules to act on. Persists to admin-questions.store;
+ * not consumed by the editor yet.
+ */
+const AdminQuestionsSection = () => {
+  const { t } = useTranslation();
+  const questions = useAdminQuestionsStore((s) => s.questions);
+  const addQuestion = useAdminQuestionsStore((s) => s.addQuestion);
+  const updateQuestion = useAdminQuestionsStore((s) => s.updateQuestion);
+  const removeQuestion = useAdminQuestionsStore((s) => s.removeQuestion);
+  const addOption = useAdminQuestionsStore((s) => s.addOption);
+  const updateOption = useAdminQuestionsStore((s) => s.updateOption);
+  const removeOption = useAdminQuestionsStore((s) => s.removeOption);
+
+  return (
+    <div className="max-w-2xl">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold">{t("admin.questions")}</h2>
+          <p className="mt-1 max-w-xl text-sm text-ink-2">{t("admin.questionsIntro")}</p>
+        </div>
+        <Button size="sm" onClick={addQuestion} className="shrink-0">
+          <Plus className="size-4" /> {t("admin.addQuestion")}
+        </Button>
+      </div>
+
+      {questions.length === 0 ? (
+        <p className="mt-5 rounded-lg bg-panel px-3 py-10 text-center text-sm text-ink-3 hair">
+          {t("admin.noQuestions")}
+        </p>
+      ) : (
+        <div className="mt-5 space-y-4">
+          {questions.map((q) => (
+            <div key={q.id} className="overflow-hidden rounded-lg bg-panel hair">
+              <div className="flex items-center gap-2 border-b bg-panel-2 px-3 py-2">
+                <ClipboardList className="size-4 shrink-0 text-ink-3" />
+                <input
+                  value={q.text}
+                  placeholder={t("admin.questionText")}
+                  onChange={(e) => updateQuestion(q.id, e.target.value)}
+                  className={cn(FIELD, "min-w-0 flex-1 bg-panel font-medium")}
+                />
+                <RemoveButton title={t("admin.removeQuestion")} onClick={() => removeQuestion(q.id)} />
+              </div>
+
+              <div className="space-y-2 p-3">
+                {q.options.length === 0 ? (
+                  <p className="py-2 text-center text-sm text-ink-3">{t("admin.noAnswers")}</p>
+                ) : (
+                  q.options.map((o) => (
+                    <div key={o.id} className={QUESTION_ROW}>
+                      <input
+                        value={o.label}
+                        placeholder={t("admin.answerLabel")}
+                        onChange={(e) => updateOption(q.id, o.id, { label: e.target.value })}
+                        className={cn(FIELD, "min-w-0")}
+                      />
+                      <input
+                        value={o.flag}
+                        placeholder={t("admin.flag")}
+                        onChange={(e) => updateOption(q.id, o.id, { flag: e.target.value })}
+                        className={cn(FIELD, "min-w-0 mono")}
+                      />
+                      <RemoveButton
+                        title={t("admin.removeAnswer")}
+                        onClick={() => removeOption(q.id, o.id)}
+                        className="justify-self-end"
+                      />
+                    </div>
+                  ))
+                )}
+
+                <Button size="sm" variant="ghost" onClick={() => addOption(q.id)} className="mt-1 h-7 text-ink-2">
+                  <Plus className="size-4" /> {t("admin.addAnswer")}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ROLE_KEY: Record<UserRole, TranslationKey> = {
   user: "roles.user",
   admin: "roles.admin",
@@ -519,6 +621,8 @@ const AdminContent = ({ section }: { section: AdminSection }) => {
       return <AdminLayersSection />;
     case "presets":
       return <AdminPresetsSection />;
+    case "questions":
+      return <AdminQuestionsSection />;
   }
 };
 

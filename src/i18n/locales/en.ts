@@ -103,6 +103,18 @@ export const en = {
     materialCost: "Material cost",
     laborCost: "Labor cost",
     total: "Total",
+    questions: "Questions",
+    questionsIntro:
+      "Author the questions that capture job conditions. Each answer can raise a flag that pricing rules act on. Managed here for now and don't affect end users yet.",
+    questionText: "Question",
+    addQuestion: "Add question",
+    removeQuestion: "Remove question",
+    noQuestions: "No questions yet. Add one to start capturing job conditions.",
+    answerLabel: "Answer",
+    flag: "Flag",
+    addAnswer: "Add answer",
+    removeAnswer: "Remove answer",
+    noAnswers: "No answers on this question yet.",
   },
 
   roles: {

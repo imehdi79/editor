@@ -102,6 +102,18 @@ export const de: Dictionary = {
     materialCost: "Materialkosten",
     laborCost: "Lohnkosten",
     total: "Gesamt",
+    questions: "Fragen",
+    questionsIntro:
+      "Lege die Fragen an, die die Baustellenbedingungen erfassen. Jede Antwort kann ein Flag setzen, auf das Preisregeln reagieren. Werden vorerst hier verwaltet und wirken sich noch nicht auf Endbenutzer aus.",
+    questionText: "Frage",
+    addQuestion: "Frage hinzufügen",
+    removeQuestion: "Frage entfernen",
+    noQuestions: "Noch keine Fragen. Füge eine hinzu, um Baustellenbedingungen zu erfassen.",
+    answerLabel: "Antwort",
+    flag: "Flag",
+    addAnswer: "Antwort hinzufügen",
+    removeAnswer: "Antwort entfernen",
+    noAnswers: "Noch keine Antworten zu dieser Frage.",
   },
 
   roles: {

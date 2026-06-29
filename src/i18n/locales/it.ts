@@ -101,6 +101,18 @@ export const it: Dictionary = {
     materialCost: "Costo materiale",
     laborCost: "Costo manodopera",
     total: "Totale",
+    questions: "Domande",
+    questionsIntro:
+      "Definisci le domande che rilevano le condizioni di cantiere. Ogni risposta può attivare un flag su cui agiscono le regole di prezzo. Per ora sono gestite qui e non influiscono ancora sugli utenti finali.",
+    questionText: "Domanda",
+    addQuestion: "Aggiungi domanda",
+    removeQuestion: "Rimuovi domanda",
+    noQuestions: "Nessuna domanda. Aggiungine una per rilevare le condizioni di cantiere.",
+    answerLabel: "Risposta",
+    flag: "Flag",
+    addAnswer: "Aggiungi risposta",
+    removeAnswer: "Rimuovi risposta",
+    noAnswers: "Nessuna risposta su questa domanda.",
   },
 
   roles: {
