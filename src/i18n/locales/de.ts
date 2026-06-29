@@ -66,6 +66,15 @@ export const de: Dictionary = {
     pricing: "Preisliste",
     pricingContent: "Dies ist der Admin-Preisinhalt",
     sections: "Bereiche",
+    layers: "Schichten",
+    layersIntro:
+      "Wiederverwendbare Wandschichten pflegen. Sie werden vorerst hier verwaltet und wirken sich noch nicht auf Endbenutzer aus.",
+    layerName: "Schichtname",
+    material: "Material",
+    thickness: "Dicke",
+    addLayer: "Schicht hinzufügen",
+    removeLayer: "Schicht entfernen",
+    noLayers: "Noch keine Schichten. Füge eine hinzu, um den Katalog zu starten.",
   },
 
   roles: {

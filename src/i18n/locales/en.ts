@@ -67,6 +67,15 @@ export const en = {
     pricing: "Pricing",
     pricingContent: "this is admin price content",
     sections: "Sections",
+    layers: "Layers",
+    layersIntro:
+      "Curate reusable wall construction layers. They're managed here for now and don't affect end users yet.",
+    layerName: "Layer name",
+    material: "Material",
+    thickness: "Thickness",
+    addLayer: "Add layer",
+    removeLayer: "Remove layer",
+    noLayers: "No layers yet. Add one to start the catalog.",
   },
 
   roles: {

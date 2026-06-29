@@ -65,6 +65,15 @@ export const it: Dictionary = {
     pricing: "Listino prezzi",
     pricingContent: "questo è il contenuto prezzi dell'amministratore",
     sections: "Sezioni",
+    layers: "Strati",
+    layersIntro:
+      "Cura gli strati costruttivi delle pareti riutilizzabili. Per ora sono gestiti qui e non influiscono ancora sugli utenti finali.",
+    layerName: "Nome strato",
+    material: "Materiale",
+    thickness: "Spessore",
+    addLayer: "Aggiungi strato",
+    removeLayer: "Rimuovi strato",
+    noLayers: "Nessuno strato. Aggiungine uno per iniziare il catalogo.",
   },
 
   roles: {
