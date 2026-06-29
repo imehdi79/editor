@@ -76,6 +76,9 @@ export const en = {
     addLayer: "Add layer",
     removeLayer: "Remove layer",
     noLayers: "No layers yet. Add one to start the catalog.",
+    layerDetails: "Layer details",
+    layerDetailsIntro:
+      "Extra layer detail entries, structured like the catalog above. Managed here for now and don't affect end users yet.",
     presets: "Presets",
     presetsIntro:
       "Bundle layers into reusable wall assemblies. They're managed here for now and don't affect end users yet.",

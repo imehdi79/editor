@@ -43,6 +43,7 @@ export interface AdminWallPreset {
 }
 
 const LAYERS_KEY = "mehdify.admin.wall-layers.v1";
+const DETAILS_KEY = "mehdify.admin.layer-details.v1";
 const PRESETS_KEY = "mehdify.admin.wall-presets.v1";
 
 const seed = (): AdminWallLayer[] =>
@@ -78,12 +79,19 @@ const persist = (key: string, value: unknown) => {
 
 interface AdminLayersStore {
   layers: AdminWallLayer[];
+  /** A second catalog with the same shape — the "layer details" list. */
+  details: AdminWallLayer[];
   presets: AdminWallPreset[];
 
   /** Append a fresh layer seeded from the first catalog material. */
   addLayer: () => void;
   updateLayer: (id: string, patch: Partial<Omit<AdminWallLayer, "id">>) => void;
   removeLayer: (id: string) => void;
+
+  /** Layer-details catalog — identical operations to the layer catalog. */
+  addDetail: () => void;
+  updateDetail: (id: string, patch: Partial<Omit<AdminWallLayer, "id">>) => void;
+  removeDetail: (id: string) => void;
 
   /** Create an empty-named preset with one starter layer. */
   addPreset: () => void;
@@ -99,6 +107,10 @@ export const useAdminLayersStore = create<AdminLayersStore>((set, get) => {
     persist(LAYERS_KEY, layers);
     set({ layers });
   };
+  const commitDetails = (details: AdminWallLayer[]) => {
+    persist(DETAILS_KEY, details);
+    set({ details });
+  };
   const commitPresets = (presets: AdminWallPreset[]) => {
     persist(PRESETS_KEY, presets);
     set({ presets });
@@ -106,16 +118,23 @@ export const useAdminLayersStore = create<AdminLayersStore>((set, get) => {
   const mapPreset = (id: string, fn: (p: AdminWallPreset) => AdminWallPreset) =>
     commitPresets(get().presets.map((p) => (p.id === id ? fn(p) : p)));
 
+  const freshCatalogLayer = (): AdminWallLayer => {
+    const base = WALL_MATERIALS[0];
+    return { id: uid(), name: base.name, material: base.name, thickness: base.thickness };
+  };
+
   return {
     layers: loadList(LAYERS_KEY, seed),
+    details: loadList(DETAILS_KEY, () => []),
     presets: loadList(PRESETS_KEY, () => []),
 
-    addLayer: () => {
-      const base = WALL_MATERIALS[0];
-      commitLayers([...get().layers, { id: uid(), name: base.name, material: base.name, thickness: base.thickness }]);
-    },
+    addLayer: () => commitLayers([...get().layers, freshCatalogLayer()]),
     updateLayer: (id, patch) => commitLayers(get().layers.map((l) => (l.id === id ? { ...l, ...patch } : l))),
     removeLayer: (id) => commitLayers(get().layers.filter((l) => l.id !== id)),
+
+    addDetail: () => commitDetails([...get().details, freshCatalogLayer()]),
+    updateDetail: (id, patch) => commitDetails(get().details.map((l) => (l.id === id ? { ...l, ...patch } : l))),
+    removeDetail: (id) => commitDetails(get().details.filter((l) => l.id !== id)),
 
     addPreset: () => commitPresets([...get().presets, { id: uid(), name: "", layers: [freshLayer()] }]),
     renamePreset: (id, name) => mapPreset(id, (p) => ({ ...p, name })),

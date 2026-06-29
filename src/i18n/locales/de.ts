@@ -75,6 +75,9 @@ export const de: Dictionary = {
     addLayer: "Schicht hinzufügen",
     removeLayer: "Schicht entfernen",
     noLayers: "Noch keine Schichten. Füge eine hinzu, um den Katalog zu starten.",
+    layerDetails: "Schichtdetails",
+    layerDetailsIntro:
+      "Zusätzliche Schichtdetail-Einträge, aufgebaut wie der Katalog oben. Werden vorerst hier verwaltet und wirken sich nicht auf Endbenutzer aus.",
     presets: "Wandaufbauten",
     presetsIntro:
       "Schichten zu wiederverwendbaren Wandaufbauten bündeln. Sie werden vorerst hier verwaltet und wirken sich noch nicht auf Endbenutzer aus.",

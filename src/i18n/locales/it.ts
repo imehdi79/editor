@@ -74,6 +74,9 @@ export const it: Dictionary = {
     addLayer: "Aggiungi strato",
     removeLayer: "Rimuovi strato",
     noLayers: "Nessuno strato. Aggiungine uno per iniziare il catalogo.",
+    layerDetails: "Dettagli strato",
+    layerDetailsIntro:
+      "Voci di dettaglio aggiuntive, strutturate come il catalogo qui sopra. Per ora sono gestite qui e non influiscono sugli utenti finali.",
     presets: "Stratigrafie",
     presetsIntro:
       "Raggruppa gli strati in stratigrafie di parete riutilizzabili. Per ora sono gestite qui e non influiscono ancora sugli utenti finali.",

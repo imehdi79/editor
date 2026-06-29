@@ -15,7 +15,7 @@ import { NumericInput } from "@/components/ui/number-field";
 import { Button } from "@/components/ui/button";
 import { useRouterStore } from "@/store/router.store";
 import { useAuthStore } from "@/store/auth.store";
-import { useAdminLayersStore } from "@/store/admin-layers.store";
+import { useAdminLayersStore, type AdminWallLayer } from "@/store/admin-layers.store";
 import { WALL_MATERIALS, materialColor } from "@/core/wall-layers/wallLayers";
 import type { UserRole } from "@/api/authApi";
 import { useTranslation, type TranslationKey } from "@/i18n";
@@ -75,24 +75,34 @@ const Swatch = ({ material }: { material: string }) => (
 );
 
 /**
- * AdminLayersSection — curate the reusable wall-layer catalog. Edits persist to
- * admin-layers.store (localStorage). Not yet consumed by the editor.
+ * LayerCatalog — a titled, add-and-edit table of wall layers (name, material,
+ * thickness). Reused for both the layer catalog and the identical "layer
+ * details" list. Backed by admin-layers.store (localStorage).
  */
-const AdminLayersSection = () => {
+const LayerCatalog = ({
+  title,
+  intro,
+  layers,
+  onAdd,
+  onUpdate,
+  onRemove,
+}: {
+  title: string;
+  intro: string;
+  layers: AdminWallLayer[];
+  onAdd: () => void;
+  onUpdate: (id: string, patch: Partial<Omit<AdminWallLayer, "id">>) => void;
+  onRemove: (id: string) => void;
+}) => {
   const { t } = useTranslation();
-  const layers = useAdminLayersStore((s) => s.layers);
-  const addLayer = useAdminLayersStore((s) => s.addLayer);
-  const updateLayer = useAdminLayersStore((s) => s.updateLayer);
-  const removeLayer = useAdminLayersStore((s) => s.removeLayer);
-
   return (
-    <div className="max-w-2xl">
+    <div>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold">{t("admin.layers")}</h2>
-          <p className="mt-1 max-w-xl text-sm text-ink-2">{t("admin.layersIntro")}</p>
+          <h2 className="text-base font-semibold">{title}</h2>
+          <p className="mt-1 max-w-xl text-sm text-ink-2">{intro}</p>
         </div>
-        <Button size="sm" onClick={addLayer} className="shrink-0">
+        <Button size="sm" onClick={onAdd} className="shrink-0">
           <Plus className="size-4" /> {t("admin.addLayer")}
         </Button>
       </div>
@@ -114,21 +124,48 @@ const AdminLayersSection = () => {
                 <Swatch material={layer.material} />
                 <input
                   value={layer.name}
-                  onChange={(e) => updateLayer(layer.id, { name: e.target.value })}
+                  onChange={(e) => onUpdate(layer.id, { name: e.target.value })}
                   className={cn(FIELD, "min-w-0 flex-1")}
                 />
               </div>
-              <MaterialSelect value={layer.material} onChange={(v) => updateLayer(layer.id, { material: v })} />
-              <ThicknessField value={layer.thickness} onChange={(v) => updateLayer(layer.id, { thickness: v })} />
-              <RemoveButton
-                title={t("admin.removeLayer")}
-                onClick={() => removeLayer(layer.id)}
-                className="justify-self-end"
-              />
+              <MaterialSelect value={layer.material} onChange={(v) => onUpdate(layer.id, { material: v })} />
+              <ThicknessField value={layer.thickness} onChange={(v) => onUpdate(layer.id, { thickness: v })} />
+              <RemoveButton title={t("admin.removeLayer")} onClick={() => onRemove(layer.id)} className="justify-self-end" />
             </div>
           ))
         )}
       </div>
+    </div>
+  );
+};
+
+/**
+ * AdminLayersSection — the layer catalog plus the identical "layer details"
+ * list. Both persist to admin-layers.store (localStorage); not yet consumed by
+ * the editor.
+ */
+const AdminLayersSection = () => {
+  const { t } = useTranslation();
+  const s = useAdminLayersStore();
+
+  return (
+    <div className="max-w-2xl space-y-8">
+      <LayerCatalog
+        title={t("admin.layers")}
+        intro={t("admin.layersIntro")}
+        layers={s.layers}
+        onAdd={s.addLayer}
+        onUpdate={s.updateLayer}
+        onRemove={s.removeLayer}
+      />
+      <LayerCatalog
+        title={t("admin.layerDetails")}
+        intro={t("admin.layerDetailsIntro")}
+        layers={s.details}
+        onAdd={s.addDetail}
+        onUpdate={s.updateDetail}
+        onRemove={s.removeDetail}
+      />
     </div>
   );
 };
