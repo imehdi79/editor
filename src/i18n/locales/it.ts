@@ -90,6 +90,7 @@ export const it: Dictionary = {
     presetsIntro:
       "Raggruppa gli strati in stratigrafie di parete riutilizzabili. Per ora sono gestite qui e non influiscono ancora sugli utenti finali.",
     presetName: "Nome stratigrafia",
+    selectLayer: "Seleziona uno strato…",
     newPreset: "Nuova stratigrafia",
     addPreset: "Aggiungi stratigrafia",
     removePreset: "Rimuovi stratigrafia",

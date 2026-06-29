@@ -92,6 +92,7 @@ export const en = {
     presetsIntro:
       "Bundle layers into reusable wall assemblies. They're managed here for now and don't affect end users yet.",
     presetName: "Preset name",
+    selectLayer: "Select a layer…",
     newPreset: "New preset",
     addPreset: "Add preset",
     removePreset: "Remove preset",

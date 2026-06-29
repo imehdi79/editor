@@ -53,6 +53,23 @@ const MaterialSelect = ({ value, onChange }: { value: string; onChange: (v: stri
   );
 };
 
+/** Layer picker — options come from the layers catalog; an unknown / not-yet-set
+ *  value falls back to a "select a layer" placeholder. */
+const LayerSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => {
+  const { t } = useTranslation();
+  const layers = useAdminLayersStore((s) => s.layers);
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={FIELD}>
+      {!layers.some((l) => l.id === value) && <option value={value}>{t("admin.selectLayer")}</option>}
+      {layers.map((l) => (
+        <option key={l.id} value={l.id}>
+          {l.name || t("admin.layerName")}
+        </option>
+      ))}
+    </select>
+  );
+};
+
 /** Right-aligned thickness field with a trailing "cm" unit. */
 const ThicknessField = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
   <div className="flex items-center justify-end gap-1">
@@ -255,17 +272,19 @@ const AdminLayersSection = () => {
   );
 };
 
-/** Column template for a preset's layer rows (swatch+material, thickness, remove). */
+/** Column template for a preset's layer rows (swatch + layer, thickness, remove). */
 const PRESET_ROW = "grid grid-cols-[1fr_7rem_2.25rem] items-center gap-2";
 
 /**
- * AdminPresetsSection — compose named wall assemblies (presets) from layers and
- * review the saved list. Persists to admin-layers.store; not consumed by the
- * editor yet.
+ * AdminPresetsSection — categories that group catalog layers. Each preset holds N
+ * references to layers from the Layers catalog; its total is the sum of those
+ * layers' thicknesses. Persists to admin-layers.store; not consumed by the editor
+ * yet.
  */
 const AdminPresetsSection = () => {
   const { t } = useTranslation();
   const presets = useAdminLayersStore((s) => s.presets);
+  const layers = useAdminLayersStore((s) => s.layers);
   const addPreset = useAdminLayersStore((s) => s.addPreset);
   const renamePreset = useAdminLayersStore((s) => s.renamePreset);
   const removePreset = useAdminLayersStore((s) => s.removePreset);
@@ -290,7 +309,9 @@ const AdminPresetsSection = () => {
       ) : (
         <div className="mt-5 space-y-4">
           {presets.map((preset) => {
-            const total = +preset.layers.reduce((s, l) => s + l.thickness, 0).toFixed(2);
+            const total = +preset.layers
+              .reduce((s, ref) => s + (layers.find((l) => l.id === ref.layerId)?.thickness ?? 0), 0)
+              .toFixed(2);
             return (
               <div key={preset.id} className="overflow-hidden rounded-lg bg-panel hair">
                 <div className="flex items-center gap-2 border-b bg-panel-2 px-3 py-2">
@@ -311,26 +332,28 @@ const AdminPresetsSection = () => {
                   {preset.layers.length === 0 ? (
                     <p className="py-4 text-center text-sm text-ink-3">{t("admin.noLayers")}</p>
                   ) : (
-                    preset.layers.map((layer) => (
-                      <div key={layer.id} className={PRESET_ROW}>
-                        <div className="flex min-w-0 items-center gap-2">
-                          <Swatch material={layer.material} />
-                          <MaterialSelect
-                            value={layer.material}
-                            onChange={(v) => updatePresetLayer(preset.id, layer.id, { material: v })}
+                    preset.layers.map((ref) => {
+                      const layer = layers.find((l) => l.id === ref.layerId);
+                      return (
+                        <div key={ref.id} className={PRESET_ROW}>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Swatch material={layer?.material} />
+                            <LayerSelect
+                              value={ref.layerId}
+                              onChange={(v) => updatePresetLayer(preset.id, ref.id, { layerId: v })}
+                            />
+                          </div>
+                          <span className="text-right text-sm text-ink-2 mono">
+                            {layer ? `${layer.thickness} cm` : "—"}
+                          </span>
+                          <RemoveButton
+                            title={t("admin.removeLayer")}
+                            onClick={() => removePresetLayer(preset.id, ref.id)}
+                            className="justify-self-end"
                           />
                         </div>
-                        <ThicknessField
-                          value={layer.thickness}
-                          onChange={(v) => updatePresetLayer(preset.id, layer.id, { thickness: v })}
-                        />
-                        <RemoveButton
-                          title={t("admin.removeLayer")}
-                          onClick={() => removePresetLayer(preset.id, layer.id)}
-                          className="justify-self-end"
-                        />
-                      </div>
-                    ))
+                      );
+                    })
                   )}
 
                   <Button

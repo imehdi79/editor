@@ -9,8 +9,9 @@
  *    here by name; the material's colour drives every swatch.
  *  - **layers** — single construction layers (name, material, thickness). Each
  *    layer owns N **details** — finer sub-entries with the same shape.
- *  - **presets** — ordered wall build-ups assembled from layers, the same model
- *    as `wallAssembly` / `ASSEMBLY_PRESETS`.
+ *  - **presets** — categories that group N layers. Each preset entry just
+ *    references a layer from the catalog by id; its material/thickness come from
+ *    that layer.
  *
  * None of it is consumed by the editor yet — it has **no effect on end users for
  * now**; this is a staging area for a future shared assembly library. All three
@@ -55,20 +56,18 @@ export interface AdminWallLayer {
   details: AdminLayerDetail[];
 }
 
-/** One layer inside a preset — a material slice (no display name of its own). */
+/** One entry inside a preset — a reference to a catalog layer by id. */
 export interface AdminPresetLayer {
   id: string;
-  /** Material name — resolved against the materials palette. */
-  material: string;
-  /** Build-up thickness in cm. */
-  thickness: number;
+  /** Id of the referenced layer in the layers catalog. */
+  layerId: string;
 }
 
-/** A named, ordered wall assembly the admin composes from layers. */
+/** A category that groups N catalog layers under a name. */
 export interface AdminWallPreset {
   id: string;
   name: string;
-  /** Layers in exterior→interior order. */
+  /** Referenced layers in exterior→interior order. */
   layers: AdminPresetLayer[];
 }
 
@@ -100,6 +99,13 @@ const loadLayers = (): AdminWallLayer[] =>
   loadList<AdminWallLayer>(LAYERS_KEY, seedLayers).map((l) => ({
     ...l,
     details: Array.isArray(l.details) ? l.details : [],
+  }));
+
+/** Preset entries became layer references — drop legacy material/thickness slices. */
+const loadPresets = (): AdminWallPreset[] =>
+  loadList<AdminWallPreset>(PRESETS_KEY, () => []).map((p) => ({
+    ...p,
+    layers: Array.isArray(p.layers) ? p.layers.map((l) => ({ id: l.id, layerId: l.layerId ?? "" })) : [],
   }));
 
 const persist = (key: string, value: unknown) => {
@@ -170,15 +176,12 @@ export const useAdminLayersStore = create<AdminLayersStore>((set, get) => {
     const b = base();
     return { id: uid(), name: b.name, material: b.name, thickness: b.thickness };
   };
-  const freshPresetLayer = (): AdminPresetLayer => {
-    const b = base();
-    return { id: uid(), material: b.name, thickness: b.thickness };
-  };
+  const freshPresetLayer = (): AdminPresetLayer => ({ id: uid(), layerId: get().layers[0]?.id ?? "" });
 
   return {
     materials: loadList(MATERIALS_KEY, seedMaterials),
     layers: loadLayers(),
-    presets: loadList(PRESETS_KEY, () => []),
+    presets: loadPresets(),
 
     addMaterial: () => commitMaterials([...get().materials, freshMaterial()]),
     updateMaterial: (id, patch) => commitMaterials(get().materials.map((m) => (m.id === id ? { ...m, ...patch } : m))),
