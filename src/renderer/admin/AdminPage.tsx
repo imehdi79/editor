@@ -10,6 +10,7 @@
 import { useState } from "react";
 import {
   ArrowLeft,
+  Calculator,
   DollarSign,
   BadgeCheck,
   Palette,
@@ -35,12 +36,14 @@ import { EMPTY_RATE } from "@/core/estimation/rate";
 import { UNITS, type Unit } from "@/core/estimation/units";
 import { ELEMENT_TYPES, type ElementType } from "@/core/estimation/elementTypes";
 import { RULE_TARGETS, type RuleTarget, RULE_EFFECTS, type RuleEffect } from "@/core/estimation/pricingRule";
+import { estimate, EMPTY_MEASURE, type EstimateItem } from "@/core/estimation/estimate";
 import type { UserRole } from "@/api/authApi";
 import { useTranslation, type TranslationKey } from "@/i18n";
 
-type AdminSection = "pricing" | "rules" | "materials" | "layers" | "presets" | "questions";
+type AdminSection = "estimate" | "pricing" | "rules" | "materials" | "layers" | "presets" | "questions";
 
 const NAV_ITEMS: { id: AdminSection; icon: LucideIcon; key: TranslationKey }[] = [
+  { id: "estimate", icon: Calculator, key: "admin.estimate" },
   { id: "pricing", icon: DollarSign, key: "admin.pricing" },
   { id: "rules", icon: Percent, key: "admin.rules" },
   { id: "materials", icon: Palette, key: "admin.materials" },
@@ -742,6 +745,201 @@ const AdminQuestionsSection = () => {
   );
 };
 
+/** Estimate line / total row: name, unit, qty, material, labour, total. */
+const ESTIMATE_ROW = "grid grid-cols-[1fr_3rem_4rem_5rem_5rem_5rem] items-center gap-2 px-3";
+
+/** Two-decimal money/quantity formatter for the estimate readout. */
+const money = (n: number): string => n.toFixed(2);
+
+/**
+ * AdminEstimateSection — the consuming end of the estimation engine: a sandbox
+ * that costs a preset live. Pick an assembly, enter its measured quantities and
+ * answer the job questions (raising flags); the pure `estimate` pipeline returns
+ * a per-layer breakdown plus rule-adjusted totals. Read-only — it writes nothing
+ * and is not yet wired into the editor.
+ */
+const AdminEstimateSection = () => {
+  const { t, tf } = useTranslation();
+  const materials = useAdminLayersStore((s) => s.materials);
+  const layers = useAdminLayersStore((s) => s.layers);
+  const presets = useAdminLayersStore((s) => s.presets);
+  const rates = useAdminPricingStore((s) => s.rates);
+  const rules = useAdminPricingStore((s) => s.rules);
+  const questions = useAdminQuestionsStore((s) => s.questions);
+
+  const [presetId, setPresetId] = useState("");
+  const [measure, setMeasure] = useState(EMPTY_MEASURE);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+
+  const materialName = (id: string) => {
+    const m = materials.find((x) => x.id === id);
+    return m ? tf(`materials.${m.name.toLowerCase()}`, m.name) : "—";
+  };
+
+  const preset = presets.find((p) => p.id === presetId);
+  const presetLayers = preset
+    ? preset.layers
+        .map((ref) => layers.find((l) => l.id === ref.layerId))
+        .filter((l): l is AdminWallLayer => Boolean(l))
+    : [];
+  const items: EstimateItem[] = preset ? [{ name: preset.name, layers: presetLayers, measure }] : [];
+  const flags = Object.entries(answers).flatMap(([qId, oId]) => {
+    const option = questions.find((q) => q.id === qId)?.options.find((o) => o.id === oId);
+    return option?.flag ? [option.flag] : [];
+  });
+  const result = estimate({ items, rates, rules, flags });
+  const lines = result.items.flatMap((i) => i.lines);
+
+  return (
+    <div className="max-w-2xl space-y-5">
+      <div>
+        <h2 className="text-base font-semibold">{t("admin.estimate")}</h2>
+        <p className="mt-1 max-w-xl text-sm text-ink-2">{t("admin.estimateIntro")}</p>
+      </div>
+
+      {/* Inputs: assembly, measured quantities, job conditions. */}
+      <div className="space-y-3 rounded-lg bg-panel p-3 hair">
+        <select
+          value={presetId}
+          onChange={(e) => setPresetId(e.target.value)}
+          aria-label={t("admin.presets")}
+          className={cn(FIELD, "w-full")}
+        >
+          <option value="">{t("admin.selectPreset")}</option>
+          {presets.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name || t("admin.newPreset")}
+            </option>
+          ))}
+        </select>
+
+        <div className="grid grid-cols-3 gap-2">
+          <label className="space-y-1">
+            <span className="block text-2xs uppercase tracking-wider text-ink-3 mono">{t("admin.area")} (m²)</span>
+            <NumericInput
+              value={measure.area}
+              min={0}
+              onChange={(v) => setMeasure((m) => ({ ...m, area: v }))}
+              className={cn(FIELD, "w-full text-right")}
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="block text-2xs uppercase tracking-wider text-ink-3 mono">{t("admin.length")} (m)</span>
+            <NumericInput
+              value={measure.length}
+              min={0}
+              onChange={(v) => setMeasure((m) => ({ ...m, length: v }))}
+              className={cn(FIELD, "w-full text-right")}
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="block text-2xs uppercase tracking-wider text-ink-3 mono">{t("admin.count")}</span>
+            <NumericInput
+              value={measure.count}
+              min={0}
+              onChange={(v) => setMeasure((m) => ({ ...m, count: v }))}
+              className={cn(FIELD, "w-full text-right")}
+            />
+          </label>
+        </div>
+
+        {questions.length > 0 && (
+          <div className="space-y-2 border-t pt-3">
+            {questions.map((q) => (
+              <div key={q.id} className="grid grid-cols-[1fr_10rem] items-center gap-2">
+                <span className="truncate text-sm text-ink-2">{q.text || t("admin.questionText")}</span>
+                <select
+                  value={answers[q.id] ?? ""}
+                  onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+                  aria-label={q.text || t("admin.questionText")}
+                  className={cn(FIELD, "w-full")}
+                >
+                  <option value="">—</option>
+                  {q.options.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label || t("admin.answerLabel")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Output: per-layer breakdown + rule-adjusted totals. */}
+      {!preset ? (
+        <p className="rounded-lg bg-panel px-3 py-10 text-center text-sm text-ink-3 hair">{t("admin.noEstimate")}</p>
+      ) : (
+        <div className="overflow-hidden rounded-lg bg-panel hair">
+          <div className={cn(ESTIMATE_ROW, "border-b bg-panel-2 py-2 text-2xs uppercase tracking-wider text-ink-3 mono")}>
+            <span>{t("admin.material")}</span>
+            <span>{t("admin.unit")}</span>
+            <span className="text-right">{t("admin.quantity")}</span>
+            <span className="text-right">{t("admin.materialCost")}</span>
+            <span className="text-right">{t("admin.laborCost")}</span>
+            <span className="text-right">{t("admin.total")}</span>
+          </div>
+
+          {lines.length === 0 ? (
+            <p className="px-3 py-6 text-center text-sm text-ink-3">{t("admin.noLayers")}</p>
+          ) : (
+            lines.map((l, i) => (
+              <div key={i} className={cn(ESTIMATE_ROW, "border-b py-2 text-sm last:border-b-0")}>
+                <span className="truncate">{l.name || materialName(l.materialId)}</span>
+                <span className="text-ink-2 mono">{t(UNIT_KEY[l.unit])}</span>
+                <span className="text-right mono">{money(l.quantity)}</span>
+                <span className="text-right mono">{money(l.cost.material)}</span>
+                <span className="text-right mono">{money(l.cost.labor)}</span>
+                <span className="text-right mono">{money(l.cost.total)}</span>
+              </div>
+            ))
+          )}
+
+          <div className={cn(ESTIMATE_ROW, "border-t bg-panel-2 py-2 text-sm")}>
+            <span className="text-ink-2">{t("admin.baseTotal")}</span>
+            <span />
+            <span />
+            <span className="text-right mono">{money(result.base.material)}</span>
+            <span className="text-right mono">{money(result.base.labor)}</span>
+            <span className="text-right mono">{money(result.base.total)}</span>
+          </div>
+
+          {result.applied.length > 0 && (
+            <div className="bg-panel-2">
+              <div className="px-3 pt-1 text-2xs uppercase tracking-wider text-ink-3 mono">{t("admin.adjustments")}</div>
+              {result.applied.map((r, i) => (
+                <div key={i} className={cn(ESTIMATE_ROW, "py-1 text-xs text-ink-2")}>
+                  <span className="truncate">
+                    {r.name || r.flag}{" "}
+                    <span className="text-ink-3 mono">
+                      ({r.effect === "percent" ? `${r.amount}%` : money(r.amount)} · {t(RULE_TARGET_KEY[r.target])})
+                    </span>
+                  </span>
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                  <span className="text-right text-brand mono">+{money(r.delta)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className={cn(ESTIMATE_ROW, "border-t bg-panel-2 py-2.5 text-sm font-semibold")}>
+            <span>{t("admin.grandTotal")}</span>
+            <span />
+            <span />
+            <span className="text-right mono">{money(result.total.material)}</span>
+            <span className="text-right mono">{money(result.total.labor)}</span>
+            <span className="text-right mono">{money(result.total.total)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ROLE_KEY: Record<UserRole, TranslationKey> = {
   user: "roles.user",
   admin: "roles.admin",
@@ -750,6 +948,8 @@ const ROLE_KEY: Record<UserRole, TranslationKey> = {
 
 const AdminContent = ({ section }: { section: AdminSection }) => {
   switch (section) {
+    case "estimate":
+      return <AdminEstimateSection />;
     case "pricing":
       return <AdminPricingSection />;
     case "rules":
@@ -769,7 +969,7 @@ const AdminPage = () => {
   const { t } = useTranslation();
   const navigate = useRouterStore((s) => s.navigate);
   const role = useAuthStore((s) => s.user?.role);
-  const [section, setSection] = useState<AdminSection>("pricing");
+  const [section, setSection] = useState<AdminSection>("estimate");
 
   return (
     <div className="flex h-svh w-svw flex-col bg-bg text-ink">

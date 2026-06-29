@@ -124,6 +124,18 @@ export const it: Dictionary = {
     ruleTarget: "Destinazione",
     ruleEffect: "Effetto",
     ruleAmount: "Importo",
+    estimate: "Computo",
+    estimateIntro:
+      "Anteprima del costo di una stratigrafia: scegli una stratigrafia, inserisci le quantità rilevate, rispondi alle domande di cantiere e leggi i totali di materiale, manodopera e regole. Un'area di prova — nulla viene salvato o mostrato agli utenti finali.",
+    selectPreset: "Seleziona una stratigrafia…",
+    area: "Area",
+    length: "Lunghezza",
+    count: "Pezzi",
+    quantity: "Q.tà",
+    adjustments: "Adeguamenti",
+    baseTotal: "Totale base",
+    grandTotal: "Totale computo",
+    noEstimate: "Scegli una stratigrafia per vedere il computo.",
   },
 
   roles: {

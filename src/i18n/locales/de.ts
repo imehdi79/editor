@@ -125,6 +125,18 @@ export const de: Dictionary = {
     ruleTarget: "Ziel",
     ruleEffect: "Effekt",
     ruleAmount: "Betrag",
+    estimate: "Kalkulation",
+    estimateIntro:
+      "Vorschau der Kosten eines Aufbaus: Aufbau wählen, gemessene Mengen eingeben, die Baustellenfragen beantworten und die Material-, Lohn- und regelangepassten Summen ablesen. Eine Spielwiese — nichts wird gespeichert oder Endbenutzern gezeigt.",
+    selectPreset: "Aufbau auswählen…",
+    area: "Fläche",
+    length: "Länge",
+    count: "Stück",
+    quantity: "Menge",
+    adjustments: "Anpassungen",
+    baseTotal: "Grundsumme",
+    grandTotal: "Gesamtkalkulation",
+    noEstimate: "Wähle einen Aufbau, um die Kalkulation zu sehen.",
   },
 
   roles: {

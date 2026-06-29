@@ -126,6 +126,18 @@ export const en = {
     ruleTarget: "Target",
     ruleEffect: "Effect",
     ruleAmount: "Amount",
+    estimate: "Estimate",
+    estimateIntro:
+      "Preview the live cost of an assembly: pick a preset, enter its measured quantities, answer the job questions, then read the material, labour and rule-adjusted totals. A sandbox — nothing here is saved or shown to end users.",
+    selectPreset: "Select a preset…",
+    area: "Area",
+    length: "Length",
+    count: "Count",
+    quantity: "Qty",
+    adjustments: "Adjustments",
+    baseTotal: "Base total",
+    grandTotal: "Estimate total",
+    noEstimate: "Pick a preset to preview its estimate.",
   },
 
   roles: {
