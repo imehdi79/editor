@@ -29,6 +29,7 @@ import DrawingInfoCanvas from "./DrawingInfoCanvas";
 import NodeThicknessPopover from "./NodeThicknessPopover";
 import DrawingHud from "./DrawingHud";
 import DrawCommitBar from "./DrawCommitBar";
+import TouchLoupe from "./TouchLoupe";
 
 type StageRef = RefObject<Konva.Stage>;
 type ME = Konva.KonvaEventObject<MouseEvent>;
@@ -47,6 +48,9 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
 
   // On-canvas wall thickness editor — opened by tapping a wall node handle.
   const [thicknessNode, setThicknessNode] = useState<{ shapeId: string; handle: "p1" | "p2" } | null>(null);
+
+  // Touch magnifier — { x, y } in client px while a precision gesture is active.
+  const [loupe, setLoupe] = useState<{ x: number; y: number } | null>(null);
 
   const {
     ghost,
@@ -74,6 +78,17 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
   // space (nothing selectable under the pointer); on a shape it transforms.
   const shouldPanAtWorld = (wx: number, wy: number) => (tool === "select" ? !hitTest(wx, wy) : false);
   const { screenToWorld, viewportEvents } = useStageViewport(stageRef, shouldPanAtWorld);
+
+  // A single-finger touch warrants the magnifier when it's a precision gesture:
+  // any drawing stroke, or a select-mode grab that lands on a shape (a transform,
+  // not an empty-space pan). Never in pan mode, never multi-touch (pinch).
+  const wantsLoupe = (clientX: number, clientY: number) => {
+    if (isPanMode) return false;
+    if (isDrawingTool) return true;
+    const rect = stageRef.current?.container().getBoundingClientRect();
+    const w = screenToWorld(clientX - (rect?.left ?? 0), clientY - (rect?.top ?? 0));
+    return hitTest(w.x, w.y);
+  };
 
   const noop = () => {};
   const activeDown = tool === "select" ? selectDown : isDrawingTool ? drawDown : noop;
@@ -130,16 +145,24 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
     viewportEvents.onTouchStart(e);
     if (!isPanMode) toolEvents.onTouchStart(e);
     gestures.onTouchStart(e);
+    const t = e.evt.touches.length === 1 ? e.evt.touches[0] : null;
+    setLoupe(t && wantsLoupe(t.clientX, t.clientY) ? { x: t.clientX, y: t.clientY } : null);
   };
   const handleTouchMove = (e: TE) => {
     viewportEvents.onTouchMove(e);
     if (!isPanMode && e.evt.touches.length === 1) toolEvents.onTouchMove(e);
     gestures.onTouchMove(e);
+    if (e.evt.touches.length !== 1) setLoupe(null); // a 2nd finger ⇒ pinch, not precision
+    else {
+      const t = e.evt.touches[0];
+      setLoupe((prev) => (prev ? { x: t.clientX, y: t.clientY } : prev)); // track only if already active
+    }
   };
   const handleTouchEnd = (e: TE) => {
     viewportEvents.onTouchEnd(e);
     if (!isPanMode) toolEvents.onTouchEnd(e);
     gestures.onTouchEnd(e);
+    setLoupe(null);
   };
 
   return (
@@ -186,6 +209,9 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
 
       {/* Touch deferred-commit — confirm/discard the held segment */}
       {isDrawingTool && drawPending && <DrawCommitBar onConfirm={confirmPending} onDiscard={discardPending} />}
+
+      {/* Touch magnifier — precise placement while a finger covers the point */}
+      {loupe && <TouchLoupe x={loupe.x} y={loupe.y} stageRef={stageRef} />}
 
       {/* DOM overlay — wall thickness editor anchored at a tapped node */}
       {tool === "select" && thicknessNode && (
