@@ -217,6 +217,7 @@ export const fa: Dictionary = {
   inspector: {
     empty: "برای ویرایش ویژگی‌ها، عنصری را انتخاب کنید.",
     noProps: "هنوز ویژگی قابل‌ویرایشی برای این عنصر وجود ندارد.",
+    edit: "ویرایش انتخاب",
   },
 
   settings: {

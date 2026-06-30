@@ -217,6 +217,7 @@ export const de: Dictionary = {
   inspector: {
     empty: "Wähle ein Element, um seine Eigenschaften zu bearbeiten.",
     noProps: "Für dieses Element gibt es noch keine bearbeitbaren Eigenschaften.",
+    edit: "Auswahl bearbeiten",
   },
 
   settings: {

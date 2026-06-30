@@ -216,6 +216,7 @@ export const it: Dictionary = {
   inspector: {
     empty: "Seleziona un elemento per modificarne le proprietà.",
     noProps: "Nessuna proprietà modificabile per questo elemento.",
+    edit: "Modifica selezione",
   },
 
   settings: {

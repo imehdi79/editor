@@ -32,27 +32,6 @@
   ],
   "steps": [
     {
-      "id": "MOB-7",
-      "title": "Generic selection-action sheet (space + non-wall shapes)",
-      "status": "todo",
-      "priority": "medium",
-      "goal": "Generalize the wall-only WallActions FAB+modal into a selected-element sheet that renders the right existing form, so rooms and non-wall shapes are actionable on mobile.",
-      "rationale": "A room is tap-selectable but SpacePropertiesForm is desktop-Inspector-only and WallActions opens only for walls — selecting a space/line/text/opening on mobile offers nothing beyond More -> Delete.",
-      "details": [
-        "Switch the sheet on selection: WallPropertiesForm (wall/arc-wall), SpacePropertiesForm (space), a minimal delete + relevant props otherwise.",
-        "Reuse the existing forms; respect selection.store's mutual exclusion of shape vs space."
-      ],
-      "touches": [
-        "src/renderer/layout/WallActions.tsx",
-        "src/renderer/layout/SpacePropertiesForm.tsx (reuse)",
-        "src/renderer/layout/WallPropertiesForm.tsx (reuse)",
-        "src/store/selection.store.ts (read-only)",
-        "src/i18n/locales/{en,it,de,fa}.ts"
-      ],
-      "unlocks": ["Editing rooms + non-wall shapes on touch"],
-      "depends_on": []
-    },
-    {
       "id": "MOB-8",
       "title": "Grab-vs-pan disambiguation near targets",
       "status": "todo",

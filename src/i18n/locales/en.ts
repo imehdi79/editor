@@ -218,6 +218,7 @@ export const en = {
   inspector: {
     empty: "Select an element to edit its properties.",
     noProps: "No editable properties for this element yet.",
+    edit: "Edit selection",
   },
 
   settings: {

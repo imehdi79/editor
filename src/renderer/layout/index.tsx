@@ -1,5 +1,5 @@
 import GlobalCursor from "./sidebar/GlobalCursor";
-import WallActions from "./WallActions";
+import SelectionActions from "./SelectionActions";
 import Header from "./header";
 import SubPageBar from "./header/SubPageBar";
 import MobileToolbar from "./MobileToolbar";
@@ -17,8 +17,8 @@ const Layout = () => {
       {/* Desktop CAD chrome (md+) — tool rail, view controls, inspector, status bar */}
       <EditorShell />
 
-      {/* Mobile chrome — wall editor modal + tool sheet (hidden on md+) */}
-      <WallActions />
+      {/* Mobile chrome — selection editor modal + tool sheet (hidden on md+) */}
+      <SelectionActions />
       <MobileZoomControls />
       <MobileToolbar />
     </>
