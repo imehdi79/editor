@@ -9,11 +9,16 @@
  *   • net (clear) floor polygon — the centreline loop inset to each bounding
  *     wall's FINISHED room-side face (core half + that side's finish build-up,
  *     plus the wall's eccentric offset), so the area is the usable floor, not the
- *     gross centreline area;
- *   • net area + net perimeter from that inset polygon;
+ *     gross centreline area. Courtyard / atrium holes are inset the OTHER way
+ *     (their finished faces eat into the room) and subtracted;
+ *   • net area + net perimeter from that finished outline (holes included);
  *   • floor and ceiling surfaces — a flat space has one of each, both equal to
- *     the net floor area (the slab / soffit quantity, carried for takeoff and
- *     future 3D).
+ *     the net floor area (the slab / soffit quantity, carried for takeoff and 3D).
+ *
+ * A space is a DERIVED runtime entity — never written into the document. Only the
+ * assembly assignments keyed by {@link Space.id} persist; `withAssignments` folds
+ * them back in WITHOUT re-tracing geometry (a cheap map over the cached result),
+ * so changing an assembly never regenerates the geometry.
  *
  * Cached on the shapes object, so it recomputes whenever walls OR their layers
  * change (every store mutation yields a fresh shapes object). Pure — no React,
@@ -23,6 +28,7 @@
 import type { Shape, WallShape } from "@/core/drawing-engine/drawing.types";
 import { computeRoomAreas } from "@/core/drawing-info/computeRoomAreas";
 import { finishBuildup } from "@/core/wall-layers/finishedWall";
+import type { SpaceAssignments } from "./spaceAssignment";
 
 type Pt = { x: number; y: number };
 
@@ -35,21 +41,29 @@ export interface SpaceSurface {
 export interface Space {
   /** Stable id (shared with the underlying enclosed face). */
   id: string;
-  /** Gross centreline polygon (label / hit-test anchor). */
+  /** Gross centreline outer polygon (label / hit-test anchor, fill outline). */
   polygon: Pt[];
+  /** Gross centreline hole rings (courtyards / atria) — punched from the fill. */
+  holes: Pt[][];
   /** Net (clear) floor polygon, inset to the bounding walls' finished faces. */
   netPolygon: Pt[];
-  /** Polygon centroid (label anchor). */
+  /** Polygon centroid (label anchor), hole-aware. */
   centroid: Pt;
-  /** Gross area from the centreline loop (px²). */
+  /** Gross area from the centreline loop, net of holes (px²). */
   grossAreaPx: number;
-  /** Net (clear) floor area between finished faces (px²). */
+  /** Net (clear) floor area between finished faces, net of holes (px²). */
   netAreaPx: number;
-  /** Net (clear) perimeter of the finished-face polygon (px). */
+  /** Net (clear) perimeter of the finished outline, holes included (px). */
   perimeterPx: number;
   /** Generated horizontal surfaces — floor + ceiling (flat ⇒ equal areas). */
   floor: SpaceSurface;
   ceiling: SpaceSurface;
+  /** Optional display name (none today ⇒ callers number "Space N" by area rank). */
+  name?: string;
+  /** Persisted floor assembly id (filled by {@link withAssignments}). */
+  floorAssemblyId?: string;
+  /** Persisted ceiling assembly id (filled by {@link withAssignments}). */
+  ceilingAssemblyId?: string;
 }
 
 const EPS = 1e-9;
@@ -67,6 +81,17 @@ const shoelace = (poly: Pt[]): number => {
     s += p.x * q.y - q.x * p.y;
   }
   return Math.abs(s) / 2;
+};
+
+/** Signed shoelace (winding sign) in y-down space. */
+const signedArea = (poly: Pt[]): number => {
+  let s = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i];
+    const q = poly[(i + 1) % poly.length];
+    s += p.x * q.y - q.x * p.y;
+  }
+  return s / 2;
 };
 
 const perimeter = (poly: Pt[]): number => {
@@ -89,10 +114,10 @@ const distOnSegment = (p: Pt, a: Pt, b: Pt): number => {
 /**
  * Inward perpendicular offset (px) to apply to a polygon EDGE so it lands on the
  * bounding wall's finished room-side face. The wall is the one whose centreline
- * carries the edge midpoint; the room side is decided by the edge's inward
- * normal vs the wall's +n. Returns 0 when no wall hosts the edge (keep the edge).
+ * carries the edge midpoint; `roomDir` is the unit direction pointing INTO the
+ * room from the edge. Returns 0 when no wall hosts the edge (keep the edge).
  */
-const edgeFinishOffset = (mid: Pt, inward: Pt, walls: WallShape[]): number => {
+const edgeFinishOffset = (mid: Pt, roomDir: Pt, walls: WallShape[]): number => {
   let host: WallShape | null = null;
   let bestDist = ON_WALL_TOL;
   for (const w of walls) {
@@ -108,7 +133,7 @@ const edgeFinishOffset = (mid: Pt, inward: Pt, walls: WallShape[]): number => {
   const wlen = Math.hypot(host.x2 - host.x1, host.y2 - host.y1) || 1;
   const nx = -(host.y2 - host.y1) / wlen; // wall +n (left-hand normal)
   const ny = (host.x2 - host.x1) / wlen;
-  const onPlus = inward.x * nx + inward.y * ny >= 0; // room sits on the wall's +n side
+  const onPlus = roomDir.x * nx + roomDir.y * ny >= 0; // room sits on the wall's +n side
   const fb = finishBuildup(host);
   const finish = onPlus ? fb.inner : fb.outer;
   const offset = host.offset ?? 0;
@@ -126,28 +151,31 @@ const lineIntersect = (pA: Pt, dA: Pt, pB: Pt, dB: Pt): Pt | null => {
 };
 
 /**
- * Inset a simple polygon by a per-edge inward distance. Vertex j is the meeting
- * of the offset lines of edge j-1 and edge j (a mitre); collinear neighbours
- * (subdivision points) fall back to a straight push-in. Returns null if the
- * result degenerates (room narrower than its walls).
+ * Offset a simple ring onto the bounding walls' finished room-side faces. The
+ * room-side direction per edge is the winding-aware inward normal (robust for
+ * concave / L-shaped rings) — flipped for holes, whose room side faces OUTWARD,
+ * so a courtyard's finished walls grow the hole. Vertex j is the mitre of the two
+ * adjacent offset lines; collinear neighbours fall back to a straight push.
+ * Returns null if the result degenerates.
  */
-const insetPolygon = (poly: Pt[], centroid: Pt, walls: WallShape[]): Pt[] | null => {
+const offsetRing = (poly: Pt[], walls: WallShape[], roomIsInterior: boolean): Pt[] | null => {
   const n = poly.length;
   if (n < 3) return null;
+  const sgn = signedArea(poly) >= 0 ? 1 : -1;
 
-  // Per-edge inward unit normal + finished offset.
-  const normal: Pt[] = [];
+  const roomDir: Pt[] = [];
   const dist: number[] = [];
   for (let i = 0; i < n; i++) {
     const a = poly[i];
     const b = poly[(i + 1) % n];
     const e = sub(b, a);
     const el = len(e) || 1;
-    let nin = { x: -e.y / el, y: e.x / el };
+    // Winding-aware inward normal (toward the ring's interior).
+    let dir = { x: (-sgn * e.y) / el, y: (sgn * e.x) / el };
+    if (!roomIsInterior) dir = { x: -dir.x, y: -dir.y }; // hole: room is outside
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    if (nin.x * (centroid.x - mid.x) + nin.y * (centroid.y - mid.y) < 0) nin = { x: -nin.x, y: -nin.y };
-    normal.push(nin);
-    dist.push(edgeFinishOffset(mid, nin, walls));
+    roomDir.push(dir);
+    dist.push(edgeFinishOffset(mid, dir, walls));
   }
 
   const out: Pt[] = [];
@@ -157,10 +185,10 @@ const insetPolygon = (poly: Pt[], centroid: Pt, walls: WallShape[]): Pt[] | null
     const b0 = poly[(i + 1) % n];
     const a1 = poly[j];
     const b1 = poly[(j + 1) % n];
-    const pPrev = { x: a0.x + normal[i].x * dist[i], y: a0.y + normal[i].y * dist[i] };
-    const pCur = { x: a1.x + normal[j].x * dist[j], y: a1.y + normal[j].y * dist[j] };
+    const pPrev = { x: a0.x + roomDir[i].x * dist[i], y: a0.y + roomDir[i].y * dist[i] };
+    const pCur = { x: a1.x + roomDir[j].x * dist[j], y: a1.y + roomDir[j].y * dist[j] };
     const hit = lineIntersect(pPrev, sub(b0, a0), pCur, sub(b1, a1));
-    out.push(hit ?? { x: poly[j].x + normal[j].x * dist[j], y: poly[j].y + normal[j].y * dist[j] });
+    out.push(hit ?? { x: poly[j].x + roomDir[j].x * dist[j], y: poly[j].y + roomDir[j].y * dist[j] });
   }
   return out;
 };
@@ -172,28 +200,35 @@ const computeSpacesUncached = (shapes: Record<string, Shape>): Space[] => {
   const walls = Object.values(shapes).filter((s): s is WallShape => s.type === "wall");
 
   return rooms.map((room): Space => {
-    const gross = room.areaPx;
-    const inset = insetPolygon(room.polygon, room.centroid, walls);
+    const grossArea = room.areaPx; // centreline area, net of holes
+    const grossPerimeter = perimeter(room.polygon) + room.holes.reduce((s, h) => s + perimeter(h), 0);
+
     let netPolygon = room.polygon;
-    let netAreaPx = gross;
-    let perimeterPx = perimeter(room.polygon);
-    if (inset) {
-      const a = shoelace(inset);
-      // Keep the inset only when it is a sane shrink of the gross floor; a
-      // collapsed/inverted inset (walls thicker than the room) falls back to gross.
-      if (a > EPS && a <= gross + EPS) {
-        netPolygon = inset;
-        netAreaPx = a;
-        perimeterPx = perimeter(inset);
+    let netAreaPx = grossArea;
+    let perimeterPx = grossPerimeter;
+
+    const finishedOuter = offsetRing(room.polygon, walls, true);
+    if (finishedOuter) {
+      const finishedHoles = room.holes.map((h) => offsetRing(h, walls, false));
+      const holeArea = finishedHoles.reduce((s, h) => s + (h ? shoelace(h) : 0), 0);
+      const net = shoelace(finishedOuter) - holeArea;
+      // Keep the finished outline only when it's a sane shrink of the gross floor;
+      // a collapsed/inverted result (walls thicker than the room) falls back to gross.
+      if (net > EPS && net <= grossArea + EPS) {
+        netPolygon = finishedOuter;
+        netAreaPx = net;
+        perimeterPx =
+          perimeter(finishedOuter) + finishedHoles.reduce((s, h) => s + (h ? perimeter(h) : 0), 0);
       }
     }
 
     return {
       id: room.id,
       polygon: room.polygon,
+      holes: room.holes,
       netPolygon,
       centroid: room.centroid,
-      grossAreaPx: gross,
+      grossAreaPx: grossArea,
       netAreaPx,
       perimeterPx,
       floor: { kind: "floor", areaPx: netAreaPx },
@@ -216,3 +251,15 @@ export const computeSpaces = (shapes: Record<string, Shape>): Space[] => {
   cache.set(shapes, spaces);
   return spaces;
 };
+
+/**
+ * Fold persisted assembly assignments onto the (cached) geometry spaces — a cheap
+ * map that NEVER re-traces geometry, so changing an assignment doesn't regenerate
+ * the rooms. Returns a new array; unassigned spaces pass through untouched.
+ */
+export const withAssignments = (spaces: readonly Space[], assignments: SpaceAssignments): Space[] =>
+  spaces.map((sp) => {
+    const a = assignments[sp.id];
+    if (!a) return sp;
+    return { ...sp, floorAssemblyId: a.floorAssemblyId, ceilingAssemblyId: a.ceilingAssemblyId };
+  });
