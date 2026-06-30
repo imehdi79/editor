@@ -143,6 +143,9 @@ export const fa: Dictionary = {
     pickAssemblies: "برای برآورد نقشه، برای هر نوع المان یک لایه‌بندی انتخاب کنید.",
     alternatives: "گزینه‌های دیگر",
     cheapest: "ارزان‌ترین",
+    rooms: "فضاها",
+    defaults: "پیش‌فرض‌ها",
+    missingAssemblies: "مجموعه‌های تعیین‌نشده",
   },
 
   roles: {
@@ -285,6 +288,13 @@ export const fa: Dictionary = {
     existing: "موجود",
     costAssembly: "مجموعهٔ برآورد",
     noAssembly: "هیچ‌کدام",
+  },
+
+  space: {
+    netArea: "مساحت خالص کف",
+    netPerimeter: "محیط خالص",
+    floorAssembly: "مجموعهٔ کف",
+    ceilingAssembly: "مجموعهٔ سقف",
   },
 
   wallSides: {

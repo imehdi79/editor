@@ -142,6 +142,9 @@ export const it: Dictionary = {
     pickAssemblies: "Scegli una stratigrafia per ogni tipo di elemento per computare il disegno.",
     alternatives: "Alternative",
     cheapest: "Più economica",
+    rooms: "Ambienti",
+    defaults: "Predefiniti",
+    missingAssemblies: "Stratigrafie mancanti",
   },
 
   roles: {
@@ -284,6 +287,13 @@ export const it: Dictionary = {
     existing: "Esistente",
     costAssembly: "Stratigrafia di computo",
     noAssembly: "Nessuna",
+  },
+
+  space: {
+    netArea: "Superficie netta",
+    netPerimeter: "Perimetro netto",
+    floorAssembly: "Stratigrafia pavimento",
+    ceilingAssembly: "Stratigrafia soffitto",
   },
 
   wallSides: {

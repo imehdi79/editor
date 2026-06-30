@@ -2,11 +2,16 @@
  * DrawingEstimatePanel — costs the live drawing. Shared by the admin Estimate
  * section (drawing mode) and the in-editor estimate panel.
  *
- * Measures the current shapes + enclosed spaces, then bills each element type:
- * walls are grouped by their per-wall `assemblyId` (falling back to the wall
- * default chosen here), and spaces feed the floor + ceiling defaults. The chosen
- * job-question answers raise flags for the pricing rules. Read-only — it owns
- * only its local selections and writes nothing to the document.
+ * Walls are grouped by their per-wall `assemblyId` (falling back to the wall
+ * default chosen here). Spaces are FIRST-CLASS, per-room entities: every detected
+ * room shows its floor + ceiling, each with its own persisted assembly (or the
+ * session default), the resolved cost, and ranked cheaper alternatives. Rooms
+ * missing an assembly are flagged — never silently dropped. The chosen
+ * job-question answers raise flags for the pricing rules.
+ *
+ * Per-room picks WRITE to the document (`setSpaceAssembly`, undoable/persisted);
+ * geometry stays derived (computeSpaces) and is never duplicated. The wall
+ * fallback + answers are local session state.
  */
 
 import { useState } from "react";
@@ -17,71 +22,31 @@ import { useEditorStore } from "@/store/editor.store";
 import { useAdminLayersStore, type AdminWallLayer } from "@/store/admin-layers.store";
 import { useAdminPricingStore } from "@/store/admin-pricing.store";
 import { useAdminQuestionsStore } from "@/store/admin-questions.store";
-import { computeSpaces } from "@/core/spaces/computeSpaces";
-import { ELEMENT_TYPES, type ElementType } from "@/core/estimation/elementTypes";
+import { computeSpaces, withAssignments } from "@/core/spaces/computeSpaces";
+import { type ElementType } from "@/core/estimation/elementTypes";
 import { estimate, type EstimateItem, type ElementMeasure } from "@/core/estimation/estimate";
-import { measureDrawing, wallMeasure, addMeasure } from "@/core/estimation/takeoff";
-import { recommendAssemblies, type AssemblyOption, type Pricing } from "@/core/estimation/recommend";
+import {
+  wallMeasure,
+  addMeasure,
+  spaceMeasure,
+  buildSpaceItems,
+  type AssemblyResolver,
+  type SpaceSurface,
+} from "@/core/estimation/takeoff";
+import { type AssemblyOption, type Pricing } from "@/core/estimation/recommend";
 import { EstimateResult } from "./EstimateResult";
 import { JobConditions, flagsFromAnswers } from "./JobConditions";
+import { AssemblyOptions } from "./AssemblyOptions";
 import { FIELD, money, ELEMENT_TYPE_KEY } from "./labels";
 
-/**
- * AssemblyOptions — ranked cost alternatives for one element type. Lists the
- * type's assemblies cheapest-first with each one's all-in total and the delta vs
- * the current pick; clicking switches the type's assembly. Hidden when the type
- * offers fewer than two priced choices.
- */
-const AssemblyOptions = ({
-  options,
-  measure,
-  pricing,
-  currentId,
-  onPick,
-}: {
-  options: AssemblyOption[];
-  measure: ElementMeasure;
-  pricing: Pricing;
-  currentId: string;
-  onPick: (id: string) => void;
-}) => {
-  const { t } = useTranslation();
-  const recs = recommendAssemblies(options, measure, pricing, currentId || undefined);
-  if (recs.length < 2) return null;
-
-  return (
-    <div className="space-y-0.5 rounded-md bg-panel-2 p-2">
-      <span className="text-2xs uppercase tracking-wider text-ink-3 mono">{t("admin.alternatives")}</span>
-      {recs.slice(0, 4).map((r) => (
-        <button
-          key={r.id}
-          type="button"
-          onClick={() => onPick(r.id)}
-          className={cn(
-            "flex w-full items-center gap-2 rounded px-2 py-1 text-xs transition-colors",
-            r.current ? "bg-brand-soft text-brand" : "text-ink-2 hover:bg-panel",
-          )}
-        >
-          <span className="flex-1 truncate text-start">
-            {r.name}
-            {r.cheapest && <span className="ml-1.5 text-2xs text-brand">• {t("admin.cheapest")}</span>}
-          </span>
-          <span className="mono">{money(r.cost.total)}</span>
-          {r.delta !== 0 && (
-            <span className={cn("w-12 text-end text-2xs mono", r.delta > 0 ? "text-ink-3" : "text-brand")}>
-              {r.delta > 0 ? "+" : ""}
-              {money(r.delta)}
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
-  );
-};
+const ZERO: ElementMeasure = { area: 0, length: 0, count: 0 };
+const SURFACES: SpaceSurface[] = ["floor", "ceiling"];
 
 export const DrawingEstimatePanel = () => {
   const { t } = useTranslation();
   const shapes = useFloorPlanStore((s) => s.shapes);
+  const spaceAssignments = useFloorPlanStore((s) => s.spaceAssignments);
+  const setSpaceAssembly = useFloorPlanStore((s) => s.setSpaceAssembly);
   const presets = useAdminLayersStore((s) => s.presets);
   const layers = useAdminLayersStore((s) => s.layers);
   const rates = useAdminPricingStore((s) => s.rates);
@@ -90,7 +55,7 @@ export const DrawingEstimatePanel = () => {
   const pixelsPerMeter = useEditorStore((s) => s.pixelsPerMeter);
   const defaultWallHeight = useEditorStore((s) => s.defaultWallHeight);
 
-  // Per-type fallback assembly + answered conditions are the only local state.
+  // Session-local: per-type wall fallback + per-surface room defaults + answers.
   const [defaults, setDefaults] = useState<Record<string, string>>({});
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
@@ -102,33 +67,43 @@ export const DrawingEstimatePanel = () => {
       : [];
   };
   const presetName = (id: string) => presets.find((p) => p.id === id)?.name || t("admin.newPreset");
+  const resolve: AssemblyResolver = (id) => {
+    const ls = resolveLayers(id);
+    return ls.length > 0 ? { name: presetName(id), layers: ls } : null;
+  };
 
-  const measures = measureDrawing(shapes, computeSpaces(shapes), opts);
-  const drawnTypes = ELEMENT_TYPES.filter((et) => measures[et].count > 0);
+  // --- Geometry (derived; assignments folded in without re-tracing) ---
+  const spaces = withAssignments(computeSpaces(shapes), spaceAssignments);
 
-  // Walls: group by per-wall assignment, falling back to the wall default.
+  // --- Walls: group by per-wall assignment, falling back to the wall default ---
   const wallGroups = new Map<string, ElementMeasure>();
+  let wallTotal: ElementMeasure = { ...ZERO };
   for (const s of Object.values(shapes)) {
     if ((s.type !== "wall" && s.type !== "arc-wall") || s.existing) continue;
+    const m = wallMeasure(s, opts);
+    wallTotal = addMeasure(wallTotal, m);
     const pid = s.assemblyId && presets.some((p) => p.id === s.assemblyId) ? s.assemblyId : defaults.wall;
     if (!pid) continue;
-    wallGroups.set(pid, addMeasure(wallGroups.get(pid) ?? { area: 0, length: 0, count: 0 }, wallMeasure(s, opts)));
+    wallGroups.set(pid, addMeasure(wallGroups.get(pid) ?? { ...ZERO }, m));
   }
+  const hasWalls = wallTotal.count > 0;
 
-  const items: EstimateItem[] = [];
+  const wallItems: EstimateItem[] = [];
   for (const [pid, m] of wallGroups) {
     const ls = resolveLayers(pid);
-    if (ls.length > 0) items.push({ name: presetName(pid), layers: ls, measure: m });
-  }
-  for (const et of ["floor", "ceiling"] as const) {
-    const pid = defaults[et];
-    if (!pid || measures[et].count === 0) continue;
-    const ls = resolveLayers(pid);
-    if (ls.length > 0) items.push({ name: et, layers: ls, measure: measures[et] });
+    if (ls.length > 0) wallItems.push({ name: presetName(pid), layers: ls, measure: m });
   }
 
+  // --- Spaces: per-room floor + ceiling items (+ missing-assembly warnings) ---
+  const { items: spaceItems, warnings } = buildSpaceItems(
+    spaces,
+    { floor: defaults.floor, ceiling: defaults.ceiling },
+    resolve,
+    pixelsPerMeter,
+  );
+
   const flags = flagsFromAnswers(questions, answers);
-  const result = estimate({ items, rates, rules, flags });
+  const result = estimate({ items: [...wallItems, ...spaceItems], rates, rules, flags });
 
   const pricing: Pricing = { rates, rules, flags };
   const optionsFor = (et: ElementType): AssemblyOption[] =>
@@ -136,48 +111,146 @@ export const DrawingEstimatePanel = () => {
       .filter((p) => p.elementType === et)
       .map((p) => ({ id: p.id, name: p.name || t("admin.newPreset"), layers: resolveLayers(p.id) }))
       .filter((o) => o.layers.length > 0);
+  const presetOptions = (et: ElementType) => presets.filter((p) => p.elementType === et);
+  const surfaceId = (sp: (typeof spaces)[number], surface: SpaceSurface) =>
+    surface === "floor" ? sp.floorAssemblyId : sp.ceilingAssemblyId;
 
-  if (drawnTypes.length === 0) {
+  if (!hasWalls && spaces.length === 0) {
     return <p className="rounded-lg bg-panel px-3 py-10 text-center text-sm text-ink-3 hair">{t("admin.noShapes")}</p>;
   }
 
   return (
     <div className="space-y-4">
-      <div className="space-y-3 rounded-lg bg-panel p-3 hair">
-        {drawnTypes.map((et) => (
-          <div key={et} className="space-y-1.5">
-            <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-sm text-ink-2">{t(ELEMENT_TYPE_KEY[et])}</span>
-                <span className="text-2xs text-ink-3 mono">{money(measures[et].area)} m²</span>
-              </div>
-              <select
-                value={defaults[et] ?? ""}
-                onChange={(e) => setDefaults((d) => ({ ...d, [et]: e.target.value }))}
-                aria-label={t(ELEMENT_TYPE_KEY[et])}
-                className={cn(FIELD, "w-full")}
-              >
-                <option value="">{t("admin.selectPreset")}</option>
-                {presets
-                  .filter((p) => p.elementType === et)
-                  .map((p) => (
+      {/* Walls — grouped by per-wall assembly, with a fallback for unassigned walls */}
+      {hasWalls && (
+        <div className="space-y-1.5 rounded-lg bg-panel p-3 hair">
+          <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-sm text-ink-2">{t(ELEMENT_TYPE_KEY.wall)}</span>
+              <span className="text-2xs text-ink-3 mono">{money(wallTotal.area)} m²</span>
+            </div>
+            <select
+              value={defaults.wall ?? ""}
+              onChange={(e) => setDefaults((d) => ({ ...d, wall: e.target.value }))}
+              aria-label={t(ELEMENT_TYPE_KEY.wall)}
+              className={cn(FIELD, "w-full")}
+            >
+              <option value="">{t("admin.selectPreset")}</option>
+              {presetOptions("wall").map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name || t("admin.newPreset")}
+                </option>
+              ))}
+            </select>
+          </div>
+          <AssemblyOptions
+            options={optionsFor("wall")}
+            measure={wallTotal}
+            pricing={pricing}
+            currentId={defaults.wall ?? ""}
+            onPick={(id) => setDefaults((d) => ({ ...d, wall: id }))}
+          />
+        </div>
+      )}
+
+      {/* Rooms — every space is a first-class entity with its own floor + ceiling */}
+      {spaces.length > 0 && (
+        <div className="space-y-2.5 rounded-lg bg-panel p-3 hair">
+          <span className="text-2xs uppercase tracking-wider text-ink-3 mono">{t("admin.rooms")}</span>
+
+          {/* Defaults applied to any room left unassigned */}
+          <div className="grid grid-cols-2 gap-2">
+            {SURFACES.map((surface) => (
+              <label key={surface} className="flex flex-col gap-1">
+                <span className="text-2xs text-ink-3">
+                  {t("admin.defaults")} · {t(ELEMENT_TYPE_KEY[surface])}
+                </span>
+                <select
+                  value={defaults[surface] ?? ""}
+                  onChange={(e) => setDefaults((d) => ({ ...d, [surface]: e.target.value }))}
+                  className={cn(FIELD, "w-full")}
+                >
+                  <option value="">{t("wall.noAssembly")}</option>
+                  {presetOptions(surface).map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name || t("admin.newPreset")}
                     </option>
                   ))}
-              </select>
-            </div>
-            <AssemblyOptions
-              options={optionsFor(et)}
-              measure={measures[et]}
-              pricing={pricing}
-              currentId={defaults[et] ?? ""}
-              onPick={(id) => setDefaults((d) => ({ ...d, [et]: id }))}
-            />
+                </select>
+              </label>
+            ))}
           </div>
-        ))}
-        <JobConditions answers={answers} onChange={(qId, oId) => setAnswers((a) => ({ ...a, [qId]: oId }))} />
-      </div>
+
+          {spaces.map((space, i) => {
+            const measures = spaceMeasure(space, pixelsPerMeter);
+            return (
+              <div key={space.id} className="space-y-2 rounded-md bg-panel-2 p-2">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm text-ink-2">
+                    {t("drawingInfo.types.space")} {i + 1}
+                  </span>
+                  <span className="text-2xs text-ink-3 mono">{money(measures.floor.area)} m²</span>
+                </div>
+                {SURFACES.map((surface) => {
+                  const assigned = surfaceId(space, surface);
+                  return (
+                    <div key={surface} className="space-y-1">
+                      <div className="grid grid-cols-[4.5rem_1fr] items-center gap-2">
+                        <span className="text-2xs uppercase tracking-wider text-ink-3 mono">
+                          {t(ELEMENT_TYPE_KEY[surface])}
+                        </span>
+                        <select
+                          value={assigned ?? ""}
+                          onChange={(e) => setSpaceAssembly(space.id, surface, e.target.value || undefined)}
+                          aria-label={t(ELEMENT_TYPE_KEY[surface])}
+                          className={cn(FIELD, "w-full")}
+                        >
+                          <option value="">{t("admin.selectPreset")}</option>
+                          {presetOptions(surface).map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name || t("admin.newPreset")}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <AssemblyOptions
+                        options={optionsFor(surface)}
+                        measure={measures[surface]}
+                        pricing={pricing}
+                        currentId={assigned ?? defaults[surface] ?? ""}
+                        onPick={(id) => setSpaceAssembly(space.id, surface, id)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Job conditions — answers raise flags the pricing rules act on */}
+      {questions.length > 0 && (
+        <div className="rounded-lg bg-panel p-3 hair">
+          <JobConditions answers={answers} onChange={(qId, oId) => setAnswers((a) => ({ ...a, [qId]: oId }))} />
+        </div>
+      )}
+
+      {/* Warnings — rooms with an unpriced surface (never silently dropped) */}
+      {warnings.length > 0 && (
+        <div className="space-y-1 rounded-lg bg-panel p-3 hair">
+          <span className="text-2xs uppercase tracking-wider text-danger mono">{t("admin.missingAssemblies")}</span>
+          {warnings.map((w) => (
+            <p key={w.spaceId} className="text-xs text-ink-2">
+              {t("drawingInfo.types.space")} {w.index}
+              <span className="text-ink-3">
+                {" — "}
+                {w.missing.map((s) => t(ELEMENT_TYPE_KEY[s])).join(", ")}
+              </span>
+            </p>
+          ))}
+        </div>
+      )}
 
       {result.items.length > 0 ? (
         <EstimateResult result={result} />

@@ -143,6 +143,9 @@ export const de: Dictionary = {
     pickAssemblies: "Wähle je Bauteiltyp einen Aufbau, um die Zeichnung zu kalkulieren.",
     alternatives: "Alternativen",
     cheapest: "Günstigste",
+    rooms: "Räume",
+    defaults: "Vorgaben",
+    missingAssemblies: "Fehlende Aufbauten",
   },
 
   roles: {
@@ -285,6 +288,13 @@ export const de: Dictionary = {
     existing: "Bestand",
     costAssembly: "Kalkulationsaufbau",
     noAssembly: "Keiner",
+  },
+
+  space: {
+    netArea: "Netto-Bodenfläche",
+    netPerimeter: "Netto-Umfang",
+    floorAssembly: "Bodenaufbau",
+    ceilingAssembly: "Deckenaufbau",
   },
 
   wallSides: {

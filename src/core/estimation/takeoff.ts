@@ -89,6 +89,87 @@ export const measureDrawing = (
   return out;
 };
 
+// ---------------------------------------------------------------------------
+// Per-space measuring (floors + ceilings as first-class, per-room entities)
+// ---------------------------------------------------------------------------
+
+/** The two horizontal surfaces a space contributes to the takeoff. */
+export type SpaceSurface = "floor" | "ceiling";
+
+/**
+ * Measure one space's floor + ceiling: net (clear) area in m², the net perimeter
+ * as running metres, count 1. Both surfaces share the flat space's net area.
+ */
+export const spaceMeasure = (space: Space, pixelsPerMeter: number): Record<SpaceSurface, ElementMeasure> => {
+  const ppm = pixelsPerMeter || 1;
+  const m: ElementMeasure = { area: space.netAreaPx / (ppm * ppm), length: space.perimeterPx / ppm, count: 1 };
+  return { floor: { ...m }, ceiling: { ...m } };
+};
+
+/** A space's resolved assembly for a surface: a label + its priced layers. */
+export interface ResolvedAssembly {
+  name: string;
+  layers: readonly PricedLayer[];
+}
+
+/** Resolve an assembly id to its priced layers, or null when it can't be costed. */
+export type AssemblyResolver = (assemblyId: string) => ResolvedAssembly | null;
+
+/** A space missing a costable assembly on one or both surfaces. */
+export interface SpaceWarning {
+  spaceId: string;
+  /** 1-based room number (matches the on-canvas "Space N" label / area rank). */
+  index: number;
+  /** Surfaces with neither an assignment nor a usable fallback. */
+  missing: SpaceSurface[];
+}
+
+const SURFACES: SpaceSurface[] = ["floor", "ceiling"];
+
+/**
+ * Build the costed estimate items for every space's floor + ceiling, grouped by
+ * the resolved assembly (so identical picks sum into one line) — and the warnings
+ * for any space whose surface has no assembly (assignment → fallback → none).
+ * Missing assemblies are reported, never silently dropped.
+ *
+ * `spaces` are expected to already carry their persisted assignment ids (fold them
+ * in via `withAssignments`); `fallback` supplies a per-surface default; `resolve`
+ * maps an assembly id to its priced layers (keeps this pure — no store import).
+ */
+export const buildSpaceItems = (
+  spaces: readonly Space[],
+  fallback: Partial<Record<SpaceSurface, string>>,
+  resolve: AssemblyResolver,
+  pixelsPerMeter: number,
+): { items: EstimateItem[]; warnings: SpaceWarning[] } => {
+  const groups = new Map<string, { res: ResolvedAssembly; measure: ElementMeasure }>();
+  const warnings: SpaceWarning[] = [];
+
+  spaces.forEach((space, i) => {
+    const measures = spaceMeasure(space, pixelsPerMeter);
+    const missing: SpaceSurface[] = [];
+    for (const surface of SURFACES) {
+      const assignmentId = surface === "floor" ? space.floorAssemblyId : space.ceilingAssemblyId;
+      const id = assignmentId ?? fallback[surface];
+      const res = id ? resolve(id) : null;
+      if (!res || res.layers.length === 0) {
+        missing.push(surface);
+        continue;
+      }
+      const key = `${surface}:${id}`;
+      const existing = groups.get(key);
+      if (existing) existing.measure = addMeasure(existing.measure, measures[surface]);
+      else groups.set(key, { res, measure: { ...measures[surface] } });
+    }
+    if (missing.length > 0) warnings.push({ spaceId: space.id, index: i + 1, missing });
+  });
+
+  const items = [...groups.values()].map(
+    (g): EstimateItem => ({ name: g.res.name, layers: g.res.layers, measure: g.measure }),
+  );
+  return { items, warnings };
+};
+
 /** True when an element type has no measured geometry (nothing to cost). */
 const isEmpty = (m: ElementMeasure): boolean => m.area === 0 && m.length === 0 && m.count === 0;
 

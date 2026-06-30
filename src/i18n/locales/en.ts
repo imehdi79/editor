@@ -144,6 +144,9 @@ export const en = {
     pickAssemblies: "Pick an assembly per element type to cost the drawing.",
     alternatives: "Alternatives",
     cheapest: "Cheapest",
+    rooms: "Rooms",
+    defaults: "Defaults",
+    missingAssemblies: "Missing assemblies",
   },
 
   roles: {
@@ -291,6 +294,14 @@ export const en = {
     existing: "Existing",
     costAssembly: "Cost assembly",
     noAssembly: "None",
+  },
+
+  // Selected-space (room) properties — floor + ceiling cost assemblies.
+  space: {
+    netArea: "Net floor area",
+    netPerimeter: "Net perimeter",
+    floorAssembly: "Floor assembly",
+    ceilingAssembly: "Ceiling assembly",
   },
 
   // Wall faces — the two build-up sides of a wall.
