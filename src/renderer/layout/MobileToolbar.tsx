@@ -12,11 +12,12 @@
  */
 
 import { useState } from "react";
-import { Redo, Undo, Trash2, Layers3, Settings2, MoreHorizontal, Moon, Sun, Hand } from "lucide-react";
+import { Redo, Undo, Trash2, Layers3, Settings2, MoreHorizontal, Moon, Sun, Hand, Waypoints } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToolsStore } from "@/store/tools.store";
+import { useEditorStore } from "@/store/editor.store";
 import { useTemporalStore, useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import { useThemeStore } from "@/store/theme.store";
@@ -33,6 +34,9 @@ const MobileToolbar = () => {
 
   const activeTool = useToolsStore((s) => s.tool);
   const setTool = useToolsStore((s) => s.setTool);
+
+  const chainDrawing = useEditorStore((s) => s.chainDrawing);
+  const toggleChainDrawing = useEditorStore((s) => s.toggleChainDrawing);
 
   const undo = useTemporalStore((s) => s.undo);
   const redo = useTemporalStore((s) => s.redo);
@@ -93,6 +97,22 @@ const MobileToolbar = () => {
             </button>
           ))}
         </div>
+
+        {/* Continuous (chain) drawing toggle — keeps connected segments flowing
+            without re-acquiring the previous node (effective for segment tools). */}
+        <button
+          type="button"
+          title={t("tools.chain")}
+          aria-label={t("tools.chain")}
+          aria-pressed={chainDrawing}
+          onClick={toggleChainDrawing}
+          className={cn(
+            "grid size-11 shrink-0 place-items-center rounded-lg transition-colors",
+            chainDrawing ? "bg-brand text-brand-foreground" : "text-ink-2 hover:bg-panel-2 hover:text-ink",
+          )}
+        >
+          <Waypoints className="size-5.5" strokeWidth={1.75} />
+        </button>
 
         <div className="h-7 w-px shrink-0 bg-line" />
 

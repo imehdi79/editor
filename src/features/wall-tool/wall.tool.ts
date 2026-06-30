@@ -28,6 +28,7 @@ const shapeDefaults = () => {
 
 export const wallToolDefinition: ToolDefinition = {
   minLength: 10,
+  chainable: true,
 
   buildGhost: (x1, y1, x2, y2) => ({
     type: "wall",

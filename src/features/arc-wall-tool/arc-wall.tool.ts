@@ -31,6 +31,7 @@ const defaultBulge = (x1: number, y1: number, x2: number, y2: number) => Math.hy
 
 export const arcWallToolDefinition: ToolDefinition = {
   minLength: 10,
+  chainable: true,
 
   buildGhost: (x1, y1, x2, y2) => ({
     type: "arc-wall",

@@ -86,6 +86,14 @@ interface EditorStore {
    */
   dimensionDisplay: DimensionDisplay;
 
+  /**
+   * Continuous (chain) drawing: when on, a chainable segment tool keeps the
+   * just-committed endpoint as the next segment's start, so connected runs
+   * (walls, lines) are drawn without re-acquiring the previous node. Off =
+   * the classic one-segment-per-gesture behaviour. See useDrawingEngine.
+   */
+  chainDrawing: boolean;
+
   setViewMode: (mode: "2d" | "3d") => void;
   setGuideThreshold: (threshold: number) => void;
   setPerpThreshold: (threshold: number) => void;
@@ -96,6 +104,7 @@ interface EditorStore {
   setDefaultAssemblyPreset: (id: string | null) => void;
   setLinkConnectedNodes: (link: boolean) => void;
   setDimensionDisplay: (mode: DimensionDisplay) => void;
+  toggleChainDrawing: () => void;
   setWallJoinStyle: (style: JoinStyle) => void;
   setMiterLimit: (limit: number) => void;
   setWallEndCap: (cap: EndCap) => void;
@@ -121,6 +130,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   defaultAssemblyPreset: "singleLeaf",
   linkConnectedNodes: true,
   dimensionDisplay: "both",
+  chainDrawing: false,
 
   wallJoinStyle: DEFAULT_JUNCTION_CONFIG.joinStyle,
   miterLimit: DEFAULT_JUNCTION_CONFIG.miterLimit,
@@ -137,6 +147,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setDefaultAssemblyPreset: (id) => set({ defaultAssemblyPreset: id }),
   setLinkConnectedNodes: (link) => set({ linkConnectedNodes: link }),
   setDimensionDisplay: (mode) => set({ dimensionDisplay: mode }),
+  toggleChainDrawing: () => set((s) => ({ chainDrawing: !s.chainDrawing })),
   setWallJoinStyle: (style) => set({ wallJoinStyle: style }),
   setMiterLimit: (limit) => set({ miterLimit: limit }),
   setWallEndCap: (cap) => set({ wallEndCap: cap }),

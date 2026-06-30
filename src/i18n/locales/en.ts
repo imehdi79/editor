@@ -172,6 +172,7 @@ export const en = {
   tools: {
     select: "Select",
     pan: "Pan",
+    chain: "Continuous",
     wall: "Wall",
     arcWall: "Arc Wall",
     window: "Window",

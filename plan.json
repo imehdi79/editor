@@ -32,29 +32,6 @@
   ],
   "steps": [
     {
-      "id": "MOB-4",
-      "title": "Wall-chain (continuous segment) drawing",
-      "status": "todo",
-      "priority": "high",
-      "goal": "After committing a wall/line, optionally seed the next segment's start with the previous endpoint so connected runs are drawn as a chain of taps/drags instead of re-acquiring the hidden node each time.",
-      "rationale": "Chaining today is emergent (re-snapping each start onto an under-finger node with no hover) — the biggest touch flow weakness. A thin state layer over useDrawingEngine reusing resolvePoint + buildShape benefits desktop too, so build it tool-side, not mobile-only.",
-      "details": [
-        "Add an opt-in chain state over useDrawingEngine: on commit, keep the endpoint as the next startRef; Esc / tool change / an explicit finish ends the chain.",
-        "Reuse resolvePoint + the tool's buildShape unchanged; respect the existing second-finger cancel path and the commit-only-on-mouseUp perf contract.",
-        "Surface a chain toggle in the tool dock/rail (shared, so desktop gains it)."
-      ],
-      "touches": [
-        "src/core/drawing-engine/useDrawingEngine.ts",
-        "src/renderer/2d/index.tsx",
-        "src/renderer/layout/MobileToolbar.tsx",
-        "src/renderer/layout/editor-shell/ToolRail.tsx",
-        "src/store/editor.store.ts (chain flag)",
-        "src/i18n/locales/{en,it,de,fa}.ts"
-      ],
-      "unlocks": ["Fast room / perimeter drawing on touch (and desktop)"],
-      "depends_on": []
-    },
-    {
       "id": "MOB-5",
       "title": "Deferred / adjustable commit for precision",
       "status": "todo",

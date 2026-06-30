@@ -170,6 +170,7 @@ export const it: Dictionary = {
   tools: {
     select: "Seleziona",
     pan: "Sposta vista",
+    chain: "Continuo",
     wall: "Parete",
     arcWall: "Parete curva",
     window: "Finestra",

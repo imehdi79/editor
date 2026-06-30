@@ -8,9 +8,10 @@
  */
 
 import { useState } from "react";
-import { Undo, Redo, Trash2, Layers3, Calculator, SlidersHorizontal, Moon, Sun, type LucideIcon } from "lucide-react";
+import { Undo, Redo, Trash2, Layers3, Calculator, SlidersHorizontal, Moon, Sun, Waypoints, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToolsStore } from "@/store/tools.store";
+import { useEditorStore } from "@/store/editor.store";
 import { useTemporalStore, useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import { useThemeStore } from "@/store/theme.store";
@@ -62,6 +63,9 @@ const ToolRail = () => {
   const activeTool = useToolsStore((s) => s.tool);
   const setTool = useToolsStore((s) => s.setTool);
 
+  const chainDrawing = useEditorStore((s) => s.chainDrawing);
+  const toggleChainDrawing = useEditorStore((s) => s.toggleChainDrawing);
+
   const undo = useTemporalStore((s) => s.undo);
   const redo = useTemporalStore((s) => s.redo);
   const canUndo = useTemporalStore((s) => s.pastStates.length > 0);
@@ -94,6 +98,15 @@ const ToolRail = () => {
         ))}
 
         <div className="my-1 h-px w-6 bg-line" />
+
+        {/* Continuous (chain) drawing toggle — connected segments without
+            re-acquiring the previous node (effective for segment tools). */}
+        <RailButton
+          Icon={Waypoints}
+          title={t("tools.chain")}
+          active={chainDrawing}
+          onClick={toggleChainDrawing}
+        />
 
         <RailButton Icon={Undo} title={t("tools.undo")} disabled={!canUndo} onClick={() => undo()} />
         <RailButton Icon={Redo} title={t("tools.redo")} disabled={!canRedo} onClick={() => redo()} />

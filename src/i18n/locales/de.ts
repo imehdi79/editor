@@ -171,6 +171,7 @@ export const de: Dictionary = {
   tools: {
     select: "Auswählen",
     pan: "Schwenken",
+    chain: "Fortlaufend",
     wall: "Wand",
     arcWall: "Bogenwand",
     window: "Fenster",

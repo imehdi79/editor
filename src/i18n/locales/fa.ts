@@ -171,6 +171,7 @@ export const fa: Dictionary = {
   tools: {
     select: "انتخاب",
     pan: "جابجایی نما",
+    chain: "پیوسته",
     wall: "دیوار",
     arcWall: "دیوار قوسی",
     window: "پنجره",
