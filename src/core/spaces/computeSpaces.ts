@@ -261,5 +261,5 @@ export const withAssignments = (spaces: readonly Space[], assignments: SpaceAssi
   spaces.map((sp) => {
     const a = assignments[sp.id];
     if (!a) return sp;
-    return { ...sp, floorAssemblyId: a.floorAssemblyId, ceilingAssemblyId: a.ceilingAssemblyId };
+    return { ...sp, floorAssemblyId: a.floorAssemblyId, ceilingAssemblyId: a.ceilingAssemblyId, name: a.name };
   });

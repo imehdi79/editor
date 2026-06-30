@@ -52,6 +52,7 @@ const traceSpace = (ctx: Konva.Context, space: Space) => {
 const SpaceRenderer = () => {
   const { t } = useTranslation();
   const shapes = useFloorPlanStore((s) => s.shapes);
+  const spaceAssignments = useFloorPlanStore((s) => s.spaceAssignments);
   const ppm = useEditorStore((s) => s.pixelsPerMeter);
   const pxScale = useViewportStore((s) => dimensionPxScale(s.scale));
   const archVisible = useLayersStore((s) => s.visibility.architectural);
@@ -71,6 +72,8 @@ const SpaceRenderer = () => {
       {spaces.map((space, i) => {
         const selected = space.id === selectedSpaceId;
         const color = FILLS[i % FILLS.length];
+        // A custom name overrides the numbered fallback; numbering stays by area rank.
+        const label = spaceAssignments[space.id]?.name || `${t("drawingInfo.types.space")} ${i + 1}`;
         return (
           <Group key={space.id}>
             <KonvaShape
@@ -93,7 +96,7 @@ const SpaceRenderer = () => {
                 y={-FONT}
                 width={LABEL_W}
                 align="center"
-                text={`${t("drawingInfo.types.space")} ${i + 1}\n${formatArea(space.netAreaPx / (ppm * ppm))}`}
+                text={`${label}\n${formatArea(space.netAreaPx / (ppm * ppm))}`}
                 fontSize={FONT}
                 fontStyle="bold"
                 fill="#1e293b"

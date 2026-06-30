@@ -308,6 +308,8 @@ export const de: Dictionary = {
   },
 
   space: {
+    name: "Name",
+    namePlaceholder: "Raumname",
     netArea: "Netto-Bodenfläche",
     netPerimeter: "Netto-Umfang",
     floorAssembly: "Bodenaufbau",

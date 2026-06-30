@@ -41,6 +41,12 @@ interface FloorPlanActions {
    * the room is not re-traced. Recorded in undo history.
    */
   setSpaceAssembly: (spaceId: string, surface: SpaceSurfaceKind, assemblyId: string | undefined) => void;
+  /**
+   * Set (or clear, with an empty/undefined value) a space's custom name. Like
+   * {@link setSpaceAssembly} it touches ONLY `spaceAssignments`, never `shapes`,
+   * so the geometry is not re-traced. Recorded in undo history.
+   */
+  setSpaceName: (spaceId: string, name: string | undefined) => void;
   /** Replace the space-assignment map — used when loading a page's document. */
   loadSpaceAssignments: (assignments: SpaceAssignments) => void;
   reset: () => void;
@@ -98,10 +104,25 @@ export const useFloorPlanStore = create<FloorPlanStore>()(
           const next: SpaceAssignment = {
             floorAssemblyId: surface === "floor" ? assemblyId : cur?.floorAssemblyId,
             ceilingAssemblyId: surface === "ceiling" ? assemblyId : cur?.ceilingAssemblyId,
+            name: cur?.name,
           };
           const map = { ...s.spaceAssignments };
-          if (next.floorAssemblyId || next.ceilingAssemblyId) map[spaceId] = next;
-          else delete map[spaceId]; // both cleared ⇒ drop the entry, keep the map minimal
+          if (next.floorAssemblyId || next.ceilingAssemblyId || next.name) map[spaceId] = next;
+          else delete map[spaceId]; // nothing left ⇒ drop the entry, keep the map minimal
+          return { spaceAssignments: map };
+        }),
+
+      setSpaceName: (spaceId, name) =>
+        set((s) => {
+          const cur = s.spaceAssignments[spaceId];
+          const next: SpaceAssignment = {
+            floorAssemblyId: cur?.floorAssemblyId,
+            ceilingAssemblyId: cur?.ceilingAssemblyId,
+            name: name || undefined,
+          };
+          const map = { ...s.spaceAssignments };
+          if (next.floorAssemblyId || next.ceilingAssemblyId || next.name) map[spaceId] = next;
+          else delete map[spaceId]; // nothing left ⇒ drop the entry, keep the map minimal
           return { spaceAssignments: map };
         }),
 

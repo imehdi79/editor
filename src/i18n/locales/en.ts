@@ -315,6 +315,8 @@ export const en = {
 
   // Selected-space (room) properties — floor + ceiling cost assemblies.
   space: {
+    name: "Name",
+    namePlaceholder: "Room name",
     netArea: "Net floor area",
     netPerimeter: "Net perimeter",
     floorAssembly: "Floor assembly",

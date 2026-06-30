@@ -307,6 +307,8 @@ export const it: Dictionary = {
   },
 
   space: {
+    name: "Nome",
+    namePlaceholder: "Nome del locale",
     netArea: "Superficie netta",
     netPerimeter: "Perimetro netto",
     floorAssembly: "Stratigrafia pavimento",

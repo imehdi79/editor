@@ -308,6 +308,8 @@ export const fa: Dictionary = {
   },
 
   space: {
+    name: "نام",
+    namePlaceholder: "نام فضا",
     netArea: "مساحت خالص کف",
     netPerimeter: "محیط خالص",
     floorAssembly: "مجموعهٔ کف",
