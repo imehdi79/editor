@@ -278,7 +278,9 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
   /**
    * Would a press at this world point grab a (selectable) shape? Used by the
    * merged select+pan tool to decide whether an empty-space drag should pan the
-   * canvas instead of selecting. Mirrors the hit-test used on mousedown.
+   * canvas instead of selecting. Mirrors the hit-test used on mousedown, so the
+   * widened touch grab band (BODY_HIT_RADIUS) makes a near-miss select/move
+   * rather than fall through to a pan.
    */
   const hitTest = useCallback(
     (worldX: number, worldY: number): boolean =>

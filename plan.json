@@ -32,25 +32,6 @@
   ],
   "steps": [
     {
-      "id": "MOB-8",
-      "title": "Grab-vs-pan disambiguation near targets",
-      "status": "todo",
-      "priority": "low",
-      "goal": "Give selection priority within an enlarged target band so a near-miss selects/moves rather than silently panning the canvas.",
-      "rationale": "In the merged select+pan tool a single finger landing just off a thin line pans with no hover to reveal the miss; touch-sized hit radii exist but the miss is silent.",
-      "details": [
-        "Keep the touch hit radii; widen the 'treat as grab' band before falling through to pan in the select tool.",
-        "Tune only — do not remove the deliberate drag-empty-to-pan affordance."
-      ],
-      "touches": [
-        "src/features/select-tool/useTransformEngine.ts (hitTest)",
-        "src/renderer/2d/useStageViewport.ts (shouldPanAtWorld path)",
-        "src/features/select-tool/handleMetrics.ts"
-      ],
-      "unlocks": ["Fewer accidental pans on small targets"],
-      "depends_on": []
-    },
-    {
       "id": "MOB-9",
       "title": "Long-press / double-tap gestures (headroom)",
       "status": "todo",
