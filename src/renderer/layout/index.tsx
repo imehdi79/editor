@@ -3,6 +3,7 @@ import WallActions from "./WallActions";
 import Header from "./header";
 import SubPageBar from "./header/SubPageBar";
 import MobileToolbar from "./MobileToolbar";
+import MobileZoomControls from "./MobileZoomControls";
 import EditorShell from "./editor-shell";
 
 const Layout = () => {
@@ -18,6 +19,7 @@ const Layout = () => {
 
       {/* Mobile chrome — wall editor modal + tool sheet (hidden on md+) */}
       <WallActions />
+      <MobileZoomControls />
       <MobileToolbar />
     </>
   );

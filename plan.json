@@ -32,26 +32,6 @@
   ],
   "steps": [
     {
-      "id": "MOB-3",
-      "title": "Mobile zoom controls (fit + optional zoom in/out)",
-      "status": "todo",
-      "priority": "medium",
-      "goal": "Expose zoom-to-fit (and optional zoom in/out) on mobile, reusing the desktop ViewControls zoom-about-centre logic.",
-      "rationale": "Pinch is the only zoom on mobile and there is no recovery 'fit'; precise tapping needs a quick way to zoom into a node and a reset.",
-      "details": [
-        "Reuse resetViewport / setViewport zoom-about-centre logic from ViewControls in a mobile-visible cluster.",
-        "Pinch stays primary; fit is recovery and a way to zoom into a node before tapping."
-      ],
-      "touches": [
-        "src/renderer/layout/editor-shell/ViewControls.tsx (extract/reuse)",
-        "src/renderer/layout/MobileToolbar.tsx",
-        "src/store/viewport.store.ts (read-only)",
-        "src/i18n/locales/{en,it,de,fa}.ts"
-      ],
-      "unlocks": ["Zoom-to-fit on touch", "Zoom-into-node-before-tap"],
-      "depends_on": []
-    },
-    {
       "id": "MOB-4",
       "title": "Wall-chain (continuous segment) drawing",
       "status": "todo",

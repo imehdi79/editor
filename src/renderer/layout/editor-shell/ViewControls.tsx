@@ -10,10 +10,8 @@
 import { Plus, Minus, Maximize } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/store/editor.store";
-import { useViewportStore, MIN_SCALE, MAX_SCALE } from "@/store/viewport.store";
+import { useViewportZoom } from "@/renderer/2d/useViewportZoom";
 import { useTranslation } from "@/i18n";
-
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 const DimButton = ({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) => (
   <button
@@ -44,16 +42,7 @@ const ViewControls = () => {
   const { t } = useTranslation();
   const viewMode = useEditorStore((s) => s.viewMode);
   const setViewMode = useEditorStore((s) => s.setViewMode);
-  const { x, y, scale, setViewport, resetViewport } = useViewportStore();
-
-  const zoomBy = (factor: number) => {
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
-    const next = clamp(scale * factor, MIN_SCALE, MAX_SCALE);
-    const wx = (cx - x) / scale;
-    const wy = (cy - y) / scale;
-    setViewport(cx - wx * next, cy - wy * next, next);
-  };
+  const { zoomBy, fit } = useViewportZoom();
 
   return (
     <>
@@ -72,7 +61,7 @@ const ViewControls = () => {
           <ZoomButton title={t("view.zoomOut")} onClick={() => zoomBy(0.83)}>
             <Minus size={15} />
           </ZoomButton>
-          <ZoomButton title={t("view.fit")} onClick={() => resetViewport()}>
+          <ZoomButton title={t("view.fit")} onClick={fit}>
             <Maximize size={15} />
           </ZoomButton>
         </div>
