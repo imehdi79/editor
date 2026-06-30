@@ -20,7 +20,328 @@
     "Wall height (WallShape.height) is carried in 2D now for future 3D: set it on creation, keep it editable in 2D, and preserve/propagate it through every junction and edit path — never drop it.",
     "If current task related to juctions or dimentions, See .claude/skills/wall-junctions for the authoritative geometry/computation reference for all 20 junction types.",
     "All user-facing terminology must be localized in Italian (it), Persian (fa), English (en), and German (de). Use professional construction, architecture, and building-design terminology rather than generic translations. Wall types, junctions, join styles, dimensions, layers, structural elements, editor controls, validation messages, and all future features must follow the existing i18n system. Translation keys must be scalable and maintainable. The implementer is responsible for choosing the appropriate industry-standard terminology in each language.",
-    "use /compact to reduce token usage on every step complete"
+    "use /compact to reduce token usage on every step complete",
+    "Estimation evolution: the pure cost reducer (core/estimation/estimate.ts) math stays unchanged. Only the INPUT side grows — the takeoff/quantity-sourcing and catalog/authoring layers. Never fork or duplicate the cost engine.",
+    "A priced line is a neutral WorkItem. The existing wall + space (floor/ceiling) assembly path must become ONE producer of WorkItems, not a parallel system. Every new estimate line (demolition, fixed charge, fixtures, linear work) is a WorkItem feeding the same estimate() reducer.",
+    "Spaces and all geometry remain DERIVED runtime entities. Only assignments and manually-authored quantities are persisted in the document (mirroring spaceAssignments) — geometry is never duplicated or turned into an editable drawing object.",
+    "Quantities may be derived (from geometry), manual (user-entered count/length/area), or fixed (lump sum). The unit model (m2/m3/ml/each/kg) stays the single source of truth — do not introduce a parallel quantity-type system.",
+    "Reuse the existing recommendation engine (core/estimation/recommend.ts + components/estimation/AssemblyOptions.tsx) for any cost alternatives. Do not fork the ranking logic for tasks/trades.",
+    "Pricing rules must evolve additively and stay backward-compatible with saved rules: the global material|labor|total target keeps working as-is; any new scope (per-trade / per-element-type / per-work-item) is an optional extra field that defaults to the current global behaviour. Never migrate or break persisted rules/rates/questions in localStorage.",
+    "Operations on existing elements (demolition, floor removal, disposal) are first-class WorkItems. Do not abuse pricing rules or question flags to fake fixed charges, optional lines, or quantity-bearing items — flags stay for conditional modifiers only.",
+    "Missing prices/assemblies/quantities are always surfaced as warnings, never silently dropped (keep the buildSpaceItems warning pattern for every WorkItem source)."
   ],
-  "steps": []
+  "steps": [
+    {
+      "id": "MOB-2",
+      "title": "First-class visible pan mode on mobile",
+      "status": "todo",
+      "priority": "high",
+      "goal": "Surface pan-only mode (tool === null) as an explicit, labelled control in the mobile tool dock so the canvas can be repositioned without zoom risk while a drawing tool is active.",
+      "rationale": "With a draw tool active, one finger draws and two fingers pinch — there is no pure pan, so mid-draw repositioning always risks a zoom change. The store already supports tool=null; only a visible affordance is missing.",
+      "details": [
+        "Add a pan/hand toggle to MobileToolbar that sets tool=null, with an active state.",
+        "No engine change — useStageViewport already pans on single finger in pan-only mode."
+      ],
+      "touches": [
+        "src/renderer/layout/MobileToolbar.tsx",
+        "src/store/tools.store.ts (read-only)",
+        "src/i18n/locales/{en,it,de,fa}.ts"
+      ],
+      "unlocks": ["Pan while a drawing tool is active"],
+      "depends_on": []
+    },
+    {
+      "id": "MOB-3",
+      "title": "Mobile zoom controls (fit + optional zoom in/out)",
+      "status": "todo",
+      "priority": "medium",
+      "goal": "Expose zoom-to-fit (and optional zoom in/out) on mobile, reusing the desktop ViewControls zoom-about-centre logic.",
+      "rationale": "Pinch is the only zoom on mobile and there is no recovery 'fit'; precise tapping needs a quick way to zoom into a node and a reset.",
+      "details": [
+        "Reuse resetViewport / setViewport zoom-about-centre logic from ViewControls in a mobile-visible cluster.",
+        "Pinch stays primary; fit is recovery and a way to zoom into a node before tapping."
+      ],
+      "touches": [
+        "src/renderer/layout/editor-shell/ViewControls.tsx (extract/reuse)",
+        "src/renderer/layout/MobileToolbar.tsx",
+        "src/store/viewport.store.ts (read-only)",
+        "src/i18n/locales/{en,it,de,fa}.ts"
+      ],
+      "unlocks": ["Zoom-to-fit on touch", "Zoom-into-node-before-tap"],
+      "depends_on": []
+    },
+    {
+      "id": "MOB-4",
+      "title": "Wall-chain (continuous segment) drawing",
+      "status": "todo",
+      "priority": "high",
+      "goal": "After committing a wall/line, optionally seed the next segment's start with the previous endpoint so connected runs are drawn as a chain of taps/drags instead of re-acquiring the hidden node each time.",
+      "rationale": "Chaining today is emergent (re-snapping each start onto an under-finger node with no hover) — the biggest touch flow weakness. A thin state layer over useDrawingEngine reusing resolvePoint + buildShape benefits desktop too, so build it tool-side, not mobile-only.",
+      "details": [
+        "Add an opt-in chain state over useDrawingEngine: on commit, keep the endpoint as the next startRef; Esc / tool change / an explicit finish ends the chain.",
+        "Reuse resolvePoint + the tool's buildShape unchanged; respect the existing second-finger cancel path and the commit-only-on-mouseUp perf contract.",
+        "Surface a chain toggle in the tool dock/rail (shared, so desktop gains it)."
+      ],
+      "touches": [
+        "src/core/drawing-engine/useDrawingEngine.ts",
+        "src/renderer/2d/index.tsx",
+        "src/renderer/layout/MobileToolbar.tsx",
+        "src/renderer/layout/editor-shell/ToolRail.tsx",
+        "src/store/editor.store.ts (chain flag)",
+        "src/i18n/locales/{en,it,de,fa}.ts"
+      ],
+      "unlocks": ["Fast room / perimeter drawing on touch (and desktop)"],
+      "depends_on": []
+    },
+    {
+      "id": "MOB-5",
+      "title": "Deferred / adjustable commit for precision",
+      "status": "todo",
+      "priority": "medium",
+      "goal": "On touch, let a drawn/resized endpoint be nudged after lift-off but before commit (a confirm/adjust affordance), so occlusion and the lack of hover don't force a redraw.",
+      "rationale": "useDrawingEngine already separates start/move/commit and keeps a ghost; deferring the commit lets the user correct the under-finger endpoint. Only commit TIMING changes — geometry is untouched.",
+      "details": [
+        "Add a coarse-pointer commit-confirm phase: lift holds the ghost; a nudge/confirm commits, tap-away or cancel discards.",
+        "Reuse resolvePoint + the existing ghost; preserve the commit-only perf contract and the second-finger cancel path.",
+        "Must not change desktop (fine pointer commits on mouseUp as today)."
+      ],
+      "touches": [
+        "src/core/drawing-engine/useDrawingEngine.ts",
+        "src/features/select-tool/useTransformEngine.ts",
+        "src/renderer/2d/index.tsx",
+        "src/i18n/locales/{en,it,de,fa}.ts"
+      ],
+      "unlocks": ["Precise endpoint placement on touch"],
+      "depends_on": ["MOB-1"]
+    },
+    {
+      "id": "MOB-6",
+      "title": "On-canvas arc curvature handle",
+      "status": "todo",
+      "priority": "medium",
+      "goal": "Add a single mid-arc drag handle so arc-wall curvature can be pulled on the canvas, with the numeric curvature field as fallback.",
+      "rationale": "Arc bulge is editable only via the wall modal today (disconnected from the drawing gesture); an on-canvas handle reuses the rotate-handle rendering pattern and the existing setBulge + arcFromChordBulge.",
+      "details": [
+        "Add a bulge hit zone to useTransformEngine's hit-test + a drag mode updating bulge live (preview in local state, commit on mouseUp).",
+        "Draw the handle in SelectionRenderer, touch-sized via handleMetrics.",
+        "Reuse setBulge / arcFromChordBulge; keep WallPropertiesForm's curvature input as fallback."
+      ],
+      "touches": [
+        "src/features/select-tool/useTransformEngine.ts",
+        "src/renderer/2d/SelectionRenderer.tsx",
+        "src/features/select-tool/handleMetrics.ts (read-only)",
+        "src/renderer/layout/WallPropertiesForm.tsx (read-only)"
+      ],
+      "unlocks": ["Direct arc curvature editing on canvas (desktop + touch)"],
+      "depends_on": []
+    },
+    {
+      "id": "MOB-7",
+      "title": "Generic selection-action sheet (space + non-wall shapes)",
+      "status": "todo",
+      "priority": "medium",
+      "goal": "Generalize the wall-only WallActions FAB+modal into a selected-element sheet that renders the right existing form, so rooms and non-wall shapes are actionable on mobile.",
+      "rationale": "A room is tap-selectable but SpacePropertiesForm is desktop-Inspector-only and WallActions opens only for walls — selecting a space/line/text/opening on mobile offers nothing beyond More -> Delete.",
+      "details": [
+        "Switch the sheet on selection: WallPropertiesForm (wall/arc-wall), SpacePropertiesForm (space), a minimal delete + relevant props otherwise.",
+        "Reuse the existing forms; respect selection.store's mutual exclusion of shape vs space."
+      ],
+      "touches": [
+        "src/renderer/layout/WallActions.tsx",
+        "src/renderer/layout/SpacePropertiesForm.tsx (reuse)",
+        "src/renderer/layout/WallPropertiesForm.tsx (reuse)",
+        "src/store/selection.store.ts (read-only)",
+        "src/i18n/locales/{en,it,de,fa}.ts"
+      ],
+      "unlocks": ["Editing rooms + non-wall shapes on touch"],
+      "depends_on": []
+    },
+    {
+      "id": "MOB-8",
+      "title": "Grab-vs-pan disambiguation near targets",
+      "status": "todo",
+      "priority": "low",
+      "goal": "Give selection priority within an enlarged target band so a near-miss selects/moves rather than silently panning the canvas.",
+      "rationale": "In the merged select+pan tool a single finger landing just off a thin line pans with no hover to reveal the miss; touch-sized hit radii exist but the miss is silent.",
+      "details": [
+        "Keep the touch hit radii; widen the 'treat as grab' band before falling through to pan in the select tool.",
+        "Tune only — do not remove the deliberate drag-empty-to-pan affordance."
+      ],
+      "touches": [
+        "src/features/select-tool/useTransformEngine.ts (hitTest)",
+        "src/renderer/2d/useStageViewport.ts (shouldPanAtWorld path)",
+        "src/features/select-tool/handleMetrics.ts"
+      ],
+      "unlocks": ["Fewer accidental pans on small targets"],
+      "depends_on": []
+    },
+    {
+      "id": "MOB-9",
+      "title": "Long-press / double-tap gestures (headroom)",
+      "status": "todo",
+      "priority": "low",
+      "goal": "Add long-press on a shape (contextual actions: delete / duplicate over existing store calls) and double-tap on empty space (zoom-to-fit).",
+      "rationale": "Tap/drag/pinch are the only gestures today; long-press and double-tap are unused headroom that match professional touch CAD. Additive — only after the precision/flow steps land.",
+      "details": [
+        "Add a gesture layer in useStageEvents (timers + movement thresholds) that does NOT regress the existing tap/drag/pinch routing or the second-finger cancel.",
+        "Reuse existing store actions; no new geometry."
+      ],
+      "touches": [
+        "src/renderer/2d/useStageEvents.ts",
+        "src/renderer/2d/index.tsx",
+        "src/i18n/locales/{en,it,de,fa}.ts"
+      ],
+      "unlocks": ["Contextual actions + double-tap fit on touch"],
+      "depends_on": ["MOB-3"]
+    },
+    {
+      "id": "MOB-10",
+      "title": "Pointer-id input capture (palm/stray-touch robustness)",
+      "status": "todo",
+      "priority": "low",
+      "goal": "Route canvas gestures by a tracked pointer id instead of touches.length so a resting palm / stray second finger doesn't cancel an in-progress stroke.",
+      "rationale": "Current routing is by touch count; a stray touch cancels the active gesture (safe but lossy). Pointer-id capture is a core input refactor with regression risk — do it LAST, after the feature steps are stable.",
+      "details": [
+        "Track the active pointerId in useStageEvents / useStageViewport; ignore non-primary pointers for the active tool gesture while still honouring two-finger pinch.",
+        "Must preserve desktop behaviour and the per-frame perf contract; verify no regression in pan / pinch / draw / transform."
+      ],
+      "touches": [
+        "src/renderer/2d/useStageEvents.ts",
+        "src/renderer/2d/useStageViewport.ts",
+        "src/renderer/2d/index.tsx"
+      ],
+      "unlocks": ["Palm-resistant drawing on touch"],
+      "depends_on": []
+    },
+    {
+      "id": "EST-1",
+      "title": "WorkItem primitive (keystone)",
+      "status": "todo",
+      "priority": "high",
+      "goal": "Introduce a neutral WorkItem at the takeoff↔estimate boundary so a cost line is no longer hard-bound to a material-layer assembly + geometry-derived measure.",
+      "rationale": "estimate() is already a general reducer over EstimateItem; the geometry/material coupling lives only in the takeoff and catalog. A neutral WorkItem is the single unlock for demolition, fixed charges, fixture counts, linear work and optional items — they all become producers of WorkItems instead of special cases.",
+      "details": [
+        "Define WorkItem (core/estimation): { id, name, unit, quantitySource, rate-or-layers, category?, inclusion? }. Keep EstimateItem as the reducer input; a WorkItem maps to an EstimateItem.",
+        "Refactor the existing wall grouping + buildSpaceItems(floor/ceiling) to EMIT WorkItems that map to EstimateItems — one producer, no parallel pipeline.",
+        "estimate() and recommend() math stay byte-for-byte unchanged.",
+        "Keep the missing-assembly/missing-price warning behaviour for every WorkItem."
+      ],
+      "touches": [
+        "src/core/estimation/takeoff.ts",
+        "src/core/estimation/estimate.ts (read-only — must not change math)",
+        "src/components/estimation/DrawingEstimatePanel.tsx"
+      ],
+      "unlocks": ["All subsequent estimation steps"],
+      "depends_on": []
+    },
+    {
+      "id": "EST-2",
+      "title": "Manual & fixed quantity sources",
+      "status": "todo",
+      "priority": "high",
+      "goal": "Allow a WorkItem quantity to be manual (user-entered count/length/area) or fixed (lump sum), not only geometry-derived.",
+      "rationale": "Most non-fitting quotation lines fail purely because the only quantity source today is drawn geometry (wall=1, space=1). A manual/fixed source closes the largest single gap.",
+      "details": [
+        "quantitySource = 'derived' | 'manual' | 'fixed'.",
+        "Persist manual/fixed quantities in the document like spaceAssignments (per project and/or per room) — never duplicate geometry; keep inside the zundo temporal wrapper for undo/redo.",
+        "Fixed charge = a WorkItem with quantity 1 and a flat rate, rendered as its own line (NOT a pricing rule).",
+        "Reuse m2/m3/ml/each/kg; no new quantity-type system."
+      ],
+      "touches": [
+        "src/store/floor-plan.store.ts",
+        "src/store/project.types.ts",
+        "src/store/projects.store.ts",
+        "src/core/estimation/takeoff.ts",
+        "src/components/estimation/DrawingEstimatePanel.tsx"
+      ],
+      "unlocks": [
+        "Fixed-cost items (site setup, permits, scaffolding lump sum)",
+        "Electrical points / plumbing points (each)",
+        "Standalone linear work (skirting, cornice, pipe runs)"
+      ],
+      "depends_on": ["EST-1"]
+    },
+    {
+      "id": "EST-3",
+      "title": "Line-item inclusion state (optional / excluded)",
+      "status": "todo",
+      "priority": "medium",
+      "goal": "Give each WorkItem an inclusion state and teach the totaller to respect it.",
+      "rationale": "Real quotations carry priced-but-optional add-ons and zero-cost documented exclusions; today there is no inclusion concept and recommendations are replacements, not optional add-ons.",
+      "details": [
+        "inclusion = 'included' | 'optional' | 'excluded'.",
+        "included → in base total; optional → priced + shown but out of total (presented as add-on); excluded → zero-cost informational line.",
+        "estimate() change is minimal and additive (selective summation); default 'included' keeps current behaviour."
+      ],
+      "touches": [
+        "src/core/estimation/estimate.ts (additive selective-total only)",
+        "src/components/estimation/EstimateResult.tsx",
+        "src/components/estimation/DrawingEstimatePanel.tsx"
+      ],
+      "unlocks": ["Optional work", "Excluded work"],
+      "depends_on": ["EST-1"]
+    },
+    {
+      "id": "EST-4",
+      "title": "Operations on existing elements (demolition / removal / disposal)",
+      "status": "todo",
+      "priority": "medium",
+      "goal": "Model WorkItems that act on existing/removed elements, and derive disposal quantity from them.",
+      "rationale": "Renovation (vs new-build) requires costing existing elements that the takeoff deliberately excludes; demolition/removal have no material build-up — they are tasks, and disposal is a quantity derived from them.",
+      "details": [
+        "Lift the takeoff `existing` exclusion FOR TASKS only (not for new-build assemblies): a WorkItem may reference an existing wall/floor.",
+        "Add a derived-from-item quantity source so waste disposal (m³ debris / skip count) follows demolition volume.",
+        "Keep `existing` walls excluded from new-construction assembly takeoff (unchanged)."
+      ],
+      "touches": [
+        "src/core/estimation/takeoff.ts",
+        "src/core/estimation/estimate.ts (read-only)",
+        "src/components/estimation/DrawingEstimatePanel.tsx"
+      ],
+      "unlocks": ["Demolition", "Floor removal", "Waste disposal"],
+      "depends_on": ["EST-1", "EST-2"]
+    },
+    {
+      "id": "EST-5",
+      "title": "Trades & phases grouping (presentation over existing data)",
+      "status": "todo",
+      "priority": "low",
+      "goal": "Group the estimate by SystemCategory (trade) and optionally by phase.",
+      "rationale": "Shapes already carry SystemCategory (architectural/structural/electrical/plumbing/hvac/…); once WorkItems carry a category, grouping is a presentation layer over data that already exists — lowest risk, do after items exist.",
+      "details": [
+        "WorkItem carries a category (default by element/task type, mirroring categoryOf).",
+        "Group/subtotal by trade in the estimate panel + result; phase is purely organisational (no pricing effect).",
+        "Localize trade/phase labels (en/it/de/fa) via the existing i18n system."
+      ],
+      "touches": [
+        "src/core/estimation/takeoff.ts",
+        "src/components/estimation/DrawingEstimatePanel.tsx",
+        "src/components/estimation/EstimateResult.tsx",
+        "src/i18n/locales/{en,it,de,fa}.ts"
+      ],
+      "unlocks": ["Trade-grouped quotation", "Phase grouping"],
+      "depends_on": ["EST-1"]
+    },
+    {
+      "id": "EST-6",
+      "title": "Scoped pricing rules (optional, later)",
+      "status": "todo",
+      "priority": "low",
+      "goal": "Let a pricing rule optionally target a trade / element type / work item, not only the global material|labor|total.",
+      "rationale": "Some surcharges/discounts apply to one trade or item (e.g. +10% on electrical, fixed access fee on demolition). The current global model is fine as a default; scoping is an additive enhancement.",
+      "details": [
+        "Add an optional `scope` to PricingRule (default = global, current behaviour) — additive, backward-compatible with persisted rules.",
+        "estimate() applies a scoped rule against the matching items' subtotal instead of the global base; global rules unchanged.",
+        "No migration of saved rules/rates/questions; missing scope = global."
+      ],
+      "touches": [
+        "src/core/estimation/pricingRule.ts",
+        "src/core/estimation/estimate.ts",
+        "src/store/admin-pricing.store.ts",
+        "src/renderer/admin (rules editor)"
+      ],
+      "unlocks": ["Per-trade / per-item surcharges & discounts"],
+      "depends_on": ["EST-1", "EST-5"]
+    }
+  ]
 }

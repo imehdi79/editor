@@ -23,6 +23,7 @@ import DimensionChainsRenderer from "./DimensionChainsRenderer";
 import ArcDimensionRenderer from "./ArcDimensionRenderer";
 import DrawingInfoCanvas from "./DrawingInfoCanvas";
 import NodeThicknessPopover from "./NodeThicknessPopover";
+import DrawingHud from "./DrawingHud";
 
 type StageRef = RefObject<Konva.Stage>;
 type ME = Konva.KonvaEventObject<MouseEvent>;
@@ -154,6 +155,9 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
           )}
         </Layer>
       </Stage>
+
+      {/* Mobile DOM overlay — off-finger readout of the live drawing state */}
+      {tool !== null && <DrawingHud hints={activeHints} />}
 
       {/* DOM overlay — wall thickness editor anchored at a tapped node */}
       {tool === "select" && thicknessNode && (

@@ -198,6 +198,18 @@ export const it: Dictionary = {
     snap: "Aggancio",
   },
 
+  // Lettura di disegno fuori-dito (DrawingHud) — agganci + vincoli.
+  hud: {
+    snapNode: "Nodo",
+    snapMidpoint: "Punto medio",
+    snapIntersection: "Intersezione",
+    snapEdge: "Sul muro",
+    snapGrid: "Griglia",
+    lockHorizontal: "Orizzontale",
+    lockVertical: "Verticale",
+    lockPerpendicular: "Perpendicolare",
+  },
+
   inspector: {
     empty: "Seleziona un elemento per modificarne le proprietà.",
     noProps: "Nessuna proprietà modificabile per questo elemento.",

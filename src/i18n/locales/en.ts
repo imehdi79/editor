@@ -200,6 +200,18 @@ export const en = {
     snap: "Snap",
   },
 
+  // Mobile off-finger drawing readout (DrawingHud) — snap targets + locks.
+  hud: {
+    snapNode: "Node",
+    snapMidpoint: "Midpoint",
+    snapIntersection: "Intersection",
+    snapEdge: "On wall",
+    snapGrid: "Grid",
+    lockHorizontal: "Horizontal",
+    lockVertical: "Vertical",
+    lockPerpendicular: "Perpendicular",
+  },
+
   inspector: {
     empty: "Select an element to edit its properties.",
     noProps: "No editable properties for this element yet.",

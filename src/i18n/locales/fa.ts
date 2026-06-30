@@ -199,6 +199,18 @@ export const fa: Dictionary = {
     snap: "گیرش",
   },
 
+  // نمایشگر ترسیم خارج از انگشت (DrawingHud) — نقاط گیرش + قفل‌ها.
+  hud: {
+    snapNode: "گره",
+    snapMidpoint: "نقطه میانی",
+    snapIntersection: "تقاطع",
+    snapEdge: "روی دیوار",
+    snapGrid: "شبکه",
+    lockHorizontal: "افقی",
+    lockVertical: "عمودی",
+    lockPerpendicular: "عمود",
+  },
+
   inspector: {
     empty: "برای ویرایش ویژگی‌ها، عنصری را انتخاب کنید.",
     noProps: "هنوز ویژگی قابل‌ویرایشی برای این عنصر وجود ندارد.",

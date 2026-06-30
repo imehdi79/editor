@@ -199,6 +199,18 @@ export const de: Dictionary = {
     snap: "Fang",
   },
 
+  // Fingerunabhängige Zeichenanzeige (DrawingHud) — Fangpunkte + Sperren.
+  hud: {
+    snapNode: "Knoten",
+    snapMidpoint: "Mittelpunkt",
+    snapIntersection: "Schnittpunkt",
+    snapEdge: "An der Wand",
+    snapGrid: "Raster",
+    lockHorizontal: "Horizontal",
+    lockVertical: "Vertikal",
+    lockPerpendicular: "Rechtwinklig",
+  },
+
   inspector: {
     empty: "Wähle ein Element, um seine Eigenschaften zu bearbeiten.",
     noProps: "Für dieses Element gibt es noch keine bearbeitbaren Eigenschaften.",
