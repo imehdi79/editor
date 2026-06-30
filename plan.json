@@ -32,25 +32,6 @@
   ],
   "steps": [
     {
-      "id": "MOB-9",
-      "title": "Long-press / double-tap gestures (headroom)",
-      "status": "todo",
-      "priority": "low",
-      "goal": "Add long-press on a shape (contextual actions: delete / duplicate over existing store calls) and double-tap on empty space (zoom-to-fit).",
-      "rationale": "Tap/drag/pinch are the only gestures today; long-press and double-tap are unused headroom that match professional touch CAD. Additive — only after the precision/flow steps land.",
-      "details": [
-        "Add a gesture layer in useStageEvents (timers + movement thresholds) that does NOT regress the existing tap/drag/pinch routing or the second-finger cancel.",
-        "Reuse existing store actions; no new geometry."
-      ],
-      "touches": [
-        "src/renderer/2d/useStageEvents.ts",
-        "src/renderer/2d/index.tsx",
-        "src/i18n/locales/{en,it,de,fa}.ts"
-      ],
-      "unlocks": ["Contextual actions + double-tap fit on touch"],
-      "depends_on": ["MOB-3"]
-    },
-    {
       "id": "MOB-10",
       "title": "Pointer-id input capture (palm/stray-touch robustness)",
       "status": "todo",

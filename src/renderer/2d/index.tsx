@@ -4,6 +4,8 @@ import type Konva from "konva";
 import { useToolsStore, TOOL_CURSORS } from "@/store/tools.store";
 import { useViewportStore } from "@/store/viewport.store";
 import { usePointerStore } from "@/store/pointer.store";
+import { useSelectionStore } from "@/store/selection.store";
+import { useMobileUiStore } from "@/store/mobile-ui.store";
 import { useDrawingEngine } from "@/core/drawing-engine/useDrawingEngine";
 import { useTransformEngine } from "@/features/select-tool/useTransformEngine";
 import { TOOL_REGISTRY } from "@/features/tool-registry";
@@ -17,6 +19,8 @@ import GridRenderer from "./GridRenderer";
 import { useStageSize } from "./useStageSize";
 import { useStageEvents } from "./useStageEvents";
 import { useStageViewport } from "./useStageViewport";
+import { useViewportZoom } from "./useViewportZoom";
+import { useCanvasGestures } from "./useCanvasGestures";
 import DimensionRenderer from "./DimensionRenderer";
 import DimensionLayerRenderer from "./DimensionLayerRenderer";
 import DimensionChainsRenderer from "./DimensionChainsRenderer";
@@ -86,6 +90,20 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
     screenToWorld,
   });
 
+  // Touch gestures — only in select/pan mode so they never hijack drawing/chain
+  // taps: double-tap fits the view; long-press opens the selection editor.
+  const { fit } = useViewportZoom();
+  const openEditor = useMobileUiStore((s) => s.openEditor);
+  const gestures = useCanvasGestures({
+    enabled: tool === "select" || tool === null,
+    onDoubleTap: fit,
+    onLongPress: () => {
+      if (tool !== "select") return;
+      const { selectedId, selectedSpaceId } = useSelectionStore.getState();
+      if (selectedId || selectedSpaceId) openEditor();
+    },
+  });
+
   // Mouse: viewport always handles middle-button + pan-mode left-drag; tools handle left-button in non-pan modes
   const handleMouseDown = (e: ME) => {
     viewportEvents.onMouseDown(e);
@@ -111,14 +129,17 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
   const handleTouchStart = (e: TE) => {
     viewportEvents.onTouchStart(e);
     if (!isPanMode) toolEvents.onTouchStart(e);
+    gestures.onTouchStart(e);
   };
   const handleTouchMove = (e: TE) => {
     viewportEvents.onTouchMove(e);
     if (!isPanMode && e.evt.touches.length === 1) toolEvents.onTouchMove(e);
+    gestures.onTouchMove(e);
   };
   const handleTouchEnd = (e: TE) => {
     viewportEvents.onTouchEnd(e);
     if (!isPanMode) toolEvents.onTouchEnd(e);
+    gestures.onTouchEnd(e);
   };
 
   return (

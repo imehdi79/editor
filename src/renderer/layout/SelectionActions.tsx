@@ -9,12 +9,13 @@
  * breakpoint up. Replaces the wall-only WallActions.
  */
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { SlidersHorizontal, X, Trash2, Square, MousePointerSquareDashed, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSelectionStore } from "@/store/selection.store";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useToolsStore } from "@/store/tools.store";
+import { useMobileUiStore } from "@/store/mobile-ui.store";
 import { computeSpaces } from "@/core/spaces/computeSpaces";
 import { useTranslation, type TranslationKey } from "@/i18n";
 import type { Shape } from "@/core/drawing-engine/drawing.types";
@@ -44,7 +45,10 @@ const SelectionActions = () => {
   const shapes = useFloorPlanStore((s) => s.shapes);
   const removeShape = useFloorPlanStore((s) => s.removeShape);
 
-  const [open, setOpen] = useState(false);
+  // Open state lives in the store so a canvas long-press can open this too.
+  const open = useMobileUiStore((s) => s.editorOpen);
+  const openEditor = useMobileUiStore((s) => s.openEditor);
+  const closeEditor = useMobileUiStore((s) => s.closeEditor);
 
   const selected = selectedId ? shapes[selectedId] : undefined;
   // A selected space resolves against the live (cached) geometry; numbering
@@ -57,8 +61,8 @@ const SelectionActions = () => {
 
   // Close the modal whenever the selection clears.
   useEffect(() => {
-    if (!hasSelection) setOpen(false);
-  }, [hasSelection]);
+    if (!hasSelection) closeEditor();
+  }, [hasSelection, closeEditor]);
 
   if (tool !== "select" || !hasSelection) return null;
 
@@ -66,7 +70,7 @@ const SelectionActions = () => {
     if (!selected) return;
     removeShape(selected.id);
     clearSelection();
-    setOpen(false);
+    closeEditor();
   };
 
   const title = space
@@ -84,7 +88,7 @@ const SelectionActions = () => {
           variant="secondary"
           title={t("inspector.edit")}
           className="size-12 rounded-full shadow-2xl"
-          onClick={() => setOpen(true)}
+          onClick={openEditor}
         >
           <SlidersHorizontal className="size-5" />
         </Button>
@@ -94,7 +98,7 @@ const SelectionActions = () => {
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 supports-backdrop-filter:backdrop-blur-xs md:hidden"
-          onClick={() => setOpen(false)}
+          onClick={closeEditor}
         >
           <div
             className="flex max-h-[85vh] w-[min(94vw,24rem)] flex-col gap-4 overflow-y-auto rounded-xl border bg-popover p-4 shadow-2xl"
@@ -118,7 +122,7 @@ const SelectionActions = () => {
                   <Trash2 size={14} />
                 </Button>
               )}
-              <Button size="icon-xs" variant="ghost" title={t("common.close")} onClick={() => setOpen(false)}>
+              <Button size="icon-xs" variant="ghost" title={t("common.close")} onClick={closeEditor}>
                 <X size={14} />
               </Button>
             </div>
