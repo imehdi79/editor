@@ -12,7 +12,7 @@
  */
 
 import { useState } from "react";
-import { Redo, Undo, Trash2, Layers3, Settings2, MoreHorizontal, Moon, Sun } from "lucide-react";
+import { Redo, Undo, Trash2, Layers3, Settings2, MoreHorizontal, Moon, Sun, Hand } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -60,6 +60,22 @@ const MobileToolbar = () => {
       {/* Persistent bottom tool dock — the mobile counterpart of the tool rail */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex h-14 items-center gap-1 border-t bg-popover/95 px-1.5 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden">
         <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto">
+          {/* Pan/hand — a first-class mode (tool = null) so the canvas can be
+              repositioned without a drawing tool active and without zoom risk. */}
+          <button
+            type="button"
+            title={t("tools.pan")}
+            aria-label={t("tools.pan")}
+            aria-pressed={activeTool === null}
+            onClick={() => setTool(null)}
+            className={cn(
+              "grid size-11 shrink-0 place-items-center rounded-lg transition-colors",
+              activeTool === null ? "bg-brand text-brand-foreground" : "text-ink-2 hover:bg-panel-2 hover:text-ink",
+            )}
+          >
+            <Hand className="size-5.5" strokeWidth={1.75} />
+          </button>
+
           {MODE_TOOLS.map(({ tool, Icon, labelKey }) => (
             <button
               key={tool}

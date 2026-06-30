@@ -32,25 +32,6 @@
   ],
   "steps": [
     {
-      "id": "MOB-2",
-      "title": "First-class visible pan mode on mobile",
-      "status": "todo",
-      "priority": "high",
-      "goal": "Surface pan-only mode (tool === null) as an explicit, labelled control in the mobile tool dock so the canvas can be repositioned without zoom risk while a drawing tool is active.",
-      "rationale": "With a draw tool active, one finger draws and two fingers pinch — there is no pure pan, so mid-draw repositioning always risks a zoom change. The store already supports tool=null; only a visible affordance is missing.",
-      "details": [
-        "Add a pan/hand toggle to MobileToolbar that sets tool=null, with an active state.",
-        "No engine change — useStageViewport already pans on single finger in pan-only mode."
-      ],
-      "touches": [
-        "src/renderer/layout/MobileToolbar.tsx",
-        "src/store/tools.store.ts (read-only)",
-        "src/i18n/locales/{en,it,de,fa}.ts"
-      ],
-      "unlocks": ["Pan while a drawing tool is active"],
-      "depends_on": []
-    },
-    {
       "id": "MOB-3",
       "title": "Mobile zoom controls (fit + optional zoom in/out)",
       "status": "todo",
