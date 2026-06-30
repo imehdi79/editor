@@ -91,6 +91,7 @@ const emptySubPage = (name: string, pinned = false): SubPage => ({
   name,
   pinned,
   shapes: {},
+  spaceAssignments: {},
   viewport: { ...DEFAULT_VIEWPORT },
 });
 
@@ -114,15 +115,16 @@ const newProject = (name: string): Project => {
 // ---------------------------------------------------------------------------
 
 /** Read the live canvas state into a sub-page snapshot. */
-const snapshotLive = (): Pick<SubPage, "shapes" | "viewport"> => {
-  const { shapes } = useFloorPlanStore.getState();
+const snapshotLive = (): Pick<SubPage, "shapes" | "spaceAssignments" | "viewport"> => {
+  const { shapes, spaceAssignments } = useFloorPlanStore.getState();
   const { x, y, scale } = useViewportStore.getState();
-  return { shapes: { ...shapes }, viewport: { x, y, scale } };
+  return { shapes: { ...shapes }, spaceAssignments: { ...spaceAssignments }, viewport: { x, y, scale } };
 };
 
 /** Push a sub-page's document into the live canvas stores + reset undo/selection. */
 const loadLive = (sub: SubPage): void => {
   useFloorPlanStore.getState().loadShapes({ ...sub.shapes });
+  useFloorPlanStore.getState().loadSpaceAssignments({ ...(sub.spaceAssignments ?? {}) });
   useFloorPlanStore.temporal.getState().clear();
   useViewportStore.getState().setViewport(sub.viewport.x, sub.viewport.y, sub.viewport.scale);
   useSelectionStore.getState().clearSelection();
@@ -286,11 +288,19 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
     // Blank sub-pages copy the page's pinned default; template sub-pages start empty.
     const base = page.subPages.find((sp) => sp.pinned) ?? page.subPages[0];
     const created: SubPage = template
-      ? { id: uid(), name: template.name, template: template.id, shapes: {}, viewport: { ...DEFAULT_VIEWPORT } }
+      ? {
+          id: uid(),
+          name: template.name,
+          template: template.id,
+          shapes: {},
+          spaceAssignments: {},
+          viewport: { ...DEFAULT_VIEWPORT },
+        }
       : {
           id: uid(),
           name: `Sub-page ${page.subPages.length + 1}`,
           shapes: { ...base.shapes },
+          spaceAssignments: { ...(base.spaceAssignments ?? {}) },
           viewport: { ...base.viewport },
         };
     const pages = snapped.pages.map((p) =>
@@ -467,6 +477,7 @@ function normalizePage(page: Page): Page {
     template: sp.template,
     pinned: sp.pinned,
     shapes: sp.shapes ?? {},
+    spaceAssignments: sp.spaceAssignments ?? {},
     viewport: sp.viewport ?? { ...DEFAULT_VIEWPORT },
   }));
   if (!subPages.some((sp) => sp.pinned)) {
@@ -475,6 +486,7 @@ function normalizePage(page: Page): Page {
       name: DEFAULT_SUBPAGE_NAME,
       pinned: true,
       shapes: legacy.shapes ?? {},
+      spaceAssignments: {},
       viewport: legacy.viewport ?? { ...DEFAULT_VIEWPORT },
     };
     subPages = [def, ...subPages];

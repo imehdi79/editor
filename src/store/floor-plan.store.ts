@@ -3,13 +3,23 @@ import { temporal, type TemporalState } from "zundo";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import type { Shape, ShapeId, ShapePatch } from "@/core/drawing-engine/drawing.types";
 import type { WallSplit } from "@/core/wall-junctions";
+import type { SpaceAssignment, SpaceAssignments } from "@/core/spaces/spaceAssignment";
 import { generateId } from "@/lib/generateId";
 import { categoryOf } from "@/core/layers/systemCategories";
 
 type ShapesMap = Record<ShapeId, Shape>;
 
+/** A space surface that carries an assembly assignment. */
+export type SpaceSurfaceKind = "floor" | "ceiling";
+
 interface FloorPlanState {
   shapes: ShapesMap;
+  /**
+   * Per-space cost-assembly assignments, keyed by the space's stable id. This is
+   * the ONLY space data in the document — geometry stays derived (computeSpaces)
+   * and is never persisted. Inside the temporal wrapper, so picks are undoable.
+   */
+  spaceAssignments: SpaceAssignments;
 }
 
 interface FloorPlanActions {
@@ -25,6 +35,14 @@ interface FloorPlanActions {
   updateShape: (id: ShapeId, patch: ShapePatch) => void;
   /** Replace the entire shapes map — used when loading a page's document. */
   loadShapes: (shapes: ShapesMap) => void;
+  /**
+   * Set (or clear, with `undefined`) one surface's assembly for a space. Touches
+   * ONLY `spaceAssignments` — never `shapes` — so the geometry cache survives and
+   * the room is not re-traced. Recorded in undo history.
+   */
+  setSpaceAssembly: (spaceId: string, surface: SpaceSurfaceKind, assemblyId: string | undefined) => void;
+  /** Replace the space-assignment map — used when loading a page's document. */
+  loadSpaceAssignments: (assignments: SpaceAssignments) => void;
   reset: () => void;
 }
 
@@ -34,6 +52,7 @@ export const useFloorPlanStore = create<FloorPlanStore>()(
   temporal(
     (set) => ({
       shapes: {},
+      spaceAssignments: {},
 
       addShape: (shape) => {
         const id = generateId(shape.type);
@@ -73,7 +92,22 @@ export const useFloorPlanStore = create<FloorPlanStore>()(
 
       loadShapes: (shapes) => set({ shapes }),
 
-      reset: () => set({ shapes: {} }),
+      setSpaceAssembly: (spaceId, surface, assemblyId) =>
+        set((s) => {
+          const cur = s.spaceAssignments[spaceId];
+          const next: SpaceAssignment = {
+            floorAssemblyId: surface === "floor" ? assemblyId : cur?.floorAssemblyId,
+            ceilingAssemblyId: surface === "ceiling" ? assemblyId : cur?.ceilingAssemblyId,
+          };
+          const map = { ...s.spaceAssignments };
+          if (next.floorAssemblyId || next.ceilingAssemblyId) map[spaceId] = next;
+          else delete map[spaceId]; // both cleared ⇒ drop the entry, keep the map minimal
+          return { spaceAssignments: map };
+        }),
+
+      loadSpaceAssignments: (assignments) => set({ spaceAssignments: assignments }),
+
+      reset: () => set({ shapes: {}, spaceAssignments: {} }),
     }),
     { limit: 100 },
   ),

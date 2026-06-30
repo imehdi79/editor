@@ -7,6 +7,7 @@
  */
 
 import type { Shape, ShapeId } from "@/core/drawing-engine/drawing.types";
+import type { SpaceAssignments } from "@/core/spaces/spaceAssignment";
 
 export interface PageViewport {
   x: number;
@@ -27,6 +28,12 @@ export interface SubPage {
   /** The page's default sub-page: always present and cannot be removed. */
   pinned?: boolean;
   shapes: Record<ShapeId, Shape>;
+  /**
+   * Per-space cost-assembly assignments (ids only). Spaces stay DERIVED — only
+   * these assignments persist. Optional so documents saved before this feature
+   * load cleanly (treated as no assignments).
+   */
+  spaceAssignments?: SpaceAssignments;
   viewport: PageViewport;
 }
 
