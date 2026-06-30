@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditorStore } from "@/store/editor.store";
 import { useFloorPlanStore } from "@/store/floor-plan.store";
+import { COARSE_POINTER } from "@/lib/pointer";
 import { resolvePoint, type ResolveConfig } from "./resolvePoint";
 import { resolveMidSpanSplits } from "@/core/wall-junctions";
 import type { GhostShape, DrawingHints } from "./drawing.types";
@@ -15,6 +16,14 @@ const EMPTY_HINTS: DrawingHints = {
   perpLocked: false,
   dimension: null,
 };
+
+/** A drawn-but-not-yet-committed segment awaiting confirmation (touch only). */
+interface PendingSegment {
+  sx: number;
+  sy: number;
+  ex: number;
+  ey: number;
+}
 
 export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
   // --- store subscriptions ---
@@ -32,6 +41,10 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
 
   // Continuous drawing is only active for tools that opt in (segment tools).
   const chainActive = chainDrawing && !!toolDef?.chainable;
+  // Deferred commit: on touch, a finished segment waits for an explicit confirm
+  // so the (occluded) endpoint can be checked / nudged first. Never with chain
+  // (which flows segment-to-segment), never on a fine pointer (commit on release).
+  const deferralActive = COARSE_POINTER && !chainActive && !!toolDef;
 
   // --- local state ---
   const startRef = useRef<{ x: number; y: number } | null>(null);
@@ -42,6 +55,20 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
   const anchorJustSetRef = useRef(false);
   const [ghost, setGhost] = useState<GhostShape>(null);
   const [hints, setHints] = useState<DrawingHints>(EMPTY_HINTS);
+  /** A finished-but-unconfirmed segment (deferred commit); null when none. */
+  const [pending, setPending] = useState<PendingSegment | null>(null);
+
+  // Reset any pending confirmation when the tool or chain mode changes — the
+  // React-sanctioned "adjust state during render" pattern (refs are reset in the
+  // effect below). Prevents a stale confirm bar surviving a tool switch.
+  const [seenCtx, setSeenCtx] = useState<{ tool: ToolDefinition | null; chain: boolean }>({
+    tool: toolDef,
+    chain: chainActive,
+  });
+  if (seenCtx.tool !== toolDef || seenCtx.chain !== chainActive) {
+    setSeenCtx({ tool: toolDef, chain: chainActive });
+    if (pending) setPending(null);
+  }
 
   /**
    * Build the ResolveConfig from current store values.
@@ -80,21 +107,32 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
     [toolDef, shapes, addShape, addShapeWithSplits],
   );
 
+  const hintsFrom = (r: ReturnType<typeof resolvePoint>): DrawingHints => ({
+    snapResult: r.pointSnap.snapped ? r.pointSnap : null,
+    guides: r.guides,
+    axisLocked: r.axisLocked,
+    axisLockAngle: r.axisLockAngle,
+    perpLocked: r.perpLocked,
+    dimension: r.dimension,
+  });
+
   const onMouseDown = useCallback(
     (rawX: number, rawY: number) => {
       if (!toolDef) return;
+
+      // While a segment awaits confirmation, a press begins adjusting its
+      // endpoint (handled in move/up); never start a fresh draw underneath it.
+      if (pending) return;
+
       const { x, y } = resolvePoint(rawX, rawY, makeConfig());
 
       if (chainActive) {
         if (anchorRef.current === null) {
-          // First point of a new chain — begin from this press.
           anchorRef.current = { x, y };
           anchorJustSetRef.current = true;
           setGhost(toolDef.buildGhost(x, y, x, y));
           setHints(EMPTY_HINTS);
         } else {
-          // A continuing point — the anchor already exists; the segment is
-          // previewed from it and committed on release.
           anchorJustSetRef.current = false;
         }
         return;
@@ -104,12 +142,20 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
       setGhost(toolDef.buildGhost(x, y, x, y));
       setHints(EMPTY_HINTS);
     },
-    [toolDef, makeConfig, chainActive],
+    [toolDef, makeConfig, chainActive, pending],
   );
 
   const onMouseMove = useCallback(
     (rawX: number, rawY: number) => {
       if (!toolDef) return;
+
+      // Adjusting a pending endpoint: rubber-band from its fixed start.
+      if (pending) {
+        const res = resolvePoint(rawX, rawY, makeConfig(), pending.sx, pending.sy);
+        setGhost(toolDef.buildGhost(pending.sx, pending.sy, res.x, res.y));
+        setHints(hintsFrom(res));
+        return;
+      }
 
       if (chainActive) {
         const anchor = anchorRef.current;
@@ -117,46 +163,31 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
         // With an anchor: rubber-band from it. Without one (chain not yet
         // started, e.g. after a tool switch): clear any stale ghost.
         setGhost(anchor ? toolDef.buildGhost(anchor.x, anchor.y, res.x, res.y) : null);
-        setHints({
-          snapResult: res.pointSnap.snapped ? res.pointSnap : null,
-          guides: res.guides,
-          axisLocked: res.axisLocked,
-          axisLockAngle: res.axisLockAngle,
-          perpLocked: res.perpLocked,
-          dimension: res.dimension,
-        });
+        setHints(hintsFrom(res));
         return;
       }
 
       const start = startRef.current;
-      const { x, y, pointSnap, guides, axisLocked, axisLockAngle, perpLocked, dimension } = resolvePoint(
-        rawX,
-        rawY,
-        makeConfig(),
-        start?.x,
-        start?.y,
-      );
-
-      if (start) {
-        setGhost(toolDef.buildGhost(start.x, start.y, x, y));
-      }
-
-      setHints({
-        snapResult: pointSnap.snapped ? pointSnap : null,
-        guides,
-        axisLocked,
-        axisLockAngle,
-        perpLocked,
-        dimension,
-      });
+      const res = resolvePoint(rawX, rawY, makeConfig(), start?.x, start?.y);
+      if (start) setGhost(toolDef.buildGhost(start.x, start.y, res.x, res.y));
+      setHints(hintsFrom(res));
     },
-    [toolDef, makeConfig, chainActive],
+    [toolDef, makeConfig, chainActive, pending],
   );
 
   const onMouseUp = useCallback(
     (rawX: number, rawY: number) => {
       if (!toolDef) return;
       const minLength = toolDef.minLength ?? 5;
+
+      // Adjusting a pending endpoint: settle it at the released point, stay pending.
+      if (pending) {
+        const res = resolvePoint(rawX, rawY, makeConfig(), pending.sx, pending.sy);
+        setPending({ sx: pending.sx, sy: pending.sy, ex: res.x, ey: res.y });
+        setGhost(toolDef.buildGhost(pending.sx, pending.sy, res.x, res.y));
+        setHints(hintsFrom(res));
+        return;
+      }
 
       if (chainActive) {
         const anchor = anchorRef.current;
@@ -165,17 +196,14 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
         const dist = Math.hypot(x - anchor.x, y - anchor.y);
 
         if (dist >= minLength) {
-          // Commit this segment and continue the chain from its endpoint.
           commitSegment(anchor.x, anchor.y, x, y);
           anchorRef.current = { x, y };
           anchorJustSetRef.current = false;
           setGhost(toolDef.buildGhost(x, y, x, y));
           setHints(EMPTY_HINTS);
         } else if (anchorJustSetRef.current) {
-          // The starting tap — keep the anchor open, wait for the next point.
           anchorJustSetRef.current = false;
         } else {
-          // A tap in place while chaining — finish the chain.
           anchorRef.current = null;
           setGhost(null);
           setHints(EMPTY_HINTS);
@@ -185,41 +213,68 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
 
       if (!startRef.current) return;
       const start = startRef.current;
-      const { x, y } = resolvePoint(rawX, rawY, makeConfig(), start.x, start.y);
-      const dist = Math.hypot(x - start.x, y - start.y);
+      const res = resolvePoint(rawX, rawY, makeConfig(), start.x, start.y);
+      const dist = Math.hypot(res.x - start.x, res.y - start.y);
+      startRef.current = null;
 
-      if (dist >= minLength) {
-        commitSegment(start.x, start.y, x, y);
+      if (dist < minLength) {
+        setGhost(null);
+        setHints(EMPTY_HINTS);
+        return;
       }
 
-      startRef.current = null;
-      setGhost(null);
-      setHints(EMPTY_HINTS);
+      if (deferralActive) {
+        // Hold for confirmation instead of committing — the endpoint can be
+        // checked / nudged first (touch). No store write until confirm().
+        setPending({ sx: start.x, sy: start.y, ex: res.x, ey: res.y });
+        setGhost(toolDef.buildGhost(start.x, start.y, res.x, res.y));
+        setHints(hintsFrom(res));
+      } else {
+        commitSegment(start.x, start.y, res.x, res.y);
+        setGhost(null);
+        setHints(EMPTY_HINTS);
+      }
     },
-    [toolDef, makeConfig, chainActive, commitSegment],
+    [toolDef, makeConfig, chainActive, pending, deferralActive, commitSegment],
   );
 
-  /** Abort any in-progress draw/chain without committing (e.g. a pinch-zoom began
-   *  or Escape was pressed). */
-  const cancel = useCallback(() => {
-    startRef.current = null;
-    anchorRef.current = null;
-    anchorJustSetRef.current = false;
+  /** Commit the pending segment (the confirm affordance). */
+  const confirmPending = useCallback(() => {
+    if (!pending) return;
+    commitSegment(pending.sx, pending.sy, pending.ex, pending.ey);
+    setPending(null);
+    setGhost(null);
+    setHints(EMPTY_HINTS);
+  }, [pending, commitSegment]);
+
+  /** Drop the pending segment without committing (the discard affordance). */
+  const discardPending = useCallback(() => {
+    setPending(null);
     setGhost(null);
     setHints(EMPTY_HINTS);
   }, []);
 
-  // Reset on tool change / when chaining turns off — never carry a dangling
-  // anchor across tools or modes (e.g. wall → select → wall). Refs only (no
-  // setState in the effect); a stale ghost is cleared lazily by the next move /
-  // press, or simply not rendered for non-drawing tools.
+  /** Abort any in-progress draw/chain/pending without committing (e.g. a
+   *  pinch-zoom began or Escape was pressed). */
+  const cancel = useCallback(() => {
+    startRef.current = null;
+    anchorRef.current = null;
+    anchorJustSetRef.current = false;
+    setPending(null);
+    setGhost(null);
+    setHints(EMPTY_HINTS);
+  }, []);
+
+  // Reset interaction refs on tool change / when chaining turns off — never carry
+  // a dangling anchor across tools or modes (e.g. wall → select → wall). Refs
+  // only (no setState in the effect); the pending state is reset during render.
   useEffect(() => {
     startRef.current = null;
     anchorRef.current = null;
     anchorJustSetRef.current = false;
   }, [toolDef, chainActive]);
 
-  // Escape finishes the chain / aborts an in-progress draw.
+  // Escape finishes the chain / aborts an in-progress draw or pending confirm.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") cancel();
@@ -228,5 +283,15 @@ export const useDrawingEngine = (toolDef: ToolDefinition | null) => {
     return () => window.removeEventListener("keydown", onKey);
   }, [cancel]);
 
-  return { ghost, hints, onMouseDown, onMouseMove, onMouseUp, cancel };
+  return {
+    ghost,
+    hints,
+    pending: pending !== null,
+    confirmPending,
+    discardPending,
+    onMouseDown,
+    onMouseMove,
+    onMouseUp,
+    cancel,
+  };
 };

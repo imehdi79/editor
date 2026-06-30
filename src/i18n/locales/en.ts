@@ -13,6 +13,8 @@ export const en = {
     add: "Add",
     remove: "Remove",
     loading: "Loading…",
+    confirm: "Confirm",
+    cancel: "Cancel",
   },
 
   language: {

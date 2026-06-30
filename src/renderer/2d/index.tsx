@@ -24,6 +24,7 @@ import ArcDimensionRenderer from "./ArcDimensionRenderer";
 import DrawingInfoCanvas from "./DrawingInfoCanvas";
 import NodeThicknessPopover from "./NodeThicknessPopover";
 import DrawingHud from "./DrawingHud";
+import DrawCommitBar from "./DrawCommitBar";
 
 type StageRef = RefObject<Konva.Stage>;
 type ME = Konva.KonvaEventObject<MouseEvent>;
@@ -46,6 +47,9 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
   const {
     ghost,
     hints: drawHints,
+    pending: drawPending,
+    confirmPending,
+    discardPending,
     onMouseDown: drawDown,
     onMouseMove: drawMove,
     onMouseUp: drawUp,
@@ -158,6 +162,9 @@ const Canvas = ({ stageRef }: { stageRef: StageRef }) => {
 
       {/* Mobile DOM overlay — off-finger readout of the live drawing state */}
       {tool !== null && <DrawingHud hints={activeHints} />}
+
+      {/* Touch deferred-commit — confirm/discard the held segment */}
+      {isDrawingTool && drawPending && <DrawCommitBar onConfirm={confirmPending} onDiscard={discardPending} />}
 
       {/* DOM overlay — wall thickness editor anchored at a tapped node */}
       {tool === "select" && thicknessNode && (

@@ -32,27 +32,6 @@
   ],
   "steps": [
     {
-      "id": "MOB-5",
-      "title": "Deferred / adjustable commit for precision",
-      "status": "todo",
-      "priority": "medium",
-      "goal": "On touch, let a drawn/resized endpoint be nudged after lift-off but before commit (a confirm/adjust affordance), so occlusion and the lack of hover don't force a redraw.",
-      "rationale": "useDrawingEngine already separates start/move/commit and keeps a ghost; deferring the commit lets the user correct the under-finger endpoint. Only commit TIMING changes — geometry is untouched.",
-      "details": [
-        "Add a coarse-pointer commit-confirm phase: lift holds the ghost; a nudge/confirm commits, tap-away or cancel discards.",
-        "Reuse resolvePoint + the existing ghost; preserve the commit-only perf contract and the second-finger cancel path.",
-        "Must not change desktop (fine pointer commits on mouseUp as today)."
-      ],
-      "touches": [
-        "src/core/drawing-engine/useDrawingEngine.ts",
-        "src/features/select-tool/useTransformEngine.ts",
-        "src/renderer/2d/index.tsx",
-        "src/i18n/locales/{en,it,de,fa}.ts"
-      ],
-      "unlocks": ["Precise endpoint placement on touch"],
-      "depends_on": ["MOB-1"]
-    },
-    {
       "id": "MOB-6",
       "title": "On-canvas arc curvature handle",
       "status": "todo",

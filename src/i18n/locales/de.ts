@@ -12,6 +12,8 @@ export const de: Dictionary = {
     add: "Hinzufügen",
     remove: "Entfernen",
     loading: "Laden…",
+    confirm: "Bestätigen",
+    cancel: "Abbrechen",
   },
 
   language: {

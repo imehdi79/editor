@@ -12,6 +12,8 @@ export const fa: Dictionary = {
     add: "افزودن",
     remove: "حذف",
     loading: "در حال بارگذاری…",
+    confirm: "تأیید",
+    cancel: "لغو",
   },
 
   language: {
