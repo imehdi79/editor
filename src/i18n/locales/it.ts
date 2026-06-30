@@ -192,6 +192,7 @@ export const it: Dictionary = {
   },
 
   view: {
+    title: "Zoom",
     zoomIn: "Ingrandisci",
     zoomOut: "Riduci",
     fit: "Adatta alla vista",

@@ -194,6 +194,7 @@ export const en = {
   },
 
   view: {
+    title: "Zoom",
     zoomIn: "Zoom in",
     zoomOut: "Zoom out",
     fit: "Fit to view",

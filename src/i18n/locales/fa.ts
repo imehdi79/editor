@@ -193,6 +193,7 @@ export const fa: Dictionary = {
   },
 
   view: {
+    title: "بزرگ‌نمایی",
     zoomIn: "بزرگ‌نمایی",
     zoomOut: "کوچک‌نمایی",
     fit: "اندازه به نما",

@@ -193,6 +193,7 @@ export const de: Dictionary = {
   },
 
   view: {
+    title: "Zoom",
     zoomIn: "Vergrößern",
     zoomOut: "Verkleinern",
     fit: "Einpassen",

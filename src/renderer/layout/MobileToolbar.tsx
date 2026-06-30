@@ -6,13 +6,28 @@
  * and a trailing "More" button. One tap switches tool — no nested menus — and
  * every target is ≥44px (Apple HIG).
  *
- * "More" opens a bottom sheet for the secondary controls (undo/redo, delete,
- * Systems, Settings, theme). Systems/Settings render as siblings of the sheet so
- * closing it doesn't unmount them.
+ * Delete sits in the dock itself (contextual — only while a shape is selected) so
+ * the most common edit is one tap away. "More" opens a bottom sheet for the rest
+ * (undo/redo, zoom, Systems, Settings, theme). Systems/Settings render as siblings
+ * of the sheet so closing it doesn't unmount them.
  */
 
 import { useState } from "react";
-import { Redo, Undo, Trash2, Layers3, Settings2, MoreHorizontal, Moon, Sun, Hand, Waypoints } from "lucide-react";
+import {
+  Redo,
+  Undo,
+  Trash2,
+  Layers3,
+  Settings2,
+  MoreHorizontal,
+  Moon,
+  Sun,
+  Hand,
+  Waypoints,
+  Plus,
+  Minus,
+  Maximize,
+} from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,6 +36,7 @@ import { useEditorStore } from "@/store/editor.store";
 import { useTemporalStore, useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import { useThemeStore } from "@/store/theme.store";
+import { useViewportZoom } from "@/renderer/2d/useViewportZoom";
 import { useTranslation } from "@/i18n";
 import type { NoOneClickTools } from "./sidebar/tools.types";
 import { MODE_TOOLS } from "./editor-shell/editorTools";
@@ -37,6 +53,8 @@ const MobileToolbar = () => {
 
   const chainDrawing = useEditorStore((s) => s.chainDrawing);
   const toggleChainDrawing = useEditorStore((s) => s.toggleChainDrawing);
+  const viewMode = useEditorStore((s) => s.viewMode);
+  const { zoomBy, fit } = useViewportZoom();
 
   const undo = useTemporalStore((s) => s.undo);
   const redo = useTemporalStore((s) => s.redo);
@@ -114,6 +132,20 @@ const MobileToolbar = () => {
           <Waypoints className="size-5.5" strokeWidth={1.75} />
         </button>
 
+        {/* Delete — contextual, surfaced in the dock only while a shape is
+            selected so the most common edit needs no detour through "More". */}
+        {selectedId && (
+          <button
+            type="button"
+            title={t("tools.delete")}
+            aria-label={t("tools.delete")}
+            onClick={onDelete}
+            className="grid size-11 shrink-0 place-items-center rounded-lg text-destructive transition-colors hover:bg-destructive/10"
+          >
+            <Trash2 className="size-5.5" strokeWidth={1.75} />
+          </button>
+        )}
+
         <div className="h-7 w-px shrink-0 bg-line" />
 
         <button
@@ -140,7 +172,7 @@ const MobileToolbar = () => {
             {/* Actions */}
             <div>
               <span className="px-1 text-2xs uppercase tracking-wider text-ink-3 mono">{t("tools.actions")}</span>
-              <div className="mt-1 grid grid-cols-3 gap-2">
+              <div className="mt-1 grid grid-cols-2 gap-2">
                 <Button variant="outline" disabled={!canUndo} onClick={() => undo()} className="h-12 flex-col gap-1">
                   <Undo className="size-5" />
                   <span className="text-[11px] font-normal">{t("tools.undo")}</span>
@@ -149,12 +181,30 @@ const MobileToolbar = () => {
                   <Redo className="size-5" />
                   <span className="text-[11px] font-normal">{t("tools.redo")}</span>
                 </Button>
-                <Button variant="destructive" disabled={!selectedId} onClick={onDelete} className="h-12 flex-col gap-1">
-                  <Trash2 className="size-5" />
-                  <span className="text-[11px] font-normal">{t("tools.delete")}</span>
-                </Button>
               </div>
             </div>
+
+            {/* Zoom — pinch stays the primary gesture; these are the button
+                affordances (step zoom + reset/fit). Only meaningful in 2D. */}
+            {viewMode === "2d" && (
+              <div>
+                <span className="px-1 text-2xs uppercase tracking-wider text-ink-3 mono">{t("view.title")}</span>
+                <div className="mt-1 grid grid-cols-3 gap-2">
+                  <Button variant="outline" onClick={() => zoomBy(1.2)} className="h-12 flex-col gap-1">
+                    <Plus className="size-5" />
+                    <span className="text-[11px] font-normal">{t("view.zoomIn")}</span>
+                  </Button>
+                  <Button variant="outline" onClick={() => zoomBy(0.83)} className="h-12 flex-col gap-1">
+                    <Minus className="size-5" />
+                    <span className="text-[11px] font-normal">{t("view.zoomOut")}</span>
+                  </Button>
+                  <Button variant="outline" onClick={fit} className="h-12 flex-col gap-1">
+                    <Maximize className="size-5" />
+                    <span className="text-[11px] font-normal">{t("view.fit")}</span>
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* View — systems / settings open their own modals; theme toggles inline */}
             <div>
