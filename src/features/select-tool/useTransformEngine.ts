@@ -86,6 +86,29 @@ const rotationHandlePos = (shape: Exclude<Shape, { type: "text" }>, offset: numb
   return { x: mx + (-dy / len) * offset, y: my + (dx / len) * offset };
 };
 
+// Arc-wall curvature handle position: the apex (sagitta tip) = chord midpoint
+// offset along the chord's left-hand normal by the signed bulge. Matches the
+// bulge convention in core/arc/arcGeometry.
+const arcApex = (shape: { x1: number; y1: number; x2: number; y2: number; bulge: number }) => {
+  const mx = (shape.x1 + shape.x2) / 2;
+  const my = (shape.y1 + shape.y2) / 2;
+  const dx = shape.x2 - shape.x1;
+  const dy = shape.y2 - shape.y1;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: mx + (-dy / len) * shape.bulge, y: my + (dx / len) * shape.bulge };
+};
+
+// Signed bulge for a cursor point: its projection onto the chord's left-hand
+// normal, measured from the chord midpoint (the inverse of arcApex).
+const bulgeForPoint = (shape: { x1: number; y1: number; x2: number; y2: number }, px: number, py: number) => {
+  const mx = (shape.x1 + shape.x2) / 2;
+  const my = (shape.y1 + shape.y2) / 2;
+  const dx = shape.x2 - shape.x1;
+  const dy = shape.y2 - shape.y1;
+  const len = Math.hypot(dx, dy) || 1;
+  return (px - mx) * (-dy / len) + (py - my) * (dx / len);
+};
+
 // Snap angle to nearest N degrees (for 0, 45, 90, 135, 180)
 const snapAngle = (angleDeg: number, threshold: number): number => {
   const snaps = [0, 45, 90, 135, 180, 225, 270, 315, 360];
@@ -109,7 +132,8 @@ type TransformMode =
       /** Topology node key — all endpoints sharing this key move together */
       nodeKey: string;
     }
-  | { kind: "rotate"; shapeId: string };
+  | { kind: "rotate"; shapeId: string }
+  | { kind: "bulge"; shapeId: string };
 
 // ---------------------------------------------------------------------------
 // Hit test — what did the pointer land on?
@@ -117,7 +141,12 @@ type TransformMode =
 
 // `scale` is the viewport zoom; screen-px hit sizes are divided by it so the
 // world-space tolerance grows as you zoom out, keeping a constant touch target.
-const hitTestShape = (x: number, y: number, shape: Shape, scale: number): "p1" | "p2" | "rotate" | "hinge" | "body" | null => {
+const hitTestShape = (
+  x: number,
+  y: number,
+  shape: Shape,
+  scale: number,
+): "p1" | "p2" | "rotate" | "hinge" | "bulge" | "body" | null => {
   const handleR = HANDLE_HIT_RADIUS / scale;
   const bodyR = BODY_HIT_RADIUS / scale;
   const rotateOffset = ROTATE_HANDLE_OFFSET / scale;
@@ -131,6 +160,12 @@ const hitTestShape = (x: number, y: number, shape: Shape, scale: number): "p1" |
   // Endpoint handles
   if (distSq(x, y, shape.x1, shape.y1) < rSq) return "p1";
   if (distSq(x, y, shape.x2, shape.y2) < rSq) return "p2";
+
+  // Arc wall: curvature handle at the apex (sagitta tip = chord mid + n·bulge).
+  if (shape.type === "arc-wall") {
+    const ah = arcApex(shape);
+    if (distSq(x, y, ah.x, ah.y) < rSq) return "bulge";
+  }
 
   // Rotation handle (above midpoint)
   const rh = rotationHandlePos(shape, rotateOffset);
@@ -171,7 +206,7 @@ const hitTestShapes = (
   shapes: Record<string, Shape>,
   scale: number,
   isSelectable: (shape: Shape) => boolean = () => true,
-): { shapeId: string; zone: "p1" | "p2" | "rotate" | "hinge" | "body" } | null => {
+): { shapeId: string; zone: "p1" | "p2" | "rotate" | "hinge" | "bulge" | "body" } | null => {
   for (const shape of Object.values(shapes).reverse()) {
     if (!isSelectable(shape)) continue; // shapes on hidden layers aren't pickable
     const zone = hitTestShape(x, y, shape, scale);
@@ -319,6 +354,10 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
           handle: hit.zone,
           nodeKey: nodeKey(epX, epY),
         };
+        setPreviewShape({ ...shape } as GhostShape);
+        setConnectedPreviews({});
+      } else if (hit.zone === "bulge" && shape.type === "arc-wall") {
+        modeRef.current = { kind: "bulge", shapeId: hit.shapeId };
         setPreviewShape({ ...shape } as GhostShape);
         setConnectedPreviews({});
       } else if (hit.zone === "rotate") {
@@ -527,6 +566,13 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
         }
       }
 
+      // ---- BULGE (arc-wall curvature) ----
+      else if (mode.kind === "bulge" && shape.type === "arc-wall") {
+        setPreviewShape({ ...shape, bulge: bulgeForPoint(shape, rawX, rawY) } as GhostShape);
+        setHints(EMPTY_HINTS);
+        setConnectedPreviews({});
+      }
+
       // ---- ROTATE ----
       else if (mode.kind === "rotate" && shape.type !== "text") {
         // door/window rotate is instant-commit on mousedown — never reaches mousemove
@@ -621,4 +667,4 @@ export const useTransformEngine = (onNodeTap?: (shapeId: string, handle: "p1" | 
 // Export rotation handle position so SelectionRenderer can draw the handle
 // ---------------------------------------------------------------------------
 
-export { rotationHandlePos };
+export { rotationHandlePos, arcApex };

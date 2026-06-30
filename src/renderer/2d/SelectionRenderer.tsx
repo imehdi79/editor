@@ -25,7 +25,7 @@ import { useFloorPlanStore } from "@/store/floor-plan.store";
 import { useSelectionStore } from "@/store/selection.store";
 import { useViewportStore } from "@/store/viewport.store";
 import type { Shape, GhostShape } from "@/core/drawing-engine/drawing.types";
-import { rotationHandlePos } from "@/features/select-tool/useTransformEngine";
+import { rotationHandlePos, arcApex } from "@/features/select-tool/useTransformEngine";
 import { HANDLE_VISUAL_RADIUS, HANDLE_STROKE, ROTATE_HANDLE_OFFSET } from "@/features/select-tool/handleMetrics";
 import { computeTopology, nodeKey } from "@/core/topology/computeTopology";
 import { absoluteAngleDeg, formatAngle } from "@/core/wall-utils/wallAngles";
@@ -169,6 +169,31 @@ const WallAngleLabel = ({ shape }: { shape: { x1: number; y1: number; x2: number
   );
 };
 
+// Arc-wall curvature handle — a teal grip at the apex (sagitta tip) plus a dashed
+// arm from the chord midpoint. Dragging it adjusts the wall's bulge in-canvas.
+const ARC_BULGE_COLOR = "#14b8a6";
+
+const ArcBulgeHandle = ({ shape, inv }: { shape: Extract<Shape, { type: "arc-wall" }>; inv: number }) => {
+  const mx = (shape.x1 + shape.x2) / 2;
+  const my = (shape.y1 + shape.y2) / 2;
+  const apex = arcApex(shape);
+  const r = HANDLE_VISUAL_RADIUS * inv;
+
+  return (
+    <Group listening={false}>
+      <Line
+        points={[mx, my, apex.x, apex.y]}
+        stroke={ARC_BULGE_COLOR}
+        strokeWidth={inv}
+        dash={[3 * inv, 3 * inv]}
+        opacity={0.5}
+        listening={false}
+      />
+      <Circle x={apex.x} y={apex.y} radius={r} fill="white" stroke={ARC_BULGE_COLOR} strokeWidth={HANDLE_STROKE * inv} listening={false} />
+    </Group>
+  );
+};
+
 const TextHandles = ({ shape, inv }: { shape: Extract<Shape, { type: "text" }>; inv: number }) => (
   <Group listening={false}>
     <Circle
@@ -288,6 +313,10 @@ const SelectionRenderer = ({ previewShape, connectedPreviews }: Props) => {
           <SegmentHandles shape={displayShape as Exclude<Shape, { type: "text" }>} inv={inv} />
           {/* One endpoint handle circle per unique node position */}
           <NodeHandles selectedShape={displayShape as Exclude<Shape, { type: "text" }>} shapes={shapes} inv={inv} />
+          {/* Arc walls: in-canvas curvature (bulge) handle at the apex */}
+          {displayShape.type === "arc-wall" && (
+            <ArcBulgeHandle shape={displayShape as Extract<Shape, { type: "arc-wall" }>} inv={inv} />
+          )}
           {/* Absolute bearing readout for walls */}
           {displayShape.type === "wall" && <WallAngleLabel shape={displayShape} />}
         </>

@@ -32,27 +32,6 @@
   ],
   "steps": [
     {
-      "id": "MOB-6",
-      "title": "On-canvas arc curvature handle",
-      "status": "todo",
-      "priority": "medium",
-      "goal": "Add a single mid-arc drag handle so arc-wall curvature can be pulled on the canvas, with the numeric curvature field as fallback.",
-      "rationale": "Arc bulge is editable only via the wall modal today (disconnected from the drawing gesture); an on-canvas handle reuses the rotate-handle rendering pattern and the existing setBulge + arcFromChordBulge.",
-      "details": [
-        "Add a bulge hit zone to useTransformEngine's hit-test + a drag mode updating bulge live (preview in local state, commit on mouseUp).",
-        "Draw the handle in SelectionRenderer, touch-sized via handleMetrics.",
-        "Reuse setBulge / arcFromChordBulge; keep WallPropertiesForm's curvature input as fallback."
-      ],
-      "touches": [
-        "src/features/select-tool/useTransformEngine.ts",
-        "src/renderer/2d/SelectionRenderer.tsx",
-        "src/features/select-tool/handleMetrics.ts (read-only)",
-        "src/renderer/layout/WallPropertiesForm.tsx (read-only)"
-      ],
-      "unlocks": ["Direct arc curvature editing on canvas (desktop + touch)"],
-      "depends_on": []
-    },
-    {
       "id": "MOB-7",
       "title": "Generic selection-action sheet (space + non-wall shapes)",
       "status": "todo",
