@@ -32,25 +32,6 @@
   ],
   "steps": [
     {
-      "id": "MOB-10",
-      "title": "Pointer-id input capture (palm/stray-touch robustness)",
-      "status": "todo",
-      "priority": "low",
-      "goal": "Route canvas gestures by a tracked pointer id instead of touches.length so a resting palm / stray second finger doesn't cancel an in-progress stroke.",
-      "rationale": "Current routing is by touch count; a stray touch cancels the active gesture (safe but lossy). Pointer-id capture is a core input refactor with regression risk — do it LAST, after the feature steps are stable.",
-      "details": [
-        "Track the active pointerId in useStageEvents / useStageViewport; ignore non-primary pointers for the active tool gesture while still honouring two-finger pinch.",
-        "Must preserve desktop behaviour and the per-frame perf contract; verify no regression in pan / pinch / draw / transform."
-      ],
-      "touches": [
-        "src/renderer/2d/useStageEvents.ts",
-        "src/renderer/2d/useStageViewport.ts",
-        "src/renderer/2d/index.tsx"
-      ],
-      "unlocks": ["Palm-resistant drawing on touch"],
-      "depends_on": []
-    },
-    {
       "id": "EST-1",
       "title": "WorkItem primitive (keystone)",
       "status": "todo",
